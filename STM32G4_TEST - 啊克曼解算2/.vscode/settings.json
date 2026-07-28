@@ -1,0 +1,27 @@
+{
+    "customFileOrder.rules": {
+        "e:\\MCU_Program\\FreeRtos_test_writed_by_self\\STM32F103\\STM32G4_TEST - 啊克曼解算2": {
+            "order": [
+                "Drivers",
+                "MDK-ARM",
+                "Middlewares",
+                "hardware",
+                "Core",
+                "STM32G4_TEST.ioc",
+                ".vscode"
+            ],
+            "type": "manual"
+        }
+    },
+    "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "cmake.buildDirectory": "D:/stm32_build/STM32G4_TEST/Debug",
+    "cmake.generator": "Ninja",
+    "cmake.configureArgs": [
+        "-G", "Ninja",
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/cmake/gcc-arm-none-eabi.cmake",
+        "-B", "D:/stm32_build/STM32G4_TEST/Debug",
+        "-S", "${workspaceFolder}"
+    ]
+}
