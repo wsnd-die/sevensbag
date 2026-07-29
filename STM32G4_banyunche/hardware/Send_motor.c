@@ -31,12 +31,12 @@ void Servo_SetAngle(float Angle)
 
 #if use_xing_che
 
-	if(Angle>160){Angle=160;}
+	if(Angle>180){Angle=180;}
 	if(Angle<0){Angle=0;}
 
 #else
 
-	if(Angle>160){Angle=160;}
+	if(Angle>180){Angle=180;}
 	if(Angle<0){Angle=0;}
 
 #endif

@@ -56,18 +56,18 @@ void Hal_starte()
 		FDCAN1_UserInit();
 	
 		__HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
-    __HAL_UART_CLEAR_FLAG(&huart3, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
+        __HAL_UART_CLEAR_FLAG(&huart3, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
 	
-		HAL_UART_Receive_IT(&huart1, &rx1, 1);//�����շ�ʼ��
+		HAL_UART_Receive_IT(&huart1, &rx1, 1);//??????????
 		HAL_UART_Receive_IT(&huart3, &rx3, 1);
-		/* DMA 循环接收 + IDLE 帧同步 */
+		/* DMA ѭ������ + IDLE ֡ͬ�� */
 		UART2_StartDMAReceive();
       
-		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//������ʼ��
+		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//?????????
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
 
-		HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);//����ʼ��
+		HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);//???????
 
 		
 }

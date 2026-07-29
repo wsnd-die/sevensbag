@@ -5,6 +5,7 @@
 本文档梳理当前项目根目录下的业务代码、启动代码、外设配置、构建配置和工具脚本。`Drivers/`、`Middlewares/`、`build/`、`MDK-ARM/STM32G4_TEST/` 中包含大量厂商库、FreeRTOS/CMSIS/DSP 源码和编译产物，本文按目录职责汇总，不逐个厂商库函数展开。
 
 当前 CMake 编译使用 `ackermann1.c` 和 `imu_660.c`；`ackermann.c`、`spi_imu660rc.c` 是备用/旧实现，文件仍然保留，但不是 CMake 的当前业务源列表。
+本工程同时保留三套编译入口：Keil MDK 工程、VSCode 中的 EIDE 工程，以及另一个用于 Cline 的 CMake 编译入口；后续源文件或外设配置变更需要同步关注三套入口的源文件列表和说明文档。
 
 ## 项目总体用途
 
@@ -14,7 +15,7 @@
 - 用 `navigation.c` 的导航控制器追踪一组目标点，输出车体坐标系速度 `cmd_vx/cmd_vy/cmd_w`。
 - 用 `mecanum.c` 把导航速度解算为四个麦克纳姆轮电机的速度和方向。
 - 用 FDCAN + EMM V5 协议控制 1~4 号闭环步进电机同步运动。
-- 用 TIM3 PWM 输出舵机角度 `front_angle`。
+- 用 TIM3 PWM 输出舵机角度 `front_angle`，TIM3_CH1/CH2/CH3 均按 180 度舵机 PWM 配置。
 - 用 UART3 接收简单命令并通过 `printf` 输出调试/录制数据。
 - 用软件 I2C 驱动 OLED 显示定位、速度、yaw、标定和航点状态。
 
@@ -26,7 +27,7 @@
    - `FDCAN1_UserInit()` 配置扩展帧过滤、启动 FDCAN 和 FIFO0 接收中断。
    - 启动 USART1/USART3 单字节中断接收。
    - `UART2_StartDMAReceive()` 启动 USART2 DMA + IDLE 接收。
-   - 启动 TIM3 PWM，实际当前只配置了 CH1，代码里还启动了 CH2/CH3。
+   - 启动 TIM3 PWM，当前配置并启动 CH1/CH2/CH3。
    - 启动 TIM2 输入捕获中断，当前 TIM2 未看到后续业务使用。
 4. 初始化 CMSIS-RTOS2/FreeRTOS 内核，`MX_FREERTOS_Init()` 创建任务。
 5. `osKernelStart()` 后进入多任务运行：
@@ -102,8 +103,8 @@ USART1/2/3 初始化。
 TIM2/TIM3 初始化。
 
 - `MX_TIM2_Init()`：TIM2 32 位基础定时器，当前主流程启动了输入捕获但代码里未看到业务消费。
-- `MX_TIM3_Init()`：TIM3 PWM，CH1 输出到 PA6，周期 19999，预分频 170，用于舵机 PWM。
-- `HAL_TIM_MspPostInit()`：配置 PA6 为 TIM3_CH1。
+- `MX_TIM3_Init()`：TIM3 PWM，CH1/CH2/CH3 均为 PWM1，高电平有效，周期 19999，预分频 170，用于 180 度舵机 PWM。
+- `HAL_TIM_MspPostInit()`：配置 PA6 为 TIM3_CH1、PA7 为 TIM3_CH2、PB0 为 TIM3_CH3。
 
 ### Core/Src/spi.c / Core/Inc/spi.h
 
@@ -216,7 +217,7 @@ EMM V5 闭环步进电机 CAN 命令拼帧库。
 底盘/舵机输出和 UART1 电机命令解析。
 
 - `Send_commandmotor()`：把 `MecanumResult` 映射到 1~4 号电机，发送速度命令后用广播地址 `0` 触发同步运动。
-- `Servo_SetAngle()`：限制角度 0~160 度，并把角度转换成 TIM3_CH1 PWM 比较值。
+- `Servo_SetAngle()`：限制角度 0~180 度，并把角度转换成 TIM3_CH1 PWM 比较值。
 - `commands_detect()`：`use_nanof` 分支下解析 UART1 的左右电机速度、加速度、方向和舵机角。
 - `comamd_detect()`：非 `use_nanof` 分支下把 UART1 数据解析为 `motor_v/motor_w` 两个 float。
 - `shell_print()`：UART1 收到完整帧后触发解析并清标志。
@@ -383,6 +384,8 @@ OLED 字库和图片数据。
 
 ## 根目录和构建配置文件
 
+工程可通过 Keil MDK、VSCode EIDE 和 Cline 使用的 CMake 入口编译。新增或删除业务源文件时，需要同步检查 `MDK-ARM/STM32G4_TEST.uvprojx`、EIDE 配置和 CMake 源文件列表。
+
 ### CMakeLists.txt
 
 顶层 CMake 工程文件。
@@ -496,8 +499,7 @@ CMake 构建输出目录，包含编译中间文件、最终 ELF/HEX/BIN、compi
 - `Navigation_TASK` 已经在跑硬编码的 12 个目标点，航点回放逻辑存在但当前命令入口没有调用 `WaypointNav_StartPlayback()`。
 - `Uart1M_task` 名字像 UART1 电机任务，但当前非 `ni_he_mode` 分支调用的是 `shell_print3()`，实际处理 UART3 命令。
 - `main()` 中 IMU 初始化被注释，当前导航 yaw/gz 主要来自 USART2 的 TBOP 帧，而不是板载 IMU 驱动。
-- `TIM3` 只在 CubeMX 配置了 CH1，但 `Hal_starte()` 启动了 CH1/CH2/CH3；如果 CH2/CH3 没有配置，运行时可能返回错误但当前未检查。
+- `TIM3` 已在 CubeMX 和代码中配置 CH1/CH2/CH3，`Hal_starte()` 同步启动三路 PWM；后续外设配置变更需要同步更新本文档。
 - `can.h` 中 `can_SendCmd(__IO uint8_t *cmd, uint8_t len)` 与 `can.c` 中 `can_SendCmd(uint8_t *cmd, uint8_t len)` 参数限定符不完全一致，通常可编译但建议统一。
 - `mecanum.h` 中 `MEC_WHEEL_RADIUS` 注释写 m，但数值 `3.75f` 更像 cm 或其他单位；`Odometry_Apply_Calib()` 又按 mm 粗略换算使用，后续做里程计时需要统一单位。
 - 多个中文注释存在编码异常，不影响编译，但影响后续维护阅读。
-

@@ -1,7 +1,7 @@
 //
 // Created by 35037 on 2026/7/25.
 //
-#include "Uart2_tbop10.h"
+#include "uart2_tbop10.h"
 
 /* ======== 全局变量定义 ======== */
 DMA_HandleTypeDef hdma_usart2_rx;
@@ -107,4 +107,9 @@ void UART2_Send(uint8_t *DATA, uint8_t len)
     {
         HAL_UART_Transmit(&huart2, DATA++, 1, HAL_MAX_DELAY);
     }
+}
+
+void UART2_SendCode(uint8_t *DATA, uint8_t len)
+{
+    UART2_Send(DATA, len);
 }

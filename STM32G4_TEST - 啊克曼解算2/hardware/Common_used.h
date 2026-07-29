@@ -10,7 +10,7 @@
 #include "imu660.h"
 #include "ackermann1.h"
 #include "mecanum.h"
-#include "Uart2_tbop10.h"
+#include "uart2_tbop10.h"
 #include "navigation.h"
 
 #define use_xing_che   0

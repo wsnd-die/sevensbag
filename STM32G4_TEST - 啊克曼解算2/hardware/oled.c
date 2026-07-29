@@ -27,7 +27,7 @@
 */
 
 #include "main.h"
-#include "OLED.h"
+#include "oled.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

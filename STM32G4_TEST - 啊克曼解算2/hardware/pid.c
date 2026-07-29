@@ -4,6 +4,7 @@
  */
 #include "pid.h"
 #include <math.h>  /* fabsf */
+#include <stddef.h>
 
 #define LIMIT_MAX(input, max)   \
     do {                        \

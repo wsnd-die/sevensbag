@@ -78,12 +78,16 @@ void SystemClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
+#if defined(__ARMCC_VERSION) && (__ARMCC_VERSION >= 6000000)
+__asm(".global __use_no_semihosting\n");
+#elif defined(__CC_ARM)
 #pragma import(__use_no_semihosting)
 
 struct __FILE
 {
     int handle;
 };
+#endif
 
 FILE __stdout;
 FILE __stdin;
