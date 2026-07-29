@@ -441,6 +441,7 @@ CubeMX 元数据文件。
 ### .gitignore
 
 Git 忽略规则。
+已按忽略规则停止跟踪历史提交过的构建产物和 IDE 临时文件；本地文件保留，但后续不再进入 Git 索引。
 
 ### tools/waypoint_plot.m
 
