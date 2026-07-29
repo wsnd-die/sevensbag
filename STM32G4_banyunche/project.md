@@ -3,6 +3,7 @@
 ## 范围和假设
 
 本文档梳理当前项目根目录下的业务代码、启动代码、外设配置、构建配置和工具脚本。`Drivers/`、`Middlewares/`、`build/`、`MDK-ARM/STM32G4_TEST/` 中包含大量厂商库、FreeRTOS/CMSIS/DSP 源码和编译产物，本文按目录职责汇总，不逐个厂商库函数展开。
+仓库当前只保留 `STM32G4_banyunche` 作为主工程目录，旧的 `STM32G4_TEST - 啊克曼解算2` 中文目录已从本地和 Git 跟踪中移除。
 
 当前 CMake 编译使用 `ackermann1.c` 和 `imu_660.c`；`ackermann.c`、`spi_imu660rc.c` 是备用/旧实现，文件仍然保留，但不是 CMake 的当前业务源列表。
 本工程同时保留三套编译入口：Keil MDK 工程、VSCode 中的 EIDE 工程，以及另一个用于 Cline 的 CMake 编译入口；后续源文件或外设配置变更需要同步关注三套入口的源文件列表和说明文档。
