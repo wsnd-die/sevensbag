@@ -1,32 +1,51 @@
-/**
- * @file    block_task.c
- * @brief   物块相关任务封装：丝杆/双舵机升降，转盘，颜色传感器
- * @note    物块任务的丝杆升降和双舵机升降分别对应两台车的情况
+﻿/**
+ * @file    block_basic.c
+ * @brief   物块基础机构封装：丝杆升降、双机械臂升降、转盘定位。
+ * @note    车型 1 使用丝杆机构；车型 2 使用双机械臂机构。
  */
-#include "block_task.h"
+#include "block_basic.h"
 
 #include "stm32g4xx.h"
 #include "cmsis_os2.h"
 #include "emm_5v.h"
 #include "tim.h"
+#include <math.h>
 
-#define CLAMP_FLOAT(v, lo, hi)  ((v) < (lo) ? (lo) : ((v) > (hi) ? (hi) : (v))) // 浮点数限幅定义
-
+#define CLAMP_FLOAT(v, lo, hi)  ((v) < (lo) ? (lo) : ((v) > (hi) ? (hi) : (v)))
+#define DEG2RAD(d)              ((d) * 0.01745329252f)
+#define RAD2DEG(r)              ((r) * 57.2957795131f)
 
 /**
  * @brief   软件记录的转盘角度，单位 deg。
  * @note    1号位置对应 BLOCK_TURNTABLE_HOME_DEG，后续位置每个间隔 BLOCK_TURNTABLE_STEP_DEG，总共 BLOCK_TURNTABLE_POS_COUNT 个位置。
  */
-static float angle_servo = BLOCK_TURNTABLE_HOME_DEG; // BLOCK_TURNTABLE_HOME_DEG 对应 1 号位置，单位 deg
+static float angle_servo = BLOCK_TURNTABLE_HOME_DEG;
 
 /**
  * @brief   取浮点数绝对值。
- * @param   value 
+ * @param   value
  * @return  float 
  */
 static float block_absf(float value)
 {
     return (value < 0.0f) ? -value : value;
+}
+
+/**
+ * @brief   兼容 RTOS 启动前后的延时。
+ * @note    在 RTOS 运行前使用 HAL_Delay，在 RTOS 运行后使用 osDelay。
+ */
+static void block_delay_ms(uint32_t delay_ms)
+{
+    if (delay_ms == 0u) {
+        return;
+    }
+
+    if (osKernelGetState() == osKernelRunning) {
+        osDelay(delay_ms);
+    } else {
+        HAL_Delay(delay_ms);
+    }
 }
 
 /**
@@ -41,17 +60,15 @@ static float block_absf(float value)
 static void block_servo_write(uint32_t channel, float angle_deg, float full_angle_deg)
 {
     float angle = CLAMP_FLOAT(angle_deg, 0.0f, full_angle_deg);
-    float pulse = 500.0f + (angle / full_angle_deg) * (2500.0f - 500.0f);// 计算对应的 PWM 脉冲宽度
-    // 500.0f 对应 0 度，2500.0f 对应 full_angle_deg 度
-    // 使用 TIM3 比较寄存器来设置 PWM 输出的占空比，从而控制舵机的角度。 
+    float pulse = 500.0f + (angle / full_angle_deg) * (2500.0f - 500.0f);
 
     __HAL_TIM_SET_COMPARE(&htim3, channel, (uint32_t)(pulse + 0.5f));
 }
 
 /**
  * @brief   将任意角度归一化到 [0, 360)。
- * @param   angle_deg   输入角度，单位 deg。
- * @return  float       归一化后的角度，单位 deg。
+ * @param   angle_deg  输入角度，单位 deg。
+ * @return  归一化后的角度，单位 deg。
  */
 static float normalize_360(float angle_deg)
 {
@@ -73,9 +90,8 @@ static float normalize_360(float angle_deg)
 static float turntable_target_angle(uint8_t block_pos)
 {
     return normalize_360(BLOCK_TURNTABLE_HOME_DEG +
-                         (float)(block_pos - BLOCK_TURNTABLE_FIRST_POS) * BLOCK_TURNTABLE_STEP_DEG);// 计算目标角度，确保在 [0, 360) 范围内
-    // 1号位置对应 HOME 角度，后续位置每个间隔 72 度，总共 5 个位置。
-    // 例如：block_pos=1 -> HOME, block_pos=2 -> HOME + 72, ..., block_pos=5 -> HOME + 288
+                         (float)(block_pos - BLOCK_TURNTABLE_FIRST_POS) *
+                         BLOCK_TURNTABLE_STEP_DEG);
 }
 
 /**
@@ -89,27 +105,40 @@ static void turntable_write_angle(float angle_deg)
 }
 
 /**
- * @brief   丝杆升降到指定高度。
- * @param   height_mm     目标上升高度，单位 mm；小于 0 会返回参数错误。
- * @param   target_pulse  可选输出，返回换算后的 EMM 位置模式脉冲数；不需要可传 NULL。
- * @retval  BLOCK_OK / BLOCK_ERR_PARAM
- * @note    使用 5 号步进电机位置模式，raF=true 表示绝对位置，snF=false 表示不参与同步触发。
+ * @brief   根据车型执行对应升降机构，并统一返回转盘后退距离。
+ * @param   height_mm   目标升高的高度，单位 mm。
+ * @param   car_type    车型编号：1=丝杆型，2=双机械臂型。
+ * @return  float       >=0 为转盘相对后退距离，<0 表示参数错误或运动失败。
  */
-BlockStatus BlockTask_ScrewLiftTo(float height_mm, uint32_t *target_pulse)
+float BlockBasic_LiftTo(float height_mm, uint8_t car_type)
 {
     if (height_mm < 0.0f) {
-        return BLOCK_ERR_PARAM;
-    }
-    uint32_t pulse = (uint32_t)(height_mm * BLOCK_STEPPER_PULSE_PER_MM + 0.5f);
-    if (target_pulse != NULL) {
-        *target_pulse = pulse;
+        return -1.0f;
     }
 
-    /* raF=true  : 绝对位置模式。
-     * snF=false : 不使用多机同步触发，满足“不同步触发”的要求。
-     */
-    Emm_V5_Pos_Control(5, 1, 300, 50 , pulse, 0 , 0);
-    return BLOCK_OK;
+    switch (car_type) {
+    case BLOCK_CAR_SCREW:
+    {
+        uint32_t pulse = (uint32_t)(height_mm * BLOCK_STEPPER_PULSE_PER_MM + 0.5f);
+        Emm_V5_Pos_Control(5, 1, 300, 50, pulse, 0, 0);
+        return 0.0f;
+    }
+
+    case BLOCK_CAR_ARM:
+    {
+        if (height_mm > BLOCK_ARM_MAX_HEIGHT_MM) {
+            return -1.0f;
+        }
+
+        BlockArmResult result = BlockBasic_ArmCalc(height_mm);
+        block_servo_write(TIM_CHANNEL_2, result.front_angle_deg, BLOCK_SERVO_180_DEG);
+        block_servo_write(TIM_CHANNEL_3, result.rear_angle_deg, BLOCK_SERVO_180_DEG);
+        return result.turntable_retreat_mm;
+    }
+
+    default:
+        return -1.0f;
+    }
 }
 
 /**
@@ -119,41 +148,32 @@ BlockStatus BlockTask_ScrewLiftTo(float height_mm, uint32_t *target_pulse)
  */
 BlockArmResult BlockTask_ArmCalc(float height_mm)
 {
-    /* 当前只搭建可标定框架：
-     * - 先把高度限制在机构允许范围。
-     * - 再按高度比例线性插值两个舵机角度。
-     *
-     * 后续如果拿到连杆长度、安装角、零位角，可在这里替换成几何反解。
-     * 如果用实测数据，也可以改成查表 + 插值，不影响外部接口。
-     */
+    /* 采用数学建模公式：S1(x_t) = 90° + arcsin(sin(-12°) + \frac {x_t} {10.5})
+                       S2 = S1 - 9.51° */
     float height = CLAMP_FLOAT(height_mm,
                                BLOCK_ARM_MIN_HEIGHT_MM,
                                BLOCK_ARM_MAX_HEIGHT_MM);
-    float span = BLOCK_ARM_MAX_HEIGHT_MM - BLOCK_ARM_MIN_HEIGHT_MM;
-    float ratio = (span > 0.0f) ? ((height - BLOCK_ARM_MIN_HEIGHT_MM) / span) : 0.0f;
+    float height_cm = height / 10.0f; // 将高度从 mm 转换为 cm
+    float asin_arg = sinf(DEG2RAD(BLOCK_ARM_INIT_DEG)) +
+                     height_cm / BLOCK_ARM_LINK_CM;
+    float servo1_deg;
+
+    asin_arg = CLAMP_FLOAT(asin_arg, -1.0f, 1.0f);
+    servo1_deg = 90.0f + RAD2DEG(asinf(asin_arg));
 
     BlockArmResult result;
-    /* CH2: 前级舵机角度。 */
-    result.front_angle_deg = BLOCK_ARM_FRONT_MIN_DEG +
-                             ratio * (BLOCK_ARM_FRONT_MAX_DEG - BLOCK_ARM_FRONT_MIN_DEG);
-    /* CH3: 后级舵机角度。 */
-    result.rear_angle_deg = BLOCK_ARM_REAR_MIN_DEG +
-                            ratio * (BLOCK_ARM_REAR_MAX_DEG - BLOCK_ARM_REAR_MIN_DEG);
-    /* 转盘相对后退距离。目前用线性系数占位。 */
+    result.front_angle_deg = servo1_deg;
+    result.rear_angle_deg = servo1_deg - BLOCK_ARM_S2_OFFSET_DEG;
     result.turntable_retreat_mm = height * BLOCK_ARM_RETREAT_PER_MM;
     return result;
 }
 
-float BlockTask_ArmLiftTo(float height_mm)
-{
-    BlockArmResult result = BlockTask_ArmCalc(height_mm);
 
-    block_servo_write(TIM_CHANNEL_2, result.front_angle_deg, BLOCK_SERVO_180_DEG);
-    block_servo_write(TIM_CHANNEL_3, result.rear_angle_deg, BLOCK_SERVO_180_DEG);
-
-    return result.turntable_retreat_mm;
-}
-
+/**
+ * @brief  将转盘转动到指定位置。
+ * @param  block_pos  目标位置，单位个。
+ * @return BlockStatus  执行状态。
+ */
 BlockStatus BlockTask_TurntableTo(uint8_t block_pos)
 {
     if (block_pos < BLOCK_TURNTABLE_FIRST_POS ||
@@ -189,7 +209,6 @@ BlockStatus BlockTask_TurntableTo(uint8_t block_pos)
 /**
  * @brief  重置软件记录的转盘当前角度，并立即输出该角度 PWM。
  * @param  angle_deg  当前机械角度，单位 deg；会归一化到 0~360。
- * @note   上电后如果转盘实际位置不在 BLOCK_TURNTABLE_HOME_DEG，应先调用本函数同步软件状态。
  */
 void servo_angle(float angle_deg)
 {

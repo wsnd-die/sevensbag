@@ -1631,6 +1631,16 @@
               <FilePath>..\hardware\mecanum.h</FilePath>
             </File>
             <File>
+              <FileName>block_basic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\block_basic.c</FilePath>
+            </File>
+            <File>
+              <FileName>block_basic.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\block_basic.h</FilePath>
+            </File>
+            <File>
               <FileName>waypoint.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\hardware\waypoint.c</FilePath>

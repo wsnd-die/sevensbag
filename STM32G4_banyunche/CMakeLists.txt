@@ -52,6 +52,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # not used by the Keil project (which uses ackermann1.c and imu_660.c instead)
 set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/ackermann1.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/block_basic.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/can.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/emm_v5.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Gu_dao.c"
