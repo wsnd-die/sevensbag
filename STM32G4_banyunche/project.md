@@ -79,6 +79,14 @@ GPIO 初始化文件。
 
 - `MX_GPIO_Init()`：初始化 PC13 LED、PB12 SPI2_CS、PB6/PB7 OLED 软件 I2C SCL/SDA。
 
+### Core/Src/i2c.c / Core/Inc/i2c.h
+
+CubeMX 生成的 I2C3 底层初始化。
+
+- `MX_I2C3_Init()`：初始化硬件 I2C3，当前用于 GY-33 颜色传感器。
+- `HAL_I2C_MspInit()`：配置 PA8 为 I2C3_SCL、PB5 为 I2C3_SDA，并使能 I2C3 外设时钟。
+- `hi2c3`：颜色传感器驱动 `hardware/color.c` 使用的 I2C 句柄。
+
 ### Core/Src/fdcan.c / Core/Inc/fdcan.h
 
 CubeMX 生成的 FDCAN1 底层初始化。
@@ -170,8 +178,8 @@ HAL 模块配置头：开启 FDCAN/GPIO/SPI/TIM/UART/DMA/RCC/PWR/CORTEX 等 HAL 
 项目公共引脚定义。
 
 - `SPI2_CS_Pin`：PB12。
-- `I2C3_SCL_Pin`：PB6。
-- `I2C3_SDA_Pin`：PB7。
+- `I2C3_SCL_Pin`：PB6，历史命名，实际用于 OLED 软件 I2C SCL。
+- `I2C3_SDA_Pin`：PB7，历史命名，实际用于 OLED 软件 I2C SDA。
 - `Error_Handler()` 声明。
 
 ## hardware 目录
@@ -197,6 +205,17 @@ FDCAN 业务封装和电机响应读取。
 - `Emm_V5_Read_Status()`：读取单个电机状态。
 - `Emm_V5_Is_Reached()`：判断电机是否到位。
 - `FDCAN1_UserInit()`：配置扩展帧全接收、启动 FDCAN、打开 FIFO0 新消息通知。
+
+### hardware/color.c / hardware/color.h
+
+GY-33 颜色传感器驱动和颜色识别封装，使用 CubeMX 生成的硬件 I2C3（PA8/PB5）。
+
+- `Color_Init()`：检查颜色传感器是否在线。
+- `Color_ReadData()`：读取原始 RGB、亮度、色温和模块自带颜色位。
+- `Color_Judge()`：根据 RGB 阈值判断单次颜色，返回 `Color_TypeDef` 枚举。
+- `Color_DetectDominant()`：参考 Arduino 逻辑做预热、多次采样和投票，返回稳定颜色。
+- `Color_SetLedLevel()` / `Color_WhiteBalance()`：设置 LED 亮度和执行白平衡。
+- `Color_ToString()`：把颜色枚举转换为调试字符串。
 
 ### hardware/emm_v5.c / hardware/emm_5v.h
 
@@ -393,7 +412,7 @@ OLED 字库和图片数据。
 
 - 设置 C11、工程名 `STM32G4_TEST`。
 - 添加 `cmake/stm32cubemx` 子目录。
-- 手动加入业务源文件 `hardware/*.c`。
+- 手动加入业务源文件 `hardware/*.c`，本次已加入 `hardware/color.c`。
 - 包含 `hardware` 头文件目录。
 - 链接 `stm32cubemx` 接口库。
 - 构建后生成 `.hex` 和 `.bin`。
@@ -421,7 +440,7 @@ Arm clang/starm toolchain 配置。
 
 ### STM32G4_TEST.ioc
 
-STM32CubeMX 工程配置文件，描述芯片、时钟、引脚、外设和 FreeRTOS 配置。修改外设时通常从这里重新生成 `Core/` 配置代码。
+STM32CubeMX 工程配置文件，描述芯片、时钟、引脚、外设和 FreeRTOS 配置。当前已启用 I2C3，PA8 配置为 I2C3_SCL，PB5 配置为 I2C3_SDA。修改外设时通常从这里重新生成 `Core/` 配置代码。
 
 ### STM32G491XX_FLASH.ld
 

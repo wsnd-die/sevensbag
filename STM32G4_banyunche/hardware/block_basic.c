@@ -146,7 +146,7 @@ float BlockBasic_LiftTo(float height_mm, uint8_t car_type)
  * @param   height_mm   目标上升高度，单位 mm。
  * @return  BlockArmResult  计算结果。
  */
-BlockArmResult BlockTask_ArmCalc(float height_mm)
+BlockArmResult BlockBasic_ArmCalc(float height_mm)
 {
     /* 采用数学建模公式：S1(x_t) = 90° + arcsin(sin(-12°) + \frac {x_t} {10.5})
                        S2 = S1 - 9.51° */
@@ -174,7 +174,7 @@ BlockArmResult BlockTask_ArmCalc(float height_mm)
  * @param  block_pos  目标位置，单位个。
  * @return BlockStatus  执行状态。
  */
-BlockStatus BlockTask_TurntableTo(uint8_t block_pos)
+BlockStatus BlockBasic_TurntableTo(uint8_t block_pos)
 {
     if (block_pos < BLOCK_TURNTABLE_FIRST_POS ||
         block_pos >= BLOCK_TURNTABLE_FIRST_POS + BLOCK_TURNTABLE_POS_COUNT) {

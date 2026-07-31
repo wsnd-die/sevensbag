@@ -60,7 +60,7 @@ void IMU660RC_Init(void)
 		printf("who_ami:%x\n",whoami);
     if (whoami != 0x70)
     {
-        printf("IMU660RC_Init() 失败, WHO_AM_I = 0x%02X\r\n", whoami);
+        printf("IMU660RC_Init() failed, WHO_AM_I = 0x%02X\r\n", whoami);
         return;
     }
 
@@ -101,7 +101,7 @@ void IMU660RC_Init(void)
     IMU660RC_WriteRegs(IMU660RC_CTRL7, 0x01);   // 使能陀螺仪 LPF1
     IMU660RC_WriteRegs(IMU660RC_CTRL9, 0x08);   // 使能加速度计 LPF2
 
-    printf("IMU660RC_Init() 成功\r\n");
+    printf("IMU660RC_Init() ok\r\n");
 }
 
 // void IMU660RC_Init_SFLP(void)
