@@ -25,8 +25,8 @@ MDK-ARM/EIDE/
 !MDK-ARM/EIDE/.eide/
 !MDK-ARM/EIDE/.eide/eide.yml
 !MDK-ARM/EIDE/.eide/files.options.yml
-!MDK-ARM/EIDE/STM32G4_TEST.code-workspace
 !MDK-ARM/EIDE/RTE_Components.h
+MDK-ARM/EIDE/STM32G4_TEST.code-workspace
 MDK-ARM/EIDE/build/
 MDK-ARM/EIDE/.cmsis/
 MDK-ARM/EIDE/.pack/
@@ -87,8 +87,8 @@ MDK-ARM/**/*.sct
 !**/MDK-ARM/EIDE/.eide/
 !**/MDK-ARM/EIDE/.eide/eide.yml
 !**/MDK-ARM/EIDE/.eide/files.options.yml
-!**/MDK-ARM/EIDE/STM32G4_TEST.code-workspace
 !**/MDK-ARM/EIDE/RTE_Components.h
+**/MDK-ARM/EIDE/STM32G4_TEST.code-workspace
 **/MDK-ARM/EIDE/build/
 **/MDK-ARM/EIDE/.cmsis/
 **/MDK-ARM/EIDE/.pack/
