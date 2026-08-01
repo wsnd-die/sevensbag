@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G491xx,ARM_MATH_CM4,ARM_MATH_DSP</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F;../hardware;../Middlewares/ST/ARM/DSP/Inc</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F;../app;../hardware;../Middlewares/ST/ARM/DSP/Inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1674,6 +1674,31 @@
               <FileName>spi_imu660rc.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\hardware\spi_imu660rc.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>app</GroupName>
+          <Files>
+            <File>
+              <FileName>Mecanum_Move.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\app\Mecanum_Move.c</FilePath>
+            </File>
+            <File>
+              <FileName>Mecanum_Move.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\app\Mecanum_Move.h</FilePath>
+            </File>
+            <File>
+              <FileName>NavigationMecanum.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\app\NavigationMecanum.c</FilePath>
+            </File>
+            <File>
+              <FileName>NavigationMecanum.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\app\NavigationMecanum.h</FilePath>
             </File>
           </Files>
         </Group>

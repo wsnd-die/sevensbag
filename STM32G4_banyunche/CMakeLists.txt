@@ -51,6 +51,8 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Note: ackermann.c and spi_imu660rc.c are alternative implementations,
 # not used by the Keil project (which uses ackermann1.c and imu_660.c instead)
 set(USER_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/Mecanum_Move.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/app/NavigationMecanum.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/ackermann1.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/block_basic.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/can.c"
@@ -74,6 +76,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/app"
     # User hardware include path
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware"
 )

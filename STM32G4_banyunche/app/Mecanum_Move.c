@@ -1,4 +1,5 @@
 #include "Mecanum_Move.h"
+#include "stm32g4xx.h"
 #include "emm_5v.h"
 
 #include <limits.h>
@@ -26,7 +27,7 @@
     .forward_dir[MECANUM_ADDR_RR] = 1U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
-    .acceleration = 3000U
+    .acceleration = 255U
 };
 
 

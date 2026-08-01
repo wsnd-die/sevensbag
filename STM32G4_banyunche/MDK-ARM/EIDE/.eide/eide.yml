@@ -117,6 +117,13 @@ virtualFolder:
         - path: ../../hardware/waypoint.c
         - path: ../../hardware/pid.c
       folders: []
+    - name: app
+      files:
+        - path: ../../app/Mecanum_Move.c
+        - path: ../../app/Mecanum_Move.h
+        - path: ../../app/NavigationMecanum.c
+        - path: ../../app/NavigationMecanum.h
+      folders: []
     - name: ::CMSIS
       files: []
       folders: []
@@ -142,6 +149,7 @@ targets:
         - ../../Middlewares/Third_Party/FreeRTOS/Source/include
         - ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
         - ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+        - ../../app
         - ../../hardware
         - ../../Middlewares/ST/ARM/DSP/Inc
         - .cmsis/include
