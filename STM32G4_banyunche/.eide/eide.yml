@@ -1,0 +1,94 @@
+version: "4.1"
+name: STM32G4_TEST
+type: ARM
+deviceName: STM32G491CETx
+packDir: null
+srcDirs:
+  - Core/Src
+  - Drivers/STM32G4xx_HAL_Driver/Src
+  - Middlewares/Third_Party/FreeRTOS/Source
+  - hardware
+virtualFolder:
+  name: <virtual_root>
+  files:
+    - startup_stm32g491xx.s
+  folders: []
+dependenceList: []
+outDir: build
+miscInfo:
+  uid: 6d251e81109a5927b191ef1ab88f8c27
+targets:
+  Debug:
+    cppPreprocessAttrs:
+      defineList:
+        - USE_HAL_DRIVER
+        - STM32G491xx
+        - ARM_MATH_CM4
+        - ARM_MATH_DSP
+        - DEBUG
+      incList:
+        - Core/Inc
+        - Drivers/STM32G4xx_HAL_Driver/Inc
+        - Drivers/STM32G4xx_HAL_Driver/Inc/Legacy
+        - Drivers/CMSIS/Device/ST/STM32G4xx/Include
+        - Drivers/CMSIS/Include
+        - Middlewares/Third_Party/FreeRTOS/Source/include
+        - Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+        - Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+        - hardware
+        - Middlewares/ST/ARM/DSP/Inc
+      libList:
+        - Middlewares/ST/ARM/DSP/Lib
+    excludeList:
+      - Core/Src/app_freertos_orig.c
+      - Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS
+      - hardware/ackermann.c
+      - hardware/spi_imu660rc.c
+    settings:
+      debugger: cortex-debug
+    toolchain: GCC
+    toolchainConfigMap:
+      GCC:
+        archExtensions: ""
+        cpuType: Cortex-M4
+        floatingPointHardware: single
+        options:
+          version: 5
+          afterBuildTasks: []
+          asm-compiler:
+            ASM_FLAGS: ""
+          beforeBuildTasks: []
+          c/cpp-compiler:
+            CXX_FLAGS: ""
+            C_FLAGS: ""
+            language-c: c11
+            language-cpp: c++11
+            one-elf-section-per-data: true
+            one-elf-section-per-function: true
+            optimization: level-debug
+            warnings: all-warnings
+          global:
+            $float-abi-type: hard
+            misc-control: ""
+            not-use-syscalls: false
+            output-debug-info: enable
+            use-newlib-nano: true
+          linker:
+            $outputTaskExcludes:
+              - .bin
+            LD_FLAGS: -T STM32G491XX_FLASH.ld -u _printf_float
+            LIB_FLAGS: -larm_cortexM4lf_math -lm
+            output-format: elf
+            remove-unused-input-sections: true
+        scatterFilePath: ""
+        storageLayout:
+          RAM: []
+          ROM: []
+        useCustomScatterFile: true
+    uploadConfigMap:
+      OpenOCD:
+        baseAddr: "0x08000000"
+        bin: ""
+        interface: ""
+        target: ${workspaceFolder}/daplink
+    uploader: OpenOCD

@@ -22,6 +22,7 @@ virtualFolder:
               files:
                 - path: ../../Core/Src/main.c
                 - path: ../../Core/Src/gpio.c
+                - path: ../../Core/Src/dma.c
                 - path: ../../Core/Src/i2c.c
                 - path: ../../Core/Src/app_freertos.c
                 - path: ../../Core/Src/fdcan.c
@@ -99,6 +100,12 @@ virtualFolder:
         - path: ../../hardware/emm_5v.h
         - path: ../../hardware/emm_v5.c
         - path: ../../hardware/Gu_dao.c
+        - path: ../../hardware/HWT101.c
+        - path: ../../hardware/HWT101.h
+        - path: ../../hardware/k230.c
+        - path: ../../hardware/k230.h
+        - path: ../../hardware/key.c
+        - path: ../../hardware/key.h
         - path: ../../hardware/oled.c
         - path: ../../hardware/oled.h
         - path: ../../hardware/oled_data.c
@@ -106,6 +113,8 @@ virtualFolder:
         - path: ../../hardware/Send_motor.c
         - path: ../../hardware/Send_yuyin.c
         - path: ../../hardware/Send_yuyin.h
+        - path: ../../hardware/QRcode.c
+        - path: ../../hardware/QRcode.h
         - path: ../../hardware/Uart1_motor.c
         - path: ../../hardware/Uart2_tbop10.c
         - path: ../../hardware/Uart3_yuyin.c

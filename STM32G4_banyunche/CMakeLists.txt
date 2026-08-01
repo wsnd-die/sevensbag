@@ -59,7 +59,10 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/color.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/emm_v5.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Gu_dao.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/HWT101.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/imu_660.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/k230.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/key.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/oled.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/oled_data.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/mecanum.c"
@@ -67,6 +70,7 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/navigation.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Send_motor.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Send_yuyin.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/QRcode.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Uart1_motor.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Uart3_yuyin.c"
 )

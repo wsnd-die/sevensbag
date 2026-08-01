@@ -102,7 +102,7 @@ CubeMX 生成的 FDCAN1 底层初始化。
 USART1/2/3 初始化。
 
 - `MX_USART1_UART_Init()`：USART1，115200 8N1，中断收发，用于电机/上位串口数据。
-- `MX_USART2_UART_Init()`：USART2，115200 8N1，配置 DMA1_Channel1 作为 RX，用于 TBOP10 定位帧。
+- `MX_USART2_UART_Init()`：USART2，115200 8N1，配置 DMA1_Channel2 作为 RX，用于 TBOP10 定位帧。
 - `MX_USART3_UART_Init()`：USART3，115200 8N1，用于命令、调试输出和 `printf`。
 - `HAL_UART_MspInit()`：配置 USART 引脚和中断；USART2 额外配置 DMA RX。
 - `HAL_UART_MspDeInit()`：反初始化串口资源。
@@ -131,7 +131,7 @@ SPI2 主要供 IMU660RC 文件使用，但 `main()` 中 IMU 初始化当前被�
 - `FDCAN1_IT0_IRQHandler()`：转发给 HAL FDCAN 处理。
 - `USART1_IRQHandler()` / `USART2_IRQHandler()` / `USART3_IRQHandler()`：转发给 HAL UART 处理。
 - `TIM6_DAC_IRQHandler()`：HAL tick 定时器中断。
-- `DMA1_Channel1_IRQHandler()`：处理 USART2 RX DMA。
+- `DMA1_Channel2_IRQHandler()`：处理 USART2 RX DMA。
 - Fault handlers：异常后进入死循环。
 
 ### Core/Src/stm32g4xx_hal_msp.c

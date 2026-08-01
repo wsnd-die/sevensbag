@@ -21,12 +21,13 @@
 #include "usart.h"
 
 /* USER CODE BEGIN 0 */
-extern DMA_HandleTypeDef hdma_usart2_rx;
+
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart2_rx;
 
 /* USART1 init function */
 
@@ -247,32 +248,35 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+    /* USART2 DMA Init */
+    /* USART2_RX Init */
+    hdma_usart2_rx.Instance = DMA1_Channel2;
+    hdma_usart2_rx.Init.Request = DMA_REQUEST_USART2_RX;
+    hdma_usart2_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_usart2_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_usart2_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_usart2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_usart2_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_usart2_rx.Init.Mode = DMA_NORMAL;
+    hdma_usart2_rx.Init.Priority = DMA_PRIORITY_HIGH;
+    if (HAL_DMA_Init(&hdma_usart2_rx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(uartHandle,hdmarx,hdma_usart2_rx);
+
     /* USART2 interrupt Init */
     HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
   /* USER CODE BEGIN USART2_MspInit 1 */
     /* DMA1 & DMAMUX 时钟使能 */
-    __HAL_RCC_DMA1_CLK_ENABLE();
-    __HAL_RCC_DMAMUX1_CLK_ENABLE();
 
     /* DMA 通道初始化：USART2_RX */
-    hdma_usart2_rx.Instance                 = DMA1_Channel1;
-    hdma_usart2_rx.Init.Request             = DMA_REQUEST_USART2_RX;
-    hdma_usart2_rx.Init.Direction           = DMA_PERIPH_TO_MEMORY;
-    hdma_usart2_rx.Init.PeriphInc           = DMA_PINC_DISABLE;
-    hdma_usart2_rx.Init.MemInc              = DMA_MINC_ENABLE;
-    hdma_usart2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-    hdma_usart2_rx.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
-    hdma_usart2_rx.Init.Mode                = DMA_NORMAL;
-    hdma_usart2_rx.Init.Priority            = DMA_PRIORITY_LOW;
-    HAL_DMA_Init(&hdma_usart2_rx);
 
     /* 将 DMA 句柄链接到 UART2 */
-    __HAL_LINKDMA(uartHandle, hdmarx, hdma_usart2_rx);
 
     /* DMA 中断使能 */
-    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* USER CODE END USART2_MspInit 1 */
   }
   else if(uartHandle->Instance==USART3)
@@ -357,6 +361,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     PA3     ------> USART2_RX
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2|GPIO_PIN_3);
+
+    /* USART2 DMA DeInit */
+    HAL_DMA_DeInit(uartHandle->hdmarx);
 
     /* USART2 interrupt Deinit */
     HAL_NVIC_DisableIRQ(USART2_IRQn);

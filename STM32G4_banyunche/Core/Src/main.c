@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "dma.h"
 #include "fdcan.h"
 #include "i2c.h"
 #include "spi.h"
@@ -30,7 +31,10 @@
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
 #include <stdio.h>
-#include "usart.h"
+#include "QRcode.h"
+#include "k230.h"
+#include "HWT101.h"
+#include "key.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,10 +63,10 @@ void Hal_starte()
 		__HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
         __HAL_UART_CLEAR_FLAG(&huart3, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
 	
-		HAL_UART_Receive_IT(&huart1, &rx1, 1);//??????????
+		QRcode_Start();
 		HAL_UART_Receive_IT(&huart3, &rx3, 1);
-		/* DMA Ñ­»·½ÓÊÕ + IDLE Ö¡Í¬²½ */
-		UART2_StartDMAReceive();
+		/* DMA Ñ­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ + IDLE Ö¡Í¬ï¿½ï¿½ */
+		K230_Start();
       
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//?????????
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
@@ -152,14 +156,16 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_FDCAN1_Init();
+  MX_I2C3_Init();
   MX_SPI2_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
-  MX_I2C3_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 	OLED_Init();
 //	IMU660RC_Init();

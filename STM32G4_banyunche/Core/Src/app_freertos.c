@@ -37,6 +37,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#ifndef LEGACY_USART1_HOST_ENABLE
+#define LEGACY_USART1_HOST_ENABLE 0
+#endif
 
 /* USER CODE END PD */
 
@@ -71,12 +74,14 @@ const osThreadAttr_t NAVIGATION_attributes = {
   .stack_size = 256 * 4
 };
 /* Definitions for uart1_motor */
+#if LEGACY_USART1_HOST_ENABLE
 osThreadId_t uart1_motorHandle;
 const osThreadAttr_t uart1_motor_attributes = {
   .name = "uart1_motor",
   .priority = (osPriority_t) osPriorityAboveNormal6,
   .stack_size = 256 * 4
 };
+#endif
 /* Definitions for Uart3_yuyin */
 osThreadId_t Uart3_yuyinHandle;
 const osThreadAttr_t Uart3_yuyin_attributes = {
@@ -104,7 +109,9 @@ void led()
 void StartDefaultTask(void *argument);
 void Send_motor(void *argument);
 void Navigation_TASK(void *argument);
+#if LEGACY_USART1_HOST_ENABLE
 void Uart1M_task(void *argument);
+#endif
 void Uart3Yuyin_task(void *argument);
 void OLED_TASK(void *argument);
 
@@ -147,7 +154,9 @@ void MX_FREERTOS_Init(void) {
   NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
 
   /* creation of uart1_motor */
+#if LEGACY_USART1_HOST_ENABLE
   uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
+#endif
 
   /* creation of Uart3_yuyin */
   Uart3_yuyinHandle = osThreadNew(Uart3Yuyin_task, NULL, &Uart3_yuyin_attributes);
@@ -287,6 +296,7 @@ void Navigation_TASK(void *argument)
 * @retval None
 */
 /* USER CODE END Header_Uart1M_task */
+#if LEGACY_USART1_HOST_ENABLE
 void Uart1M_task(void *argument)
 {
   /* USER CODE BEGIN Uart1M_task */
@@ -303,6 +313,7 @@ void Uart1M_task(void *argument)
   }
   /* USER CODE END Uart1M_task */
 }
+#endif
 
 /* USER CODE BEGIN Header_Uart3Yuyin_task */
 /**

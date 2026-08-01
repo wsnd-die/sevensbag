@@ -1586,6 +1586,16 @@
               <FilePath>..\hardware\Uart1_motor.c</FilePath>
             </File>
             <File>
+              <FileName>QRcode.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\QRcode.c</FilePath>
+            </File>
+            <File>
+              <FileName>QRcode.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\QRcode.h</FilePath>
+            </File>
+            <File>
               <FileName>Uart3_yuyin.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\hardware\Uart3_yuyin.c</FilePath>
@@ -1619,6 +1629,36 @@
               <FileName>uart2_tbop10.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\hardware\uart2_tbop10.h</FilePath>
+            </File>
+            <File>
+              <FileName>k230.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\k230.c</FilePath>
+            </File>
+            <File>
+              <FileName>k230.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\k230.h</FilePath>
+            </File>
+            <File>
+              <FileName>HWT101.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\HWT101.c</FilePath>
+            </File>
+            <File>
+              <FileName>HWT101.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\HWT101.h</FilePath>
+            </File>
+            <File>
+              <FileName>key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\key.c</FilePath>
+            </File>
+            <File>
+              <FileName>key.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\key.h</FilePath>
             </File>
             <File>
               <FileName>navigation.c</FileName>
@@ -1714,6 +1754,11 @@
               <FileName>gpio.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/gpio.c</FilePath>
+            </File>
+            <File>
+              <FileName>dma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/dma.c</FilePath>
             </File>
             <File>
               <FileName>i2c.c</FileName>

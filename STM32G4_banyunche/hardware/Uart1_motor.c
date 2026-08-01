@@ -1,16 +1,32 @@
 #include "stm32g4xx.h"                  // Device header
-#include "Common_used.h"
-#include "waypoint.h"
-#include "mecanum.h"
+#include "usart.h"
+#include "QRcode.h"
+#include <string.h>
 
-uint8_t rx1,rx3;
+#ifndef ni_he_mode
+#define ni_he_mode 0
+#endif
+
+#define RX_BUF_SIZE 10
+
+extern volatile float front_angle;
+void Uart3_deel(void);
+
+uint8_t rx3;
 uint8_t FlagOFMotor;
+uint8_t Data_uart1[25];
+
+#ifndef LEGACY_USART1_HOST_ENABLE
+#define LEGACY_USART1_HOST_ENABLE 0
+#endif
+
+#if LEGACY_USART1_HOST_ENABLE
+uint8_t rx1;
 uint8_t pPack_uart1;
 //==DMA接收数据==//
 uint8_t dma_write_index;
 uint8_t soft_read_index;
 uint8_t parse_uart1[RX_BUF_SIZE];
-uint8_t Data_uart1[25];
 
 
 #if ni_he_mode
@@ -113,13 +129,18 @@ void Uart1_deel()
 		}
 }
 #endif
+#endif
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART1)
   {
+#if LEGACY_USART1_HOST_ENABLE
     Uart1_deel();
     HAL_UART_Receive_IT(&huart1, &rx1, 1);
+#else
+    QRcode_UART_RxCpltCallback(huart);
+#endif
   }
   if (huart->Instance == USART3)
   {
@@ -133,11 +154,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART1) {
+#if LEGACY_USART1_HOST_ENABLE
         __HAL_UART_CLEAR_FLAG(&huart1,
             UART_CLEAR_OREF |
             UART_CLEAR_FEF |
             UART_CLEAR_NEF);
         HAL_UART_Receive_IT(&huart1, &rx1, 1);
+#else
+        QRcode_UART_ErrorCallback(huart);
+#endif
     }
     if (huart->Instance == USART3) {
         __HAL_UART_CLEAR_FLAG(&huart3,

@@ -21,6 +21,16 @@ obj/
 # --- Keil MDK 编译产物 ---
 MDK-ARM/STM32G4_TEST/
 MDK-ARM/EIDE/
+!MDK-ARM/EIDE/
+!MDK-ARM/EIDE/.eide/
+!MDK-ARM/EIDE/.eide/eide.yml
+!MDK-ARM/EIDE/.eide/files.options.yml
+!MDK-ARM/EIDE/STM32G4_TEST.code-workspace
+!MDK-ARM/EIDE/RTE_Components.h
+MDK-ARM/EIDE/build/
+MDK-ARM/EIDE/.cmsis/
+MDK-ARM/EIDE/.pack/
+MDK-ARM/EIDE/.vscode/
 MDK-ARM/*.lst
 MDK-ARM/*.obj
 MDK-ARM/*.htm
@@ -73,6 +83,16 @@ MDK-ARM/**/*.sct
 # Recursive Keil/EIDE outputs for projects under the repo root
 **/MDK-ARM/STM32G4_TEST/
 **/MDK-ARM/EIDE/
+!**/MDK-ARM/EIDE/
+!**/MDK-ARM/EIDE/.eide/
+!**/MDK-ARM/EIDE/.eide/eide.yml
+!**/MDK-ARM/EIDE/.eide/files.options.yml
+!**/MDK-ARM/EIDE/STM32G4_TEST.code-workspace
+!**/MDK-ARM/EIDE/RTE_Components.h
+**/MDK-ARM/EIDE/build/
+**/MDK-ARM/EIDE/.cmsis/
+**/MDK-ARM/EIDE/.pack/
+**/MDK-ARM/EIDE/.vscode/
 **/MDK-ARM/DebugConfig/
 **/MDK-ARM/RTE/
 **/MDK-ARM/Listings/
@@ -107,6 +127,9 @@ MDK-ARM/**/*.sct
 
 # --- EIDE / 本地 IDE 配置与产物 ---
 .eide/
+!.eide/
+!.eide/eide.yml
+!.eide/files.options.yml
 .vscode/
 .idea/
 .claude/
@@ -114,6 +137,7 @@ MDK-ARM/**/*.sct
 # --- STM32CubeIDE 生成文件 ---
 *.mxproject.backup*
 .mxproject
+!.mxproject
 
 # --- 编译中间文件 ---
 *.o
