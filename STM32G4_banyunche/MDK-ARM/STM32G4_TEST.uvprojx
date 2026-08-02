@@ -1511,11 +1511,6 @@
           <GroupName>hardware</GroupName>
           <Files>
             <File>
-              <FileName>ackermann1.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\hardware\ackermann1.c</FilePath>
-            </File>
-            <File>
               <FileName>can.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\hardware\can.c</FilePath>
@@ -1606,16 +1601,6 @@
               <FilePath>..\hardware\k230.h</FilePath>
             </File>
             <File>
-              <FileName>HWT101.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\hardware\HWT101.c</FilePath>
-            </File>
-            <File>
-              <FileName>HWT101.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\hardware\HWT101.h</FilePath>
-            </File>
-            <File>
               <FileName>key.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\hardware\key.c</FilePath>
@@ -1684,6 +1669,21 @@
               <FileName>Send_motor.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\hardware\Send_motor.c</FilePath>
+            </File>
+            <File>
+              <FileName>Trace_base.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\Trace_base.c</FilePath>
+            </File>
+            <File>
+              <FileName>Trace_base.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\Trace_base.h</FilePath>
+            </File>
+            <File>
+              <FileName>ColorIdentif.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\ColorIdentif.c</FilePath>
             </File>
           </Files>
         </Group>

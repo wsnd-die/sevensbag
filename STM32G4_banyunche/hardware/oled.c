@@ -40,8 +40,8 @@
 不能同时两个都同时取消注释！
 在stm32cubemx中初始化时需要将SCL和SDA引脚的"user lable"分别设置为I2C3_SCL和I2C3_SDA。
 */
-//#define OLED_USE_HW_I2C	// 硬件I2C
-#define OLED_USE_SW_I2C	// 软件I2C
+#define OLED_USE_HW_I2C	// 硬件I2C
+//#define OLED_USE_SW_I2C	// 软件I2C
 
 /*引脚定义，可在此处修改I2C通信引脚*/
 #define OLED_SCL            I2C3_SCL_Pin // SCL

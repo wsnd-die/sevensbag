@@ -11,6 +11,8 @@
 #include "uart2_tbop10.h"
 #include "navigation.h"
 #include "block_basic.h"
+#include "k230.h"
+
 
 #define use_xing_che   0
 #define ni_he_mode     0

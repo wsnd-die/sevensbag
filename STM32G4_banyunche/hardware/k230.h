@@ -18,12 +18,15 @@ extern "C" {
 #include "stm32g4xx_hal.h"
 #include <stdint.h>
 
-#define K230_RX_BUF_SIZE           1
+#define K230_RX_BUF_SIZE           10
 
 void K230_Start(void);
 void K230_Clear(void);
 const uint8_t *K230_GetBuffer(uint16_t *len);
 HAL_StatusTypeDef K230_Send(const uint8_t *data, uint16_t len, uint32_t timeout);
+
+void Read_Tracedata(uint8_t * data);
+uint8_t Read_TraceFlag();
 
 #ifdef __cplusplus
 }
