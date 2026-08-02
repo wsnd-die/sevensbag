@@ -100,7 +100,7 @@ void WaypointNav_Init(WaypointNav *wn)
 
     /* 初始化内部 NavController */
     Nav_Init(&wn->nav);
-
+    
     wn->target_idx      = 0;
     wn->total           = 0;
     wn->mode            = WP_IDLE;

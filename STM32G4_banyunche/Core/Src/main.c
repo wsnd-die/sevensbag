@@ -65,6 +65,7 @@ void Hal_starte()
 	
 		QRcode_Start();
 		HAL_UART_Receive_IT(&huart3, &rx3, 1);
+		//HAL_UART_Receive_IT(&huart1, &rx1, 1);
 		/* DMA ѭ������ + IDLE ֡ͬ�� */
 		K230_Start();
       
@@ -171,7 +172,7 @@ int main(void)
 //	IMU660RC_Init();
 //	IMU660RC_AttitudeInit();
 	Hal_starte();
-
+	HAL_Delay(1000);
  //  Emm_V5_Vel_Control(1,1,10,10,0);
 	// Emm_V5_Vel_Control(2,1,10,10,0);
  //  // osDelay(10);

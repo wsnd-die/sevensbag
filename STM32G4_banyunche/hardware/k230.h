@@ -18,7 +18,7 @@ extern "C" {
 #include "stm32g4xx_hal.h"
 #include <stdint.h>
 
-#define K230_RX_BUF_SIZE 128U
+#define K230_RX_BUF_SIZE           1
 
 void K230_Start(void);
 void K230_Clear(void);

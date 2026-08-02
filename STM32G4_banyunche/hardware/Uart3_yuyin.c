@@ -2,39 +2,10 @@
 #include "Common_used.h"
 #include "waypoint.h"
 
-uint8_t FlagOFYuyin;
+uint8_t FlagOFYuyin,rx3;
 uint8_t pPack_uart3;
 uint8_t Data_uart3[20];
 uint32_t Data_buffer;
-
-char Path_Buffer [10]  = {"/00001"};
-char Path_Buffer1[10]  = {"/00002"};
-char Path_Buffer2[10]  = {"/00003"};
-char Path_Buffer3[10]  = {"/00004"};
-char Path_Buffer4[10]  = {"/00005"};
-char Path_Buffer5[10]  = {"/00006"};
-char Path_Buffer6[10]  = {"/00007"};
-char Path_Buffer7[10]  = {"/00008"};
-char Path_Buffer8[10]  = {"/00009"};
-char Path_Buffer9[10]  = {"/00010"};
-char Path_Buffer10[10] = {"/00011"};
-char Path_Buffer11[10] = {"/00012"};
-char Path_Buffer12[10] = {"/00013"};
-char Path_Buffer13[10] = {"/00014"};
-char Path_Buffer14[10] = {"/00015"};
-char Path_Buffer15[10] = {"/00016"};
-char Path_Buffer16[10] = {"/00017"};
-char Path_Buffer17[10] = {"/00018"};
-char Path_Buffer18[10] = {"/00019"};
-char Path_Buffer19[10] = {"/00020"};
-char Path_Buffer20[10] = {"/00021"};
-char Path_Buffer21[10] = {"/00022"};
-char Path_Buffer22[10] = {"/00023"};
-char *buffer[23] = {Path_Buffer,Path_Buffer1,Path_Buffer2,Path_Buffer3,Path_Buffer4,
-					Path_Buffer5,Path_Buffer6,Path_Buffer7,Path_Buffer8,Path_Buffer9,
-					Path_Buffer10,Path_Buffer11,Path_Buffer12,Path_Buffer13,Path_Buffer14,
-					Path_Buffer15,Path_Buffer16,Path_Buffer17,Path_Buffer18,Path_Buffer19,Path_Buffer20,Path_Buffer21,Path_Buffer22};
-
 
 /*
  * UART3 字节接收状态机

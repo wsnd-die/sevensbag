@@ -3,7 +3,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
+#include "Common_used.h"
+#include "tim.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -110,10 +111,25 @@ typedef struct {
 
 } MecanumMove_t;
 
-
+/**
+ * @brief 梯形速度斜坡配置
+ *
+ * 将一次逻辑运动拆为两段物理执行：
+ *   Phase 1 - 快速接近段：里程 x fast_ratio，全速运行
+ *   Phase 2 - 慢速精停段：剩余里程，降速运行
+ *
+ * 两段保持相同的平移/旋转比例，轨迹几何不变。
+ */
+typedef struct {
+    float fast_ratio;   /* 快速段里程占比，0.0~1.0，推荐 0.85 */
+    float slow_speed;   /* 慢速段速度因子，0.0~1.0，推荐 0.35 */
+} MecanumRamp_t;
 
 
 extern MecanumConfig_t g_mecanum_config;
+
+
+void Servo_SetAngle(float Angle);
 
 
 /**
@@ -134,10 +150,23 @@ bool Mecanum_CalculateMove(
 );
 
 /**
- * @brief 按世界坐标解算组合运动
+ * @brief 按车体坐标解算组合运动（带速度因子）
  *
- * 使车辆在平移的同时旋转，并在理想情况下最终到达指定的
- * 世界坐标位移和目标角度。
+ * @param speed_ratio  速度因子，0.0~1.0
+ *                     1.0 = 全速（等效 CalculateMove）
+ *                     0.35 = 最大电机转速降至 35%
+ */
+bool Mecanum_CalculateMoveEx(
+    const MecanumConfig_t *config,
+    float body_dx_m,
+    float body_dy_m,
+    float dtheta_rad,
+    float speed_ratio,
+    MecanumMove_t *move
+);
+
+/**
+ * @brief 按世界坐标解算组合运动
  *
  * @param config           底盘参数
  * @param world_dx_m       世界X方向位移，单位：m
@@ -146,7 +175,6 @@ bool Mecanum_CalculateMove(
  * @param dtheta_rad       本次需要旋转的角度，逆时针为正
  * @param move             输出解算结果
  */
-
 bool Mecanum_CalculateWorldMove(
     const MecanumConfig_t *config,
     float world_dx_m,
@@ -154,6 +182,35 @@ bool Mecanum_CalculateWorldMove(
     float start_theta_rad,
     float dtheta_rad,
     MecanumMove_t *move
+);
+
+/**
+ * @brief 梯形速度解算：一次逻辑运动 -> 两段物理 move
+ *
+ * 先完成 World->Body 转换，再按 ramp 配置将
+ * body 位移拆分为快速段和慢速段分别解算。
+ *
+ * @param config            底盘参数
+ * @param world_dx_m        世界X位移，单位：m
+ * @param world_dy_m        世界Y位移，单位：m
+ * @param start_theta_rad   动作开始时车头航向，单位：rad
+ * @param dtheta_rad        旋转角度，逆时针为正
+ * @param ramp              斜坡配置
+ * @param move_fast         输出：快速段 move
+ * @param move_slow         输出：慢速段 move
+ * @param total_duration_s  输出：两段总耗时（= fast + slow）
+ * @return true             解算成功
+ */
+bool Mecanum_CalcRampedMoves(
+    const MecanumConfig_t *config,
+    float world_dx_m,
+    float world_dy_m,
+    float start_theta_rad,
+    float dtheta_rad,
+    const MecanumRamp_t *ramp,
+    MecanumMove_t *move_fast,
+    MecanumMove_t *move_slow,
+    float *total_duration_s
 );
 
 /**

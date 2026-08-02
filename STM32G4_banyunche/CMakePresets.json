@@ -5,7 +5,7 @@
             "name": "default",
             "hidden": true,
             "generator": "Ninja",
-            "binaryDir": "D:/stm32_build/STM32G4_TEST/${presetName}",
+            "binaryDir": "${sourceDir}/STM32G4_TEST/${presetName}",
             "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
             "cacheVariables": {
             }
