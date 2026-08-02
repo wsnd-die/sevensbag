@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
 #include "waypoint.h"
+#include "tim.h"
 
 /* USER CODE END Includes */
 
@@ -207,15 +208,17 @@ void Send_motor(void *argument)
   //Servo_SetAngle(90);
 	for(;;)
   {
-        // Servo_SetAngle(125-88);
-		Servo_SetAngle(160);
+        Servo_SetAngle(125-88);
+		// Servo_SetAngle(160);
+		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 60 / 180 * 2000 + 500);
+		BlockBasic_LiftTo(10);
 		osDelay(1);
 		// float current_time=HAL_GetTick();
 		// float last_time=0.0f;
 		// if (current_time-last_time<=200)
 		// {
-			motor_data=Mecanum_Calc(0.2, 0.8);
-        Send_commandmotor(&motor_data);
+		// motor_data=Mecanum_Calc(0.2, 0.8);
+  //       Send_commandmotor(&motor_data);
 		// 	last_time=current_time;
 		// }
 		// osDelay(10);
