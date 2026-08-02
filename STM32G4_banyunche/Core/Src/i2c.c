@@ -178,6 +178,12 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
 
   /* USER CODE BEGIN I2C1_MspInit 1 */
 
+    /* I2C1 interrupt Init — DMA 模式必需，HAL 内部依赖 EV/ER 中断 */
+    HAL_NVIC_SetPriority(I2C1_EV_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
+    HAL_NVIC_SetPriority(I2C1_ER_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
+
   /* USER CODE END I2C1_MspInit 1 */
   }
   else if(i2cHandle->Instance==I2C3)

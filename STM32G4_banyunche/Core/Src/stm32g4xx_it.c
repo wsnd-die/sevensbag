@@ -64,7 +64,7 @@ extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
 extern DMA_HandleTypeDef hdma_usart2_rx;
-
+extern I2C_HandleTypeDef hi2c1;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -264,5 +264,21 @@ void TIM6_DAC_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+/**
+ * @brief I2C1 事件中断处理（DMA 模式下 HAL 内部使用）。
+ */
+void I2C1_EV_IRQHandler(void)
+{
+    HAL_I2C_EV_IRQHandler(&hi2c1);
+}
+
+/**
+ * @brief I2C1 错误中断处理（DMA 模式下 HAL 内部使用）。
+ */
+void I2C1_ER_IRQHandler(void)
+{
+    HAL_I2C_ER_IRQHandler(&hi2c1);
+}
 
 /* USER CODE END 1 */
