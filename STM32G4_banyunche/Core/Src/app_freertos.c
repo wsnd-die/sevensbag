@@ -207,7 +207,7 @@ void Send_motor(void *argument)
   //Servo_SetAngle(90);
 	for(;;)
   {
-        Servo_SetAngle(front_angle);
+        Servo_SetAngle(125-88);
 		// Servo_SetAngle(160);
 		osDelay(1);
 		// float current_time=HAL_GetTick();
@@ -243,17 +243,17 @@ void Navigation_TASK(void *argument)
 	/* 默认目标: 原点 */
 	static const struct { float x, y, yaw; } pts[] = {
 		{ 0, 0, 0 },
-		{213.62,677.14,90},
-		{129.04,889.82,65.71},
-		{344.56,1252.38,39.48},
-		{753.96,1519.38,3.29},
-		{1187.62,1537.93,-19.79},
-		{1581.93,1342.86,-44.30},
-		{787.90,787.96,0},
-		{556.89,568.52,0},
-		{795.93,-24.56,0},
-		{553.58,-134.45,0},
-		{589.58,-621.70,0},
+		// {213.62,677.14,90},
+		// {129.04,889.82,65.71},
+		// {344.56,1252.38,39.48},
+		// {753.96,1519.38,3.29},
+		// {1187.62,1537.93,-19.79},
+		// {1581.93,1342.86,-44.30},
+		// {787.90,787.96,0},
+		// {556.89,568.52,0},
+		// {795.93,-24.56,0},
+		// {553.58,-134.45,0},
+		// {589.58,-621.70,0},
 	};
 	const int n = sizeof(pts) / sizeof(pts[0]);
 	Nav_SetTarget(&nav, pts[wp].x, pts[wp].y, pts[wp].yaw);
@@ -330,10 +330,12 @@ void Uart3Yuyin_task(void *argument)
   for(;;)
   {
 		/* 录制模式下通过串口发送位置数据给上位机 */
-		if (g_waypoint_nav.mode == WP_RECORD) {
-			printf("%.2f,%.2f,%.2f\n",
-			       imu_yaw, TB_position.xdata, TB_position.ydata);
-		}
+		// if (g_waypoint_nav.mode == WP_RECORD) {
+		// 	printf("%.2f,%.2f,%.2f\n",
+		// 	       imu_yaw, TB_position.xdata, TB_position.ydata);
+		// }
+  	printf("%.2f,%.2f,%.2f\n",
+	   imu_yaw, TB_position.xdata, TB_position.ydata);
 		osDelay(50);
   }
   /* USER CODE END Uart3Yuyin_task */
