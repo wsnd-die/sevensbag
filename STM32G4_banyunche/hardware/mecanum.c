@@ -237,7 +237,6 @@ uint8_t Mecanum_Read_AllPositions(EncoderData *enc, uint32_t timeout_ms)
 {
     if (enc == NULL) return 0;
 
-    /* 1号=前右, 2号=后左, 3号=前左, 4号=后右 (跟 Send_commandmotor 对应) */
     if (!Mecanum_Read_Position(3, &enc->fl, timeout_ms)) return 0;  // 前左
     if (!Mecanum_Read_Position(1, &enc->fr, timeout_ms)) return 0;  // 前右
     if (!Mecanum_Read_Position(2, &enc->rl, timeout_ms)) return 0;  // 后左

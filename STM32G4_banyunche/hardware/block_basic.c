@@ -37,7 +37,7 @@ static float block_absf(float value)
  */
 static void block_delay_ms(uint32_t delay_ms)
 {
-    if (delay_ms == 0u) {
+    if (delay_ms <= 0u) {
         return;
     }
 
@@ -57,10 +57,10 @@ static void block_delay_ms(uint32_t delay_ms)
  *          TIM_CHANNEL_2 -> 双舵机前级 CH2
  *          TIM_CHANNEL_3 -> 双舵机后级 CH3
  */
-static void block_servo_write(uint32_t channel, float angle_deg, float full_angle_deg)
+static void block_servo_write(uint32_t channel, float angle_deg)
 {
-    float angle = CLAMP_FLOAT(angle_deg, 0.0f, full_angle_deg);
-    float pulse = 500.0f + (angle / full_angle_deg) * (2500.0f - 500.0f);
+    float angle = CLAMP_FLOAT(angle_deg, 0.0f , BLOCK_SERVO_DEG);
+    float pulse = 500.0f + (angle / BLOCK_SERVO_DEG) * (2500.0f - 500.0f);
 
     __HAL_TIM_SET_COMPARE(&htim3, channel, (uint32_t)(pulse + 0.5f));
 }
@@ -70,13 +70,13 @@ static void block_servo_write(uint32_t channel, float angle_deg, float full_angl
  * @param   angle_deg  输入角度，单位 deg。
  * @return  归一化后的角度，单位 deg。
  */
-static float normalize_360(float angle_deg)
+static float normalize_servo(float angle_deg)
 {
-    while (angle_deg >= 360.0f) {
-        angle_deg -= 360.0f;
+    while (angle_deg >= 0.0f) {
+        angle_deg -= BLOCK_SERVO_DEG;
     }
     while (angle_deg < 0.0f) {
-        angle_deg += 360.0f;
+        angle_deg += BLOCK_SERVO_DEG;
     }
     return angle_deg;
 }
@@ -89,7 +89,7 @@ static float normalize_360(float angle_deg)
  */
 static float turntable_target_angle(uint8_t block_pos)
 {
-    return normalize_360(BLOCK_TURNTABLE_HOME_DEG +
+    return normalize_servo(BLOCK_TURNTABLE_HOME_DEG +
                          (float)(block_pos - BLOCK_TURNTABLE_FIRST_POS) *
                          BLOCK_TURNTABLE_STEP_DEG);
 }
@@ -101,46 +101,41 @@ static float turntable_target_angle(uint8_t block_pos)
  */
 static void turntable_write_angle(float angle_deg)
 {
-    block_servo_write(TIM_CHANNEL_1, normalize_360(angle_deg), BLOCK_SERVO_360_DEG);
+    block_servo_write(TIM_CHANNEL_1, normalize_servo(angle_deg));
 }
 
 /**
- * @brief   根据车型执行对应升降机构，并统一返回转盘后退距离。
+ * @brief   根据编译期选定的车型执行对应升降机构，并统一返回转盘后退距离。
  * @param   height_mm   目标升高的高度，单位 mm。
- * @param   car_type    车型编号：1=丝杆型，2=双机械臂型。
  * @return  float       >=0 为转盘相对后退距离，<0 表示参数错误或运动失败。
  */
-float BlockBasic_LiftTo(float height_mm, uint8_t car_type)
+float BlockBasic_LiftTo(float height_mm)
 {
     if (height_mm < 0.0f) {
         return -1.0f;
     }
 
-    switch (car_type) {
-    case BLOCK_CAR_SCREW:
+#if BLOCK_USE_DUAL_ARM
+    /* 双机械臂型：使用 CH2/CH3 两个舵机升降。 */
+    if (height_mm > BLOCK_ARM_MAX_HEIGHT_MM) {
+        return -1.0f;
+    }
+
+    BlockArmResult result = BlockBasic_ArmCalc(height_mm);
+    block_servo_write(TIM_CHANNEL_2, result.front_angle_deg, BLOCK_SERVO_180_DEG);
+    block_servo_write(TIM_CHANNEL_3, result.rear_angle_deg, BLOCK_SERVO_180_DEG);
+    return result.turntable_retreat_mm;
+#else
+    /* 丝杆型：使用 5 号步进电机升降。 */
     {
         uint32_t pulse = (uint32_t)(height_mm * BLOCK_STEPPER_PULSE_PER_MM + 0.5f);
         Emm_V5_Pos_Control(5, 1, 300, 50, pulse, 0, 0);
         return 0.0f;
     }
-
-    case BLOCK_CAR_ARM:
-    {
-        if (height_mm > BLOCK_ARM_MAX_HEIGHT_MM) {
-            return -1.0f;
-        }
-
-        BlockArmResult result = BlockBasic_ArmCalc(height_mm);
-        block_servo_write(TIM_CHANNEL_2, result.front_angle_deg, BLOCK_SERVO_180_DEG);
-        block_servo_write(TIM_CHANNEL_3, result.rear_angle_deg, BLOCK_SERVO_180_DEG);
-        return result.turntable_retreat_mm;
-    }
-
-    default:
-        return -1.0f;
-    }
+#endif
 }
 
+#if BLOCK_USE_DUAL_ARM
 /**
  * @brief   计算双舵机角度和转盘退距。
  * @param   height_mm   目标上升高度，单位 mm。
@@ -167,6 +162,7 @@ BlockArmResult BlockBasic_ArmCalc(float height_mm)
     result.turntable_retreat_mm = height * BLOCK_ARM_RETREAT_PER_MM;
     return result;
 }
+#endif
 
 
 /**
@@ -212,6 +208,6 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos)
  */
 void servo_angle(float angle_deg)
 {
-    angle_servo = normalize_360(angle_deg);
+    angle_servo = normalize_servo(angle_deg);
     turntable_write_angle(angle_servo);
 }

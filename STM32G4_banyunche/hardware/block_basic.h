@@ -19,13 +19,18 @@
 extern "C" {
 #endif
 
+/* ================================================================
+ * 车型编译期选择：0 = 丝杆型，1 = 双机械臂型
+ * ================================================================ */
+#define BLOCK_USE_DUAL_ARM              0
+
 /* 丝杆每上升 1mm 需要的 EMM 位置模式脉冲数。 */
 #define BLOCK_STEPPER_PULSE_PER_MM       320.0f
 
-/* TIM3 PWM 舵机角度范围。当前比较值 500~2500 对应 0.5~2.5ms。 */
-#define BLOCK_SERVO_180_DEG              180.0f
-#define BLOCK_SERVO_360_DEG              360.0f
 
+#define BLOCK_SERVO_DEG              360.0f
+
+#if BLOCK_USE_DUAL_ARM
 /* 双机械臂参数：CH2 为前级舵机，CH3 为后级舵机。 */
 #define BLOCK_ARM_MIN_HEIGHT_MM          0.0f
 #define BLOCK_ARM_MAX_HEIGHT_MM          100.0f
@@ -34,12 +39,13 @@ extern "C" {
 #define BLOCK_ARM_INIT_DEG               (-12.0f)
 #define BLOCK_ARM_S2_OFFSET_DEG          9.51f
 #define BLOCK_ARM_RETREAT_PER_MM         0.0f
+#endif
 
 /* 转盘位置编号从 1 开始，合法范围为 1~5。 */
 #define BLOCK_TURNTABLE_FIRST_POS        1u
 #define BLOCK_TURNTABLE_POS_COUNT        5u
 #define BLOCK_TURNTABLE_HOME_DEG         0.0f
-#define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_360_DEG / BLOCK_TURNTABLE_POS_COUNT)
+#define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_DEG / BLOCK_TURNTABLE_POS_COUNT)
 /* 单次最大角度步长。分段移动用于降低 360 度位置舵机自动走最短路径的风险。 */
 #define BLOCK_TURNTABLE_STEP_LIMIT_DEG   60.0f
 #define BLOCK_TURNTABLE_STEP_DELAY_MS    80u
@@ -49,34 +55,31 @@ typedef enum {
     BLOCK_ERR_PARAM = 1
 } BlockStatus;
 
-/* 车型编号。 */
-typedef enum {
-    BLOCK_CAR_SCREW = 1, /* 丝杆型，使用 5 号步进电机升降。 */
-    BLOCK_CAR_ARM = 2    /* 双机械臂型，使用 CH2/CH3 两个舵机升降。 */
-} BlockCarType;
-
+#if BLOCK_USE_DUAL_ARM
 /* 双机械臂高度换算结果。 */
 typedef struct {
     float front_angle_deg;       /* 前级舵机 CH2 角度，单位 deg。 */
     float rear_angle_deg;        /* 后级舵机 CH3 角度，单位 deg。 */
     float turntable_retreat_mm;  /* 转盘相对后退距离，单位 mm。 */
 } BlockArmResult;
+#endif
 
 /**
- * @brief  物块升降统一入口。
+ * @brief  物块升降统一入口（编译期已选定车型）。
  * @param  height_mm  目标升高高度，单位 mm。
- * @param  car_type   车型编号：1=丝杆型，2=双机械臂型。
  * @retval >=0        转盘相对后退距离，单位 mm。
  * @retval <0         参数错误或运动失败。
  */
-float BlockBasic_LiftTo(float height_mm, uint8_t car_type);
+float BlockBasic_LiftTo(float height_mm);
 
+#if BLOCK_USE_DUAL_ARM
 /**
  * @brief  只计算双机械臂高度对应关系，不实际输出 PWM。
  * @param  height_mm  目标升高高度，单位 mm。
  * @retval 前级舵机角度、后级舵机角度、转盘相对后退距离。
  */
 BlockArmResult BlockBasic_ArmCalc(float height_mm);
+#endif
 
 /**
  * @brief  转盘转到指定物块位置。
