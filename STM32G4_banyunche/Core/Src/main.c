@@ -168,7 +168,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-	OLED_Init();
+
  //    Color_Init();
 //	IMU660RC_Init();
 //	IMU660RC_AttitudeInit();

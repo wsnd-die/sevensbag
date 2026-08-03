@@ -183,13 +183,7 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
 
-
-
-  /* ---- 初始化软件串口 ---- */
-#if SW_UART_ENABLE
-  SW_UART_Init();
-#endif
-
+	// SW_UART_Init();
   /* ---- 初始化颜色传感器 ---- */
   if (Color_Init() != HAL_OK) {
       /* GY-33 未检测到，闪烁 PC13 报警 */
