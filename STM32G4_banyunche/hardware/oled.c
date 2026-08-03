@@ -36,12 +36,17 @@
 // 如果用到中文，编译器附加选项需要加 --no-multibyte-chars  (用AC6编译器的不用加)
 
 /*
+<<<<<<< HEAD
 选择OLED驱动方式，默认使用硬件I2C。如果要用软件I2C就将硬件I2C那行的宏定义注释掉，将软件I2C那行的注释取消。
 不能同时两个都同时取消注释！
 在stm32cubemx中初始化时需要将SCL和SDA引脚的"user lable"分别设置为I2C3_SCL和I2C3_SDA。
 */
 #define OLED_USE_HW_I2C	// 硬件I2C
 //#define OLED_USE_SW_I2C	// 软件I2C
+=======
+ * OLED 驱动模式宏已移至 oled.h，请在该文件中修改。
+ */
+>>>>>>> 542bb7e9542d6e43205cc741221b9a229f3fc6d3
 
 /*引脚定义，可在此处修改I2C通信引脚*/
 #define OLED_SCL            I2C3_SCL_Pin // SCL
@@ -245,6 +250,59 @@ void OLED_I2C_SendByte(uint8_t Byte)
 	OLED_W_SCL(0);
 #endif
 }
+#ifdef OLED_USE_SW_I2C
+/**
+ * @brief  读取 SDA 引脚电平
+ * @retval 0：低电平，1：高电平
+ */
+static uint8_t OLED_R_SDA(void)
+{
+    return (uint8_t)HAL_GPIO_ReadPin(OLED_SDA_GPIO_Port, OLED_SDA);
+}
+
+/**
+ * @brief  I2C 等待从机应答（第 9 个时钟）
+ * @retval 0：收到 ACK，1：收到 NACK
+ */
+static uint8_t OLED_I2C_WaitAck(void)
+{
+    uint8_t ack;
+    OLED_W_SDA(1);          // 释放 SDA
+    OLED_W_SCL(1);          // 产生第 9 个时钟脉冲
+    ack = OLED_R_SDA();     // 读取应答位
+    OLED_W_SCL(0);
+    return ack;
+}
+
+/**
+ * @brief  I2C 发送应答 / 非应答
+ * @param ack  0 发送 ACK，1 发送 NACK
+ */
+static void OLED_I2C_SendAck(uint8_t ack)
+{
+    OLED_W_SDA(ack ? 1U : 0U);
+    OLED_W_SCL(1);
+    OLED_W_SCL(0);
+}
+
+/**
+ * @brief  I2C 接收一个字节
+ * @return 接收到的字节
+ */
+static uint8_t OLED_I2C_ReceiveByte(void)
+{
+    uint8_t i, byte = 0;
+    OLED_W_SDA(1);  // 释放 SDA
+    for (i = 0; i < 8; i++)
+    {
+        OLED_W_SCL(1);
+        byte = (uint8_t)((byte << 1) | OLED_R_SDA());
+        OLED_W_SCL(0);
+    }
+    return byte;
+}
+#endif /* OLED_USE_SW_I2C */
+
 
 /**
  * @brief OLED写命令
@@ -296,6 +354,89 @@ void OLED_WriteData(uint8_t *Data, uint8_t Count)
 }
 
 /*********************通信协议*/
+
+#ifdef OLED_USE_SW_I2C
+/**
+ * @brief  软件 I2C 向指定设备寄存器写 1 字节
+ * @param  DevAddr  设备 7 位地址左移 1 位（写地址）
+ * @param  Reg      目标寄存器地址
+ * @param  Value    写入值
+ * @retval HAL_OK / HAL_ERROR（NACK）
+ */
+HAL_StatusTypeDef OLED_SW_I2C_WriteReg(uint8_t DevAddr, uint8_t Reg, uint8_t Value)
+{
+    OLED_I2C_Start();
+    OLED_I2C_SendByte(DevAddr);
+    if (OLED_I2C_WaitAck()) { OLED_I2C_Stop(); return HAL_ERROR; }
+    OLED_I2C_SendByte(Reg);
+    if (OLED_I2C_WaitAck()) { OLED_I2C_Stop(); return HAL_ERROR; }
+    OLED_I2C_SendByte(Value);
+    if (OLED_I2C_WaitAck()) { OLED_I2C_Stop(); return HAL_ERROR; }
+    OLED_I2C_Stop();
+    return HAL_OK;
+}
+
+/**
+ * @brief  软件 I2C 从指定设备寄存器连续读取数据
+ * @param  DevAddr  设备 7 位地址左移 1 位（写地址）
+ * @param  Reg      起始寄存器地址
+ * @param  Buf      接收缓冲区
+ * @param  Len      读取长度（字节）
+ * @retval HAL_OK / HAL_ERROR（NACK）
+ */
+HAL_StatusTypeDef OLED_SW_I2C_ReadRegs(uint8_t DevAddr, uint8_t Reg, uint8_t *Buf, uint16_t Len)
+{
+    uint16_t i;
+
+    if (Buf == NULL || Len == 0U) { return HAL_ERROR; }
+
+    /* 第一阶段：写寄存器地址 */
+    OLED_I2C_Start();
+    OLED_I2C_SendByte(DevAddr);
+    if (OLED_I2C_WaitAck()) { OLED_I2C_Stop(); return HAL_ERROR; }
+    OLED_I2C_SendByte(Reg);
+    if (OLED_I2C_WaitAck()) { OLED_I2C_Stop(); return HAL_ERROR; }
+
+    /* 第二阶段：重复起始 + 读地址 */
+    OLED_I2C_Start();
+    OLED_I2C_SendByte(DevAddr | 0x01U);
+    if (OLED_I2C_WaitAck()) { OLED_I2C_Stop(); return HAL_ERROR; }
+
+    for (i = 0; i < Len; i++)
+    {
+        Buf[i] = OLED_I2C_ReceiveByte();
+        OLED_I2C_SendAck((i < Len - 1U) ? 0U : 1U);  /* 最后一个字节发 NACK */
+    }
+
+    OLED_I2C_Stop();
+    return HAL_OK;
+}
+
+/**
+ * @brief  软件 I2C 检查设备是否在线
+ * @param  DevAddr  设备 7 位地址左移 1 位（写地址）
+ * @param  Trials   重试次数
+ * @retval HAL_OK / HAL_ERROR
+ */
+HAL_StatusTypeDef OLED_SW_I2C_IsDeviceReady(uint8_t DevAddr, uint8_t Trials)
+{
+    uint8_t i;
+
+    for (i = 0; i < Trials; i++)
+    {
+        OLED_I2C_Start();
+        OLED_I2C_SendByte(DevAddr);
+        if (OLED_I2C_WaitAck() == 0U)
+        {
+            OLED_I2C_Stop();
+            return HAL_OK;
+        }
+        OLED_I2C_Stop();
+    }
+    return HAL_ERROR;
+}
+#endif /* OLED_USE_SW_I2C */
+
 
 /*硬件配置*********************/
 

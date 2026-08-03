@@ -86,9 +86,11 @@ set(FreeRTOS_Src
 # Link directories setup
 set(MX_LINK_DIRS
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/ST/ARM/DSP/Lib
 )
 # Project static libraries
 set(MX_LINK_LIBS  
+	:libarm_cortexM4lf_math.a
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
     FreeRTOS	

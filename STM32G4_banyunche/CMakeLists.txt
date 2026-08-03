@@ -37,6 +37,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/uart2_tbop10.h
         hardware/waypoint.c
         hardware/waypoint.h
+        hardware/sw_uart.h
+        hardware/sw_uart.c
 )
 
 # Add STM32CubeMX generated sources
@@ -69,6 +71,7 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/navigation.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Send_motor.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/QRcode.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/sw_uart.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Uart1_motor.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Uart3_yuyin.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/wit_protocol.c"

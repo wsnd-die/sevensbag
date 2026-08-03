@@ -25,7 +25,7 @@ extern "C" {
 #define BLOCK_USE_DUAL_ARM              0
 
 /* 丝杆每上升 1mm 需要的 EMM 位置模式脉冲数。 */
-#define BLOCK_STEPPER_PULSE_PER_MM       320.0f
+#define BLOCK_STEPPER_PULSE_PER_MM       1600.0f
 
 
 #define BLOCK_SERVO_DEG              360.0f
@@ -44,11 +44,18 @@ extern "C" {
 /* 转盘位置编号从 1 开始，合法范围为 1~5。 */
 #define BLOCK_TURNTABLE_FIRST_POS        1u
 #define BLOCK_TURNTABLE_POS_COUNT        5u
-#define BLOCK_TURNTABLE_HOME_DEG         0.0f
+#define BLOCK_TURNTABLE_HOME_DEG         63.0f
 #define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_DEG / BLOCK_TURNTABLE_POS_COUNT)
 /* 单次最大角度步长。分段移动用于降低 360 度位置舵机自动走最短路径的风险。 */
 #define BLOCK_TURNTABLE_STEP_LIMIT_DEG   60.0f
 #define BLOCK_TURNTABLE_STEP_DELAY_MS    80u
+
+    typedef  enum
+    {
+        UP = 0,
+        DOWN = 1,
+
+    }Action;
 
 typedef enum {
     BLOCK_OK = 0,
@@ -65,12 +72,12 @@ typedef struct {
 #endif
 
 /**
- * @brief  物块升降统一入口（编译期已选定车型）。
+ * @brief  物块升降统一入口。
  * @param  height_mm  目标升高高度，单位 mm。
  * @retval >=0        转盘相对后退距离，单位 mm。
  * @retval <0         参数错误或运动失败。
  */
-float BlockBasic_LiftTo(float height_mm);
+    float BlockBasic_LiftTo(uint8_t dir,float height_mm);
 
 #if BLOCK_USE_DUAL_ARM
 /**
@@ -99,6 +106,12 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos);
  *         应先调用本函数同步软件状态。
  */
 void servo_angle(float angle_deg);
+
+    /*
+     *
+     *
+     */
+    void Servo_SetAngle(float Angle);
 
 #ifdef __cplusplus
 }

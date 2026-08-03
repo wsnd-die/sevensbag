@@ -563,12 +563,3 @@ void Mecanum_StopAll(void)
 
 
 
-void Servo_SetAngle(float Angle)
-{
-    if(Angle>180){Angle=180;}
-    if(Angle<0){Angle=0;}
-
-
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, Angle / 180 * 2000 + 500);
-
-}
