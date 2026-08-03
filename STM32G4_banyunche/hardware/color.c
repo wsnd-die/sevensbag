@@ -303,12 +303,12 @@ static bool Color_ReadFrame(uint8_t *r, uint8_t *g, uint8_t *b)
         return false;
     }
 
-    /* 校验 checksum：8 字节求和，低字节应为 0 */
+    /* 校验 checksum：前 7 字节求和，低字节应等于第 8 字节 */
     sum = 0U;
-    for (uint8_t i = 0U; i < COLOR_UART_FRAME_LEN; i++) {
+    for (uint8_t i = 0U; i < COLOR_UART_FRAME_LEN - 1U; i++) {
         sum += buf[i];
     }
-    if (sum != 0U) {
+    if (sum != buf[COLOR_UART_FRAME_LEN - 1U]) {
         return false;
     }
 
@@ -330,34 +330,39 @@ HAL_StatusTypeDef Color_Init(void)
         (void)SW_UART_ReadByte();
     }
 
-    /*
-     * 发送 3 条初始化命令（与 Arduino 参考代码一致）：
-     *   1. 连续输出模式
-     *   2. MCU 处理后的 RGB 值模式
-     *   3. LED 亮度配置
-     */
+    // SW_UART_SendString("Init GY-33...\r\n");
+
     HAL_Delay(10U);
-    Color_SendCmd(0xAFU);   /* 连续输出模式 */
+    // SW_UART_SendString("  -> continuous mode\r\n");
+    Color_SendCmd(0xAFU);
     HAL_Delay(10U);
-    Color_SendCmd(0x81U);   /* RGB 处理后输出 */
+    // SW_UART_SendString("  -> RGB processed mode\r\n");
+    Color_SendCmd(0x81U);
     HAL_Delay(10U);
-    Color_SendCmd(0x68U);   /* LED 亮度 */
+    // SW_UART_SendString("  -> LED brightness\r\n");
+    Color_SendCmd(0x68U);
     HAL_Delay(10U);
 
     /* 等待第一帧数据 */
-    start = HAL_GetTick();
-    while (SW_UART_Available() < COLOR_UART_FRAME_LEN) {
-        if ((HAL_GetTick() - start) > COLOR_UART_TIMEOUT_MS) {
-            return HAL_ERROR;
+    {
+        char buf[40];
+        start = HAL_GetTick();
+        while (SW_UART_Available() < COLOR_UART_FRAME_LEN) {
+            if ((HAL_GetTick() - start) > COLOR_UART_TIMEOUT_MS) {
+                SW_UART_Printf("RX timeout, avail=%u\r\n", SW_UART_Available());
+                return HAL_ERROR;
+            }
         }
+        SW_UART_Printf("RX got %u bytes\r\n", SW_UART_Available());
     }
 
     /* 尝试读取并校验一帧 */
     if (!Color_ReadFrame(&r, &g, &b)) {
-        return HAL_ERROR;   /* 数据帧无效 */
+        SW_UART_SendString("Bad frame\r\n");
+        return HAL_ERROR;
     }
 
-    /* 收到有效帧 → 模块在线（剩余的帧会在 Color_ReadData 中清掉）*/
+    SW_UART_Printf("GY-33 OK! R=%u G=%u B=%u\r\n", r, g, b);
     (void)r; (void)g; (void)b;
     return HAL_OK;
 }
@@ -412,12 +417,12 @@ HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
                 buf[i] = SW_UART_ReadByte();
             }
 
-            /* 校验 checksum */
-            uint8_t sum = 0U;
-            for (uint8_t i = 0U; i < COLOR_UART_FRAME_LEN; i++) {
-                sum += buf[i];
+            /* 校验 checksum：前 7 字节求和 == 第 8 字节 */
+            uint8_t cs = 0U;
+            for (uint8_t i = 0U; i < COLOR_UART_FRAME_LEN - 1U; i++) {
+                cs += buf[i];
             }
-            if (sum != 0U) {
+            if (cs != buf[COLOR_UART_FRAME_LEN - 1U]) {
                 continue;   /* checksum 错，继续找下一个帧头 */
             }
 
