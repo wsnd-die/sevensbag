@@ -6,7 +6,6 @@
 #include "block_basic.h"
 
 #include "stm32g4xx.h"
-#include "cmsis_os2.h"
 #include "emm_5v.h"
 #include "tim.h"
 #include <math.h>
@@ -22,34 +21,7 @@
 static float angle_servo = BLOCK_TURNTABLE_HOME_DEG;
 
 /**
- * @brief   取浮点数绝对值。
- * @param   value
- * @return  float 
- */
-static float block_absf(float value)
-{
-    return (value < 0.0f) ? -value : value;
-}
-
-/**
- * @brief   兼容 RTOS 启动前后的延时。
- * @note    在 RTOS 运行前使用 HAL_Delay，在 RTOS 运行后使用 osDelay。
- */
-static void block_delay_ms(uint32_t delay_ms)
-{
-    if (delay_ms <= 0u) {
-        return;
-    }
-
-    if (osKernelGetState() == osKernelRunning) {
-        osDelay(delay_ms);
-    } else {
-        HAL_Delay(delay_ms);
-    }
-}
-
-/**
- * @brief   物块舵机角度写入,把角度转换成 TIM3 PWM 比较值。。
+ * @brief   物块舵机角度写入,把角度转换成 TIM3 PWM 比较值。
  * @param   channel         TIM3 通道号，CH1/CH2/CH3。
  * @param   angle_deg       目标角度，单位 deg。
  * @param   full_angle_deg  舵机最大角度，180 或 360
@@ -97,11 +69,11 @@ static float turntable_target_angle(uint8_t block_pos)
 /**
  * @brief   转盘角度写入。
  * @param   angle_deg   目标角度，单位 deg。
- * @note    360 度位置舵机，CH1。
+ * @note    360 度位置舵机，CH2。
  */
 static void turntable_write_angle(float angle_deg)
 {
-    block_servo_write(TIM_CHANNEL_1, normalize_servo(angle_deg));
+    block_servo_write(TIM_CHANNEL_2, normalize_servo(angle_deg));
 }
 
 /**
@@ -109,11 +81,8 @@ static void turntable_write_angle(float angle_deg)
  * @param   height_mm   目标升高的高度，单位 mm。
  * @return  float       >=0 为转盘相对后退距离，<0 表示参数错误或运动失败。
  */
-float BlockBasic_LiftTo(float height_mm)
+float BlockBasic_LiftTo(uint8_t dir,float height_mm)
 {
-    if (height_mm < 0.0f) {
-        return -1.0f;
-    }
 
 #if BLOCK_USE_DUAL_ARM
     /* 双机械臂型：使用 CH2/CH3 两个舵机升降。 */
@@ -127,9 +96,16 @@ float BlockBasic_LiftTo(float height_mm)
     return result.turntable_retreat_mm;
 #else
     /* 丝杆型：使用 5 号步进电机升降。 */
-    {
-        uint32_t pulse = (uint32_t)(height_mm * BLOCK_STEPPER_PULSE_PER_MM + 0.5f);
-        Emm_V5_Pos_Control(5, 1, 300, 50, pulse, 0, 0);
+    {//43到达底部
+        uint32_t pulse = (uint32_t)(height_mm * BLOCK_STEPPER_PULSE_PER_MM );
+        if (dir == 0)
+        {
+            Emm_V5_Pos_Control(5, 0, 300, 50, pulse, 0, 0);
+        }
+        else
+        {
+            Emm_V5_Pos_Control(5, 1, 300, 50, pulse, 0, 0);
+        }
         return 0.0f;
     }
 #endif
@@ -170,6 +146,7 @@ BlockArmResult BlockBasic_ArmCalc(float height_mm)
  * @param  block_pos  目标位置，单位个。
  * @return BlockStatus  执行状态。
  */
+
 BlockStatus BlockBasic_TurntableTo(uint8_t block_pos)
 {
     if (block_pos < BLOCK_TURNTABLE_FIRST_POS ||
@@ -177,27 +154,7 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos)
         return BLOCK_ERR_PARAM;
     }
 
-    float target = turntable_target_angle(block_pos);
-    float delta = target - angle_servo;
-
-    /* 分段逼近目标角度。
-     *
-     * 一些 360 度位置舵机在收到跨度较大的目标角时，会自动选择最短路径。
-     * 例如从 10deg 到 300deg，舵机可能反向转 70deg，而不是正向转 290deg。
-     * 这里把一次大转动拆成多个小步，尽量让每一步都落在可预期方向上。
-     *
-     * 如果最终要求“只能单方向转动”，还需要根据实际舵机协议或外部反馈进一步加强。
-     */
-    while (block_absf(delta) > BLOCK_TURNTABLE_STEP_LIMIT_DEG) {
-        angle_servo += (delta > 0.0f) ?
-                                 BLOCK_TURNTABLE_STEP_LIMIT_DEG :
-                                 -BLOCK_TURNTABLE_STEP_LIMIT_DEG;
-        turntable_write_angle(angle_servo);
-        block_delay_ms(BLOCK_TURNTABLE_STEP_DELAY_MS);
-        delta = target - angle_servo;
-    }
-
-    angle_servo = target;
+    angle_servo = turntable_target_angle(block_pos);
     turntable_write_angle(angle_servo);
     return BLOCK_OK;
 }
@@ -206,8 +163,17 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos)
  * @brief  重置软件记录的转盘当前角度，并立即输出该角度 PWM。
  * @param  angle_deg  当前机械角度，单位 deg；会归一化到 0~360。
  */
-void servo_angle(float angle_deg)
+void Servo_Angle(float angle_deg)
 {
     angle_servo = normalize_servo(angle_deg);
     turntable_write_angle(angle_servo);
 }
+
+void Servo_SetAngle(float Angle)
+{
+    if(Angle>=125){Angle=125;}
+    if(Angle<=37){Angle=37;}
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, Angle / 180 * 2000 + 500);
+
+}
+

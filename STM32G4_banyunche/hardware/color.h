@@ -46,8 +46,19 @@ extern "C" {
 #include "main.h"
 #include <stdint.h>
 
-/* GY-33 7 位地址为 0x5A，HAL I2C 接口需要左移 1 位后的地址。 */
-#define COLOR_SENSOR_I2C_ADDR      (0x5AU << 1)
+/*
+ * 颜色传感器芯片选择：
+ *   0 = GY-33 模块（内置 MCU，I2C 地址 0x5A，上电即用）
+ *   1 = TCS34725（纯芯片，I2C 地址 0x29，需要初始化 PON+AEN+ATIME）
+ */
+#define COLOR_SENSOR_CHIP          0U
+
+/* I2C 地址（7 位地址左移 1 位） */
+#if COLOR_SENSOR_CHIP == 0
+  #define COLOR_SENSOR_I2C_ADDR    (0x5AU << 1)   /* GY-33 */
+#else
+  #define COLOR_SENSOR_I2C_ADDR    (0x29U << 1)   /* TCS34725 */
+#endif
 
 /* 颜色识别结果。 */
 typedef enum

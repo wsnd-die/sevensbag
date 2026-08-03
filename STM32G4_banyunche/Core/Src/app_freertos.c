@@ -28,6 +28,9 @@
 #include "Common_used.h"
 #include "waypoint.h"
 #include "tim.h"
+#include "color.h"
+#include "oled.h"
+#include "sw_uart.h"
 
 /* USER CODE END Includes */
 
@@ -60,10 +63,10 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
   .stack_size = 128 * 4
 };
-/* Definitions for ctrl_motor */
-osThreadId_t ctrl_motorHandle;
-const osThreadAttr_t ctrl_motor_attributes = {
-  .name = "ctrl_motor",
+/* Definitions for ctrl_servo */
+osThreadId_t ctrl_servoHandle;
+const osThreadAttr_t ctrl_servo_attributes = {
+  .name = "ctrl_servo",
   .priority = (osPriority_t) osPriorityAboveNormal6,
   .stack_size = 256 * 4
 };
@@ -75,18 +78,16 @@ const osThreadAttr_t NAVIGATION_attributes = {
   .stack_size = 256 * 4
 };
 /* Definitions for uart1_motor */
-#if LEGACY_USART1_HOST_ENABLE
 osThreadId_t uart1_motorHandle;
 const osThreadAttr_t uart1_motor_attributes = {
   .name = "uart1_motor",
   .priority = (osPriority_t) osPriorityAboveNormal6,
   .stack_size = 256 * 4
 };
-#endif
-/* Definitions for Uart3_yuyin */
-osThreadId_t Uart3_yuyinHandle;
-const osThreadAttr_t Uart3_yuyin_attributes = {
-  .name = "Uart3_yuyin",
+/* Definitions for Uart3_k230 */
+osThreadId_t Uart3_k230Handle;
+const osThreadAttr_t Uart3_k230_attributes = {
+  .name = "Uart3_k230",
   .priority = (osPriority_t) osPriorityAboveNormal6,
   .stack_size = 256 * 4
 };
@@ -108,12 +109,10 @@ void led()
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
-void Send_motor(void *argument);
+void ctrl_servo_task(void *argument);
 void Navigation_TASK(void *argument);
-#if LEGACY_USART1_HOST_ENABLE
 void Uart1M_task(void *argument);
-#endif
-void Uart3Yuyin_task(void *argument);
+void Uart3K230_task(void *argument);
 void OLED_TASK(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -148,19 +147,17 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of ctrl_motor */
-  ctrl_motorHandle = osThreadNew(Send_motor, NULL, &ctrl_motor_attributes);
+  /* creation of ctrl_servo */
+  ctrl_servoHandle = osThreadNew(ctrl_servo_task, NULL, &ctrl_servo_attributes);
 
   /* creation of NAVIGATION */
   NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
 
   /* creation of uart1_motor */
-#if LEGACY_USART1_HOST_ENABLE
   uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
-#endif
 
-  /* creation of Uart3_yuyin */
-  Uart3_yuyinHandle = osThreadNew(Uart3Yuyin_task, NULL, &Uart3_yuyin_attributes);
+  /* creation of Uart3_k230 */
+  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
 
   /* creation of OLED */
   OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
@@ -185,45 +182,73 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+
+
+
+  /* ---- 初始化颜色传感器 ---- */
+  if (Color_Init() != HAL_OK) {
+      /* GY-33 未检测到，闪烁 PC13 报警 */
+      for (;;) {
+          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+#if SW_UART_ENABLE
+          SW_UART_SendString("GY-33 NOT FOUND\r\n");
+#endif
+          osDelay(200);
+      }
+  }
+
+#if SW_UART_ENABLE
+  SW_UART_SendString("GY-33 Color Sensor Ready\r\n");
+#else
+  /* 可选：设置补光灯亮度 (0~10)，仅 I2C 模式支持 */
+  Color_SetLedLevel(5);
+#endif
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+      Color_TypeDef result = Color_DetectDominant();
+
+#if SW_UART_ENABLE
+      SW_UART_Printf("Color: %s\r\n", Color_ToString(result));
+#endif
+
+      switch (result) {
+      case COLOR_RED:
+          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+          break;
+      case COLOR_GREEN:
+          break;
+      case COLOR_BLUE:
+          break;
+      case COLOR_WHITE:
+          break;
+      case COLOR_BLACK:
+          break;
+      default:
+          break;
+      }
   }
   /* USER CODE END StartDefaultTask */
 }
 
-/* USER CODE BEGIN Header_Send_motor */
+/* USER CODE BEGIN Header_ctrl_servo_task */
 /**
-* @brief Function implementing the ctrl_motor thread.
+* @brief Function implementing the ctrl_servo thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_Send_motor */
-void Send_motor(void *argument)
+/* USER CODE END Header_ctrl_servo_task */
+void ctrl_servo_task(void *argument)
 {
-  /* USER CODE BEGIN Send_motor */
-	MecanumResult motor_data;
+  /* USER CODE BEGIN ctrl_servo_task */
   /* Infinite loop */
-  //Servo_SetAngle(90);
-	for(;;)
+  for(;;)
   {
-        Servo_SetAngle(125-88);
-		// Servo_SetAngle(160);
-		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 60 / 180 * 2000 + 500);
-		BlockBasic_LiftTo(10);
-		osDelay(1);
-		// float current_time=HAL_GetTick();
-		// float last_time=0.0f;
-		// if (current_time-last_time<=200)
-		// {
-		// motor_data=Mecanum_Calc(0.2, 0.8);
-  //       Send_commandmotor(&motor_data);
-		// 	last_time=current_time;
-		// }
-		// osDelay(10);
+    /* TODO: 舵机控制逻辑 */
+    osDelay(100);
   }
-  /* USER CODE END Send_motor */
+  /* USER CODE END ctrl_servo_task */
 }
 
 /* USER CODE BEGIN Header_Navigation_TASK */
@@ -299,7 +324,6 @@ void Navigation_TASK(void *argument)
 * @retval None
 */
 /* USER CODE END Header_Uart1M_task */
-#if LEGACY_USART1_HOST_ENABLE
 void Uart1M_task(void *argument)
 {
   /* USER CODE BEGIN Uart1M_task */
@@ -316,32 +340,23 @@ void Uart1M_task(void *argument)
   }
   /* USER CODE END Uart1M_task */
 }
-#endif
 
-/* USER CODE BEGIN Header_Uart3Yuyin_task */
+/* USER CODE BEGIN Header_Uart3K230_task */
 /**
-* @brief Function implementing the Uart3_yuyin thread.
+* @brief Function implementing the Uart3_k230 thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_Uart3Yuyin_task */
-void Uart3Yuyin_task(void *argument)
+/* USER CODE END Header_Uart3K230_task */
+void Uart3K230_task(void *argument)
 {
-  /* USER CODE BEGIN Uart3Yuyin_task */
-
+  /* USER CODE BEGIN Uart3K230_task */
   /* Infinite loop */
   for(;;)
   {
-		/* 录制模式下通过串口发送位置数据给上位机 */
-		// if (g_waypoint_nav.mode == WP_RECORD) {
-		// 	printf("%.2f,%.2f,%.2f\n",
-		// 	       imu_yaw, TB_position.xdata, TB_position.ydata);
-		// }
-  	printf("%.2f,%.2f,%.2f\n",
-	   imu_yaw, TB_position.xdata, TB_position.ydata);
-		osDelay(50);
+    osDelay(1);
   }
-  /* USER CODE END Uart3Yuyin_task */
+  /* USER CODE END Uart3K230_task */
 }
 
 /* USER CODE BEGIN Header_OLED_TASK */
@@ -358,35 +373,35 @@ void OLED_TASK(void *argument)
   for(;;)
   {
 		/* ---- 路径录制 (录制模式下按间隔自动记录) ---- */
-		if (g_waypoint_nav.mode == WP_RECORD) {
-			WaypointNav_Update(&g_waypoint_nav,
-				TB_position.xdata, TB_position.ydata,
-				imu_yaw, imu_gz);
-		}
-		/* ---- 里程计标定状态机 ---- */
-		if (g_calib.state != CALIB_IDLE && g_calib.state != CALIB_DONE) {
-			Odometry_Calib_Update();
-		}
 
-		/* ---- OLED 显示 ---- */
-		OLED_Clear();
-		OLED_Printf(1,1,OLED_6X8,"x: %.2f",TB_position.xdata);
-		OLED_Printf(1,9,OLED_6X8,"y: %.2f",TB_position.ydata);
-		OLED_Printf(1,17,OLED_6X8,"vx:%.2f vy:%.2f",TB_speed.xdata,TB_speed.ydata);
-		OLED_Printf(1,27,OLED_6X8,"PWM:%.2f",(front_angle) / 180 * 2000 + 500);
-		OLED_Printf(1,37,OLED_6X8,"gz:%.2f",imu_gz);
-		OLED_Printf(1,47,OLED_6X8,"yaw:%.2f",imu_yaw);
 
-		/* 底部状态栏: 模式 + 航点数 */
-		const char *mode_str = "IDLE";
-		if (g_calib.state == CALIB_FWD)   mode_str = "CAL_FWD";
-		if (g_calib.state == CALIB_RIGHT) mode_str = "CAL_RGT";
-		if (g_calib.state == CALIB_DONE)  mode_str = "CAL_OK";
-		if (g_waypoint_nav.mode == WP_RECORD)   mode_str = "REC";
-		if (g_waypoint_nav.mode == WP_PLAYBACK) mode_str = "PLAY";
-		OLED_Printf(1,55,OLED_6X8,"%s wp:%d", mode_str, waypoint_count());
-
-		OLED_Update();
+		// /* ---- OLED 显示 ---- */
+		// OLED_Clear();
+		// OLED_Printf(1,1,OLED_6X8,"x: %.2f",TB_position.xdata);
+		// OLED_Printf(1,9,OLED_6X8,"y: %.2f",TB_position.ydata);
+		// OLED_Printf(1,17,OLED_6X8,"vx:%.2f vy:%.2f",TB_speed.xdata,TB_speed.ydata);
+		// OLED_// if (g_waypoint_nav.mode == WP_RECORD) {
+		//		// 	WaypointNav_Update(&g_waypoint_nav,
+		//		// 		TB_position.xdata, TB_position.ydata,
+		//		// 		imu_yaw, imu_gz);
+		//		// }
+		//		// /* ---- 里程计标定状态机 ---- */
+		//		// if (g_calib.state != CALIB_IDLE && g_calib.state != CALIB_DONE) {
+		//		// 	Odometry_Calib_Update();
+		//		// }Printf(1,27,OLED_6X8,"PWM:%.2f",(front_angle) / 180 * 2000 + 500);
+		// OLED_Printf(1,37,OLED_6X8,"gz:%.2f",imu_gz);
+		// OLED_Printf(1,47,OLED_6X8,"yaw:%.2f",imu_yaw);
+		//
+		// /* 底部状态栏: 模式 + 航点数 */
+		// const char *mode_str = "IDLE";
+		// if (g_calib.state == CALIB_FWD)   mode_str = "CAL_FWD";
+		// if (g_calib.state == CALIB_RIGHT) mode_str = "CAL_RGT";
+		// if (g_calib.state == CALIB_DONE)  mode_str = "CAL_OK";
+		// if (g_waypoint_nav.mode == WP_RECORD)   mode_str = "REC";
+		// if (g_waypoint_nav.mode == WP_PLAYBACK) mode_str = "PLAY";
+		// OLED_Printf(1,55,OLED_6X8,"%s wp:%d", mode_str, waypoint_count());
+		//
+		// OLED_Update();
 		osDelay(10);
   }
   /* USER CODE END OLED_TASK */
