@@ -40,7 +40,7 @@ extern World_Dir Self_Dir;
  * yaw 可使用 MECANUM_DEG_TO_RAD 辅助书写，例如 90.0f * MECANUM_DEG_TO_RAD
  */
 extern World_Dir g_waypoints[NAV_WAYPOINT_MAX];
-extern int      g_waypoint_count;
+extern uint8_t      g_waypoint_count;
 
 /* ============================================================
  * 函数声明

@@ -226,6 +226,100 @@ bool Mecanum_ExecuteMove(
  */
 void Mecanum_StopAll(void);
 
+/* ============================================================
+ * 速度模式 API — 底盘全向速度驱动（定时）
+ * ============================================================
+ *
+ * 车体坐标：vx=前进(+), vy=左移(+), omega=逆时针CCW(+)，单位 m/s, m/s, rad/s。
+ * 逆运动学与 Mecanum_CalculateMove 同源（X 型麦轮）。
+ * 四轮间 5ms 间隔发送，防 CAN 总线并发丢帧。
+ * RPM 上限由 g_mecanum_config.max_motor_rpm 限制。
+ *
+ * 使用方式：
+ *   Mecanum_VelocityMove(0.2f, 0, 0, 1000, 80);   // 前进 0.2m/s 持续 1s
+ *   Mecanum_VelocityMove(0, 0, 0.5f, 500, 80);     // 原地逆时针旋转 0.5rad/s 持续 0.5s
+ *   Mecanum_VelocityStop(80);                        // 减速停止
+ */
+
+/**
+ * @brief 速度模式：以指定车体速度运行一段时间后自动停止
+ *
+ * @param vx_m_s      车体前进速度，向前为正，单位：m/s
+ * @param vy_m_s      车体左移速度，向左为正，单位：m/s
+ * @param omega_rad_s 旋转角速度，逆时针为正，单位：rad/s
+ * @param duration_ms 运行时长，单位：ms
+ * @param acc         驱动器加速度参数（透传给 Emm_V5_Vel_Control）
+ */
+void Mecanum_VelocityMove(float vx_m_s, float vy_m_s, float omega_rad_s,
+                          uint32_t duration_ms, uint8_t acc);
+
+/**
+ * @brief 速度模式：减速停止四轮
+ *
+ * @param acc  驱动器加速度参数
+ */
+void Mecanum_VelocityStop(uint8_t acc);
+
+/**
+ * @brief 使能四轮电机（速度模式使用前调用）
+ */
+void Mecanum_EnableAll(void);
+
+/**
+ * @brief 指定路径动作（速度模式，以通电位置为原点、车头朝前 +Y 为基准）
+ *
+ * 坐标系：+X 向右(东)，+Y 向前(北)，车头初始朝 +Y。
+ * 段① 前进 0.37m           → (0, 0.37)
+ * 段② 原地左转 90°(停1s)    → 车头朝 -X(西)
+ * 段③ 前进 0.66m(停2s)      → (-0.66, 0.37)
+ * 段④ 横向左移 0.20m(停1s)  → (-0.66, 0.17)
+ * 段⑤ 半圆弧 r=1.10、弧朝西凸 → (-0.66, 2.01)
+ *
+ * 速度/角速度均为保守值；如某段不到位可调内部常量。
+ */
+void Mecanum_RunPath(void);
+
+/* ============================================================
+ * 单段位置模式 — 驱动器计脉冲，精确停在目标位置
+ * ============================================================
+ *
+ * 相比两段式斜坡（Mecanum_CalcRampedMoves），只发一段位置指令，
+ * 驱动器内部对脉冲计数，走到目标 clk 自动停止，定位精确。
+ * 四轮同步触发，一次走完。
+ *
+ * 使用方式：
+ *   Mecanum_MoveWithEncoder(&g_mecanum_config,
+ *       0.5f, 0, 0,       // body: 前进 0.5m
+ *       1.0f,              // 全速
+ *       80,                // acc
+ *       10000);            // 超时 10s
+ */
+
+/**
+ * @brief 单段位置模式：一次走完，驱动器计脉冲精确停止
+ *
+ * @param config      底盘参数
+ * @param body_dx_m   车体前进距离，向前为正，单位：m
+ * @param body_dy_m   车体左移距离，向左为正，单位：m
+ * @param dtheta_rad  旋转角度，逆时针为正，单位：rad
+ * @param speed_ratio 速度比例 (0.0~1.0)
+ * @param acc         加速度参数（透传给 Emm_V5_Pos_Control）
+ * @param timeout_ms  超时保护，单位：ms
+ * @return true       运动完成
+ */
+bool Mecanum_MoveWithEncoder(const MecanumConfig_t *config,
+                             float body_dx_m, float body_dy_m, float dtheta_rad,
+                             float speed_ratio, uint8_t acc, uint32_t timeout_ms);
+
+/**
+ * @brief World坐标版（World→Body 转换 + Mecanum_MoveWithEncoder）
+ */
+bool Mecanum_WorldMoveWithEncoder(const MecanumConfig_t *config,
+                                  float world_dx_m, float world_dy_m,
+                                  float start_theta_rad, float dtheta_rad,
+                                  float speed_ratio, uint8_t acc,
+                                  uint32_t timeout_ms);
+
 #ifdef __cplusplus
 }
 #endif

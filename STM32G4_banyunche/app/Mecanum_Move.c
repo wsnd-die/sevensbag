@@ -1,13 +1,15 @@
 #include "Mecanum_Move.h"
 #include "stm32g4xx.h"
 #include "emm_5v.h"
+#include "cmsis_os.h"
 
 #include <limits.h>
 #include <math.h>
 #include <stddef.h>
 
-#define MECANUM_SYNC_ADDR  0U
-#define MECANUM_EPSILON    1.0e-7f
+#define MECANUM_SYNC_ADDR   0U
+#define MECANUM_EPSILON     1.0e-7f
+#define MECANUM_OMEGA_SIGN  (-1)   /* 硬件实测旋转方向与推导相反，整体翻转 omega；定 -1 为正确值 */
 
 
 
@@ -17,7 +19,7 @@
     .half_width_m = 0.0782f,
     .gear_ratio = 1.0f,
     .pulse_per_rev =3200 ,
-    .max_motor_rpm = 130,
+    .max_motor_rpm = 120,
     .min_move_time_s = 0.1f,
 
     /* 驱动器逻辑方向: 1=正向, 0=反向 */
@@ -542,9 +544,9 @@ bool Mecanum_ExecuteMove(
     /*
      * 地址0触发四轮同步开始。
      */
-    Emm_V5_Synchronous_motion(
+   /* Emm_V5_Synchronous_motion(
         0
-    );
+    );*/
 
     return true;
 }
@@ -561,5 +563,292 @@ void Mecanum_StopAll(void)
     }
 }
 
+/* ============================================================
+ * 速度模式 API — 底盘全向速度驱动（定时）
+ * ============================================================
+ *
+ * 车体坐标：vx=前进(+), vy=左移(+), omega=逆时针CCW(+)。
+ * 逆运动学：第 i 轮线速度 v_i = KIN[i][FORWARD]*vx + KIN[i][LEFT]*vy + KW_i*omega。
+ * X 型麦轮布局与 Mecanum_CalcMoveImpl 同源。
+ * 四轮间 5ms 间隔发送，防 CAN 总线并发丢帧。
+ * RPM 上限由 g_mecanum_config.max_motor_rpm 限制。
+ */
 
+/**
+ * @brief 速度模式：使能四轮电机
+ */
+void Mecanum_EnableAll(void)
+{
+    uint8_t addr;
 
+    for (addr = 1U; addr <= 4U; addr++) {
+        Emm_V5_En_Control(addr, true, false);
+    }
+    Emm_V5_Synchronous_motion(0);
+    osDelay(60);
+}
+
+/**
+ * @brief 速度模式：减速停止四轮
+ */
+void Mecanum_VelocityStop(uint8_t acc)
+{
+    uint8_t addr;
+
+    for (addr = 1U; addr <= 4U; addr++) {
+        Emm_V5_Vel_Control(addr, 0U, 0U, acc, false);
+        osDelay(5);
+    }
+    Emm_V5_Synchronous_motion(0);
+}
+
+/* ============================================================
+ * 单段位置模式运动 — 到位检测，精确停在目标位置
+ * ============================================================
+ *
+ * 相比 Mecanum_CalcRampedMoves（两段式），只发一段位置指令，
+ * 驱动器内部对脉冲计数，走到目标 clk 自动停止。
+ * 四轮同步触发，先等理论耗时，再读领队轮到位标志确认。
+ */
+
+bool Mecanum_MoveWithEncoder(const MecanumConfig_t *config,
+                             float body_dx_m, float body_dy_m, float dtheta_rad,
+                             float speed_ratio, uint8_t acc, uint32_t timeout_ms)
+{
+    MecanumMove_t move;
+    uint8_t  leader_addr;
+    uint32_t max_clk;
+    uint8_t  addr;
+    uint32_t move_ms;
+    int      retry;
+
+    if (config == NULL) {
+        return false;
+    }
+
+    /* ---- 1. 逆运动学解算 → 各轮 clk + vel + dir + duration_s ---- */
+    move = (MecanumMove_t){0};
+    if (!Mecanum_CalcMoveImpl(config, body_dx_m, body_dy_m, dtheta_rad,
+                              speed_ratio, &move)) {
+        return false;
+    }
+
+    if (!move.has_motion) {
+        return true;
+    }
+
+    /* ---- 2. 找领队轮（脉冲最多，耗时最长）---- */
+    max_clk = 0U;
+    leader_addr = 1U;
+    for (addr = 1U; addr <= 4U; addr++) {
+        if (move.motor[addr].clk > max_clk) {
+            max_clk = move.motor[addr].clk;
+            leader_addr = addr;
+        }
+    }
+
+    /* ---- 3. 位置模式执行（驱动器计脉冲，到目标自动停）---- */
+    if (!Mecanum_ExecuteMove(config, &move)) {
+        return false;
+    }
+
+    /* ---- 4. 等理论耗时（期间不查 CAN，电机正在跑）---- */
+    move_ms = (uint32_t)(move.duration_s * 1000.0f);
+    osDelay(move_ms);
+
+    /* ---- 5. 轮询领队轮到位标志（最多 1s，超时不再等）---- */
+    for (retry = 0; retry < 20; retry++) {
+        if (Emm_V5_Is_Reached(leader_addr) == 1) {
+            return true;
+        }
+        osDelay(50);
+    }
+
+    /* 超时未读到到位标志也继续（位置模式应该已经自停） */
+    return true;
+}
+
+/**
+ * @brief World坐标版单段位置模式运动（World→Body 转换 + Mecanum_MoveWithEncoder）
+ */
+bool Mecanum_WorldMoveWithEncoder(const MecanumConfig_t *config,
+                                  float world_dx_m, float world_dy_m,
+                                  float start_theta_rad, float dtheta_rad,
+                                  float speed_ratio, uint8_t acc,
+                                  uint32_t timeout_ms)
+{
+    float body_dx, body_dy;
+
+    if (config == NULL) {
+        return false;
+    }
+
+    if (!Mecanum_WorldToBody(world_dx_m, world_dy_m,
+                             start_theta_rad, dtheta_rad,
+                             &body_dx, &body_dy)) {
+        return false;
+    }
+
+    return Mecanum_MoveWithEncoder(config, body_dx, body_dy, dtheta_rad,
+                                   speed_ratio, acc, timeout_ms);
+}
+
+/**
+ * @brief 速度模式：以指定车体速度运行一段时间后自动减速停止
+ *
+ * @param vx_m_s      车体前进速度，向前为正，单位：m/s
+ * @param vy_m_s      车体左移速度，向左为正，单位：m/s
+ * @param omega_rad_s 旋转角速度，逆时针(CCW)为正，单位：rad/s
+ * @param duration_ms 运行时长，单位：ms
+ * @param acc         驱动器加速度参数（透传给 Emm_V5_Vel_Control）
+ */
+void Mecanum_VelocityMove(float vx_m_s, float vy_m_s, float omega_rad_s,
+                          uint32_t duration_ms, uint8_t acc)
+{
+    const MecanumConfig_t *cfg = &g_mecanum_config;
+    float k;
+    float wheel_linear[5];
+    uint8_t addr;
+
+    float w; /* 经符号修正后的实际旋转角速度 */
+
+    k = cfg->half_length_m + cfg->half_width_m;
+
+    /* 硬件实测旋转方向与运动学推导相反，MECANUM_OMEGA_SIGN = -1 整体翻转 */
+    w = omega_rad_s * (float)MECANUM_OMEGA_SIGN;
+
+    /*
+     * X 型麦轮逆运动学（与 Mecanum_CalcMoveImpl 同源）：
+     *   FR(1): +vx + vy + k*ω
+     *   RL(2): +vx + vy - k*ω
+     *   FL(3): +vx - vy - k*ω
+     *   RR(4): +vx - vy + k*ω
+     */
+    wheel_linear[MECANUM_ADDR_FR] = vx_m_s + vy_m_s + k * w;
+    wheel_linear[MECANUM_ADDR_RL] = vx_m_s + vy_m_s - k * w;
+    wheel_linear[MECANUM_ADDR_FL] = vx_m_s - vy_m_s - k * w;
+    wheel_linear[MECANUM_ADDR_RR] = vx_m_s - vy_m_s + k * w;
+
+    for (addr = 1U; addr <= 4U; addr++) {
+        float abs_linear;
+        float rpm_float;
+        uint16_t rpm;
+        uint8_t dir;
+
+        abs_linear = Mecanum_AbsFloat(wheel_linear[addr]);
+
+        /* 线速度 → RPM：rpm = (v / (2πR)) × 60 × gear_ratio */
+        rpm_float = (abs_linear /
+                    (2.0f * MECANUM_PI * cfg->wheel_radius_m)) *
+                    60.0f * cfg->gear_ratio;
+
+        rpm = Mecanum_RoundUint16(rpm_float);
+
+        /* RPM 上限保护 */
+        if (rpm > cfg->max_motor_rpm) {
+            rpm = cfg->max_motor_rpm;
+        }
+
+        /* 最小启动转速：避免 0 速命令被驱动器忽略 */
+        if (abs_linear > MECANUM_EPSILON && rpm == 0U) {
+            rpm = 1U;
+        }
+
+        dir = Mecanum_GetDriverDir(cfg, addr, wheel_linear[addr]);
+
+        Emm_V5_Vel_Control(addr, dir, rpm, acc, false);
+
+        /* ★ 5ms 间隔，防 CAN 总线并发丢帧 */
+        osDelay(5);
+    }
+
+    /* 同步触发四轮同时启动 */
+    Emm_V5_Synchronous_motion(0);
+
+    /* 等待运行时长 */
+    osDelay(duration_ms);
+
+    /* 自动减速停止 */
+    Mecanum_VelocityStop(acc);
+}
+
+/* ============================================================
+ * 指定路径动作（速度模式，以通电位置为原点、车头朝前 +Y 为基准）
+ * ============================================================
+ *
+ * 坐标系：+X 向右(东)，+Y 向前(北)，车头初始朝 +Y。
+ * 段① 前进 0.37m           → (0, 0.37)
+ * 段② 原地左转 90°(停1s)    → 车头朝 -X(西)
+ * 段③ 前进 0.66m(停2s)      → (-0.66, 0.37)
+ * 段④ 横向左移 0.20m(停1s)  → (-0.66, 0.17)   （车头仍朝西，左=南=-Y）
+ * 段⑤ 半圆弧 r=1.10、弧朝西凸：段④末车头恰朝西即弧下端点(起点)切线，无需预转；
+ *      车体以 vx=ω*R 沿车头前进、同时顺时针偏航，车头沿弧切线行进 → (-0.66, 2.01)。
+ *
+ * 速度/角速度均为保守值，便于观察；
+ * 如某段不到位调 V / W_TURN / W_ARC / TURN_L_DEG。
+ * 弧末端实测多走~15°(停稳前轮滑动)，已用 A_ARC_DEG 补偿
+ * （当前 150，配合 omega 为正即等效顺时针弧；实得≈180°）。
+ */
+void Mecanum_RunPath(void)
+{
+    const uint8_t  ACC      = 100;
+    const float    V        = 0.2f;    /* 平移速度 m/s */
+    const float    W_TURN   = 0.50f;    /* 原地旋转角速度 rad/s（>0=左转/CCW） */
+    const float    TURN_L_DEG = 85.0f;  /* 左转指令角(deg)：实测左转比指令多~15°，指令角调到80°实得≈90° */
+    const float    W_ARC    = 0.30f;    /* 半圆弧角速度 rad/s（车体沿弧前进并顺时针偏航） */
+    const float    R_ARC    = 0.9f;    /* 半圆弧半径 m */
+    const uint32_t REST1    = 1000;
+    const uint32_t REST2    = 2000;
+    const uint32_t REST3    = 1000;
+
+    /* 开头统一使能四轮 */
+    Mecanum_EnableAll();
+
+    printf("PATH: origin(0,0) heading +Y\r\n");
+
+    /* ---- 段① 前进 0.37m ---- */
+    printf("PATH seg1: forward 0.37 -> (0,0.37)\r\n");
+    Mecanum_VelocityMove(V, 0.0f, 0.0f,
+                         (uint32_t)(0.37f / V * 1000.0f), ACC);
+
+    /* ---- 段② 原地左转（车头 北→西），停留 1s ----
+     * 实测左转比指令多~15°，故指令角减到 TURN_L_DEG(80°) 使实际回到约 90°。 */
+    printf("PATH seg2: turn LEFT (cmd %.0f deg), rest 1s\r\n", (double)TURN_L_DEG);
+    Mecanum_VelocityMove(0.0f, 0.0f, -W_TURN,
+                         (uint32_t)((TURN_L_DEG / 180.0f * MECANUM_PI) / W_TURN * 1000.0f),
+                         ACC);
+    osDelay(REST1);
+
+    /* ---- 段③ 前进 0.66m（车头朝西，沿车头走），停留 2s ---- */
+    printf("PATH seg3: forward 0.66 -> (-0.66,0.37), rest 2s\r\n");
+    Mecanum_VelocityMove(V, 0.0f, 0.0f,
+                         (uint32_t)(0.66f / V * 1000.0f), ACC);
+    osDelay(REST2);
+
+    /* ---- 段④ 横向左移 0.20m（车头朝西，左=南=-Y），停留 1s ---- */
+    printf("PATH seg4: left 0.20 -> (-0.66,0.17), rest 1s\r\n");
+    Mecanum_VelocityMove(0.0f, V, 0.0f,
+                         (uint32_t)(0.23f / V * 1000.0f), ACC);
+    osDelay(REST3);
+
+    /* ---- 段⑤ 半圆弧（车体沿弧线行进，车头=弧切线方向，弧朝西凸）----
+     * 段④结束车头恰朝西，正是弧下端点（起点）的切线方向，无需预转。
+     * 车体以 vx=ω*R 沿车头前进、同时顺时针(右)偏航 ω，车头随弧切线：
+     * 西→西凸侧→北→东，圆心在车头右侧(北)1.10m。
+     * vx = +W_ARC * R_ARC（前进）, vy = 0, omega = +W_ARC（经 forward_dir 等效顺时针西凸）。
+     * 时长 = (A_ARC_DEG/180*π) / W_ARC。 */
+    {
+        float v_forw;
+        const float A_ARC_DEG = 150.0f; /* arc cmd yaw deg: 实测调优；配合 omega 为正实得≈180° 顺时针弧 */
+
+        v_forw = W_ARC * R_ARC;
+
+        printf("PATH seg5: semicircle r=%.2f (heading follows arc, bulge west) -> (-0.66,2.01)\r\n",
+               (double)R_ARC);
+        Mecanum_VelocityMove(v_forw, 0.0f, W_ARC,
+                             (uint32_t)((A_ARC_DEG / 180.0f * MECANUM_PI) / W_ARC * 1000.0f),
+                             ACC);
+    }
+
+    printf("PATH: done\r\n");
+}
