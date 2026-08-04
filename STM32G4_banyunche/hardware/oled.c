@@ -43,10 +43,10 @@
 */
 #define OLED_USE_HW_I2C	// 硬件I2C
 //#define OLED_USE_SW_I2C	// 软件I2C
-=======
+/*=======
  * OLED 驱动模式宏已移至 oled.h，请在该文件中修改。
  */
->>>>>>> 542bb7e9542d6e43205cc741221b9a229f3fc6d3
+//>>>>>>> 542bb7e9542d6e43205cc741221b9a229f3fc6d3
 
 /*引脚定义，可在此处修改I2C通信引脚*/
 #define OLED_SCL            I2C3_SCL_Pin // SCL

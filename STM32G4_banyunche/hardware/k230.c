@@ -25,6 +25,28 @@ void K230_Start(void)
     HAL_UART_Receive_IT(&huart2, &k230_dma_rx, K230_RX_BUF_SIZE);
 }
 
+void Deel_TraceK230()
+{
+	static uint8_t cmd[3]={0xA3,0xB3,0xFF};
+	
+	HAL_UART_Transmit_IT(&huart2,(void *)cmd,3);
+	
+}
+
+
+void Test()
+{
+	uint8_t data[3];
+	
+	if(Read_TraceFlag())
+	{
+		Read_Tracedata(data);
+		
+		HAL_UART_Transmit_IT(&huart2,(void *)data,3);
+	}
+	
+}
+
 void K230_Clear(void)
 {
     k230_rx_len = 0;
@@ -47,7 +69,10 @@ HAL_StatusTypeDef K230_Send(const uint8_t *data, uint16_t len, uint32_t timeout)
 
 uint8_t Read_TraceFlag()
 {
-	return Trace_dataFlag;
+	uint8_t i;
+	i=Trace_dataFlag;
+	Trace_dataFlag=0;
+	return i;
 }
 
 /**
@@ -97,12 +122,19 @@ void K230_xDeel()
 	{
 		
 		k230_rx_buf[k230_DataP++]=k230_dma_rx;
+		
 		if(k230_dma_rx==0xff)
 		{
 			StateSho=over;
 			k230_rx_len = k230_DataP;    /* 记录完整包长度 */
 			Trace_dataFlag=1;
 		}
+		if(k230_DataP>9)
+		{
+			StateSho=over;
+			Trace_dataFlag=0;
+		}
+		
 	}
 	
 	

@@ -26,8 +26,9 @@ const uint8_t *K230_GetBuffer(uint16_t *len);
 HAL_StatusTypeDef K230_Send(const uint8_t *data, uint16_t len, uint32_t timeout);
 
 void Read_Tracedata(uint8_t * data);
-uint8_t Read_TraceFlag();
-
+uint8_t Read_TraceFlag(void);
+void Deel_TraceK230(void);
+void Test(void);
 #ifdef __cplusplus
 }
 #endif
