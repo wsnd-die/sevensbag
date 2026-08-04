@@ -4,8 +4,9 @@
  *
  * TX (STM32 -> K230):  单字符命令 'f'=循迹, 'c'=找圆, 'x'=停止
  * RX (K230 -> STM32):
- *   角度: 0xA3 0xB3 [int16_H] [int16_L] 0xFF  → angle = int16 / 100.0
- *   方向: 0xA3 0xB4 [dir_char] 0xFF           → 'O','W','E','N','S'
+ *   角度:     0xA3 0xB3 [aH][aL] 0xFF                     → angle = int16/100
+ *   角度+位置: 0xA3 0xB3 [aH][aL][xH][xL] 0xFF    → angle + pos_x,y
+ *   方向:     0xA3 0xB4 [dir] 0xFF                        → dir_char
  */
 
 #include "k230.h"
@@ -26,15 +27,17 @@ static struct {
 
     /* 接收状态机 */
     k230_rx_state_t rx_state;
-    uint8_t  rx_pkt_type;       /* 0xB3=角度, 0xB4=方向 */
+    uint8_t  rx_pkt_type;       /* 0xB3=角度, 0xB4=方向, 0xB5=位置 */
     uint8_t  rx_buf[8];
     uint8_t  rx_idx;
 
     /* 解析结果 */
-    float    angle;
-    char     dir;
+    float    angle;            /* 循迹角度 (°) */
+    char     dir;              /* 找圆方向 */
+    float    pos_x, pos_y;     /* 位置偏移 (像素) */
     uint8_t  angle_fresh;
     uint8_t  dir_fresh;
+    uint8_t  pos_fresh;
 
     /* 诊断 */
     uint32_t rx_bytes;
@@ -88,10 +91,16 @@ void K230_RxProcessByte(void)
         if (b == 0xFF) {
             /* 包结束 */
             if (k230_ctx.rx_pkt_type == 0xB3 && k230_ctx.rx_idx >= 5) {
-                /* 角度: [A3, B3, H, L, FF] */
+                /* [A3,B3,aH,aL,(xH,xL,)FF] — 5B=仅角度, 7B=角度+横轴位置 */
                 int16_t raw = (int16_t)((k230_ctx.rx_buf[2] << 8) | k230_ctx.rx_buf[3]);
                 k230_ctx.angle = raw / 100.0f;
                 k230_ctx.angle_fresh = 1;
+
+                if (k230_ctx.rx_idx >= 7) {
+                    int16_t rx = (int16_t)((k230_ctx.rx_buf[4] << 8) | k230_ctx.rx_buf[5]);
+                    k230_ctx.pos_x = rx / 100.0f;
+                    k230_ctx.pos_fresh = 1;
+                }
                 k230_ctx.rx_ok++;
             } else if (k230_ctx.rx_pkt_type == 0xB4 && k230_ctx.rx_idx >= 4) {
                 /* 方向: [A3, B4, dir, FF] */
@@ -170,6 +179,15 @@ bool K230_GetCircleDir(char *dir)
     if (!k230_ctx.dir_fresh) return false;
     if (dir) *dir = k230_ctx.dir;
     k230_ctx.dir_fresh = 0;
+    return true;
+}
+
+bool K230_GetPosition(float *x, float *y)
+{
+    if (!k230_ctx.pos_fresh) return false;
+    if (x) *x = k230_ctx.pos_x;
+    if (y) *y = k230_ctx.pos_y;
+    k230_ctx.pos_fresh = 0;
     return true;
 }
 

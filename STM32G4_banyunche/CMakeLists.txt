@@ -39,6 +39,12 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/waypoint.h
         hardware/sw_uart.h
         hardware/sw_uart.c
+        hardware/k230.c
+        hardware/k230.h
+        hardware/Trace_base.c
+        hardware/Trace_base.h
+        hardware/Circle_base.c
+        hardware/Circle_base.h
 )
 
 # Add STM32CubeMX generated sources
@@ -63,6 +69,7 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/HWT101_iic.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/imu_660.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/k230.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Trace_base.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/key.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/oled.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/oled_data.c"

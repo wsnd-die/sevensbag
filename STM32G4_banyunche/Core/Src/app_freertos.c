@@ -32,6 +32,8 @@
 #include "oled.h"
 #include "sw_uart.h"
 #include "k230.h"
+#include "Trace_base.h"
+#include "Circle_base.h"
 
 /* USER CODE END Includes */
 
@@ -62,21 +64,21 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 512 * 4
+  .stack_size = 512 * 6
 };
 /* Definitions for ctrl_servo */
 osThreadId_t ctrl_servoHandle;
 const osThreadAttr_t ctrl_servo_attributes = {
   .name = "ctrl_servo",
   .priority = (osPriority_t) osPriorityAboveNormal6,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for NAVIGATION */
 osThreadId_t NAVIGATIONHandle;
 const osThreadAttr_t NAVIGATION_attributes = {
   .name = "NAVIGATION",
   .priority = (osPriority_t) osPriorityAboveNormal6,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for uart1_motor */
 osThreadId_t uart1_motorHandle;
@@ -155,13 +157,13 @@ void MX_FREERTOS_Init(void) {
   //  NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
 
   /* creation of uart1_motor */
-  //  uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
+  uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
 
   /* creation of Uart3_k230 */
-  //  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
+  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
 
   /* creation of OLED */
-  //  OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
+  OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -188,6 +190,7 @@ void StartDefaultTask(void *argument)
   //(void)Color_Init();
 
   /* 默认启动循迹模式 */
+
   K230_RequestMode(K230_MODE_LINE);
 
   SW_UART_Printf("STM32 boot, K230 mode=LINE\r\n");
@@ -203,14 +206,18 @@ void StartDefaultTask(void *argument)
       /* ---- K230 数据读取 ---- */
       float angle;
       if (K230_GetLineAngle(&angle)) {
-          SW_UART_Printf("A=%.2f\r\n", angle);
+          // SW_UART_Printf("A=%.2f\r\n", angle);
           last_k230_tick = osKernelGetTickCount();
       }
       char dir;
       if (K230_GetCircleDir(&dir)) {
-          SW_UART_Printf("D=%c\r\n", dir);
+          // SW_UART_Printf("D=%c\r\n", dir);
           last_k230_tick = osKernelGetTickCount();
       }
+
+      /* DEBUG: 打印 A/X/v/w (每10ms) */
+      SW_UART_Printf("A=%.1f X=%.1f v=%.3f w=%.3f\r\n",
+                     g_trace_angle, g_trace_posx, g_trace_v, g_trace_w);
 
       /*
        * 若超过 2 秒未收到 K230 数据，强制重发 'f' 命令。
@@ -242,12 +249,17 @@ void ctrl_servo_task(void *argument)
 {
   /* USER CODE BEGIN ctrl_servo_task */
   /* Infinite loop */
+	// BlockBasic_LiftTo(DOWN,43);
+	// Servo_SetAngle(38);
+	// uint32_t last_k230_tick = osKernelGetTickCount();
+
   for(;;)
   {
-    /* TODO: 舵机控制逻辑 */
-  	Trace_LineFollow();
-    osDelay(100);
+    /* 循迹 — 持续运行 */
+    Trace_LineFollow();
+    osDelay(10);
   }
+  vTaskDelete(NULL);  /* 安全：永远不应该走到这，但以防万一 */
   /* USER CODE END ctrl_servo_task */
 }
 
@@ -261,16 +273,16 @@ void ctrl_servo_task(void *argument)
 void Navigation_TASK(void *argument)
 {
   /* USER CODE BEGIN Navigation_TASK */
-	NavController nav;
-	MecanumResult motor;
+	// NavController nav;
+	// MecanumResult motor;
 	int wp = 0;
 
-	Nav_Init(&nav);
-	WaypointNav_Init(&g_waypoint_nav);
+	// Nav_Init(&nav);
+	// WaypointNav_Init(&g_waypoint_nav);
 
 	/* 默认目标: 原点 */
 
-	static const struct { float x, y, yaw; } pts[] = {
+	/*static const struct { float x, y, yaw; } pts[] = {
 		{ 0, 0, 0 },
 		// {213.62,677.14,90},
 		// {129.04,889.82,65.71},
@@ -286,35 +298,35 @@ void Navigation_TASK(void *argument)
 	};
 	const int n = sizeof(pts) / sizeof(pts[0]);
 	Nav_SetTarget(&nav, pts[wp].x, pts[wp].y, pts[wp].yaw);
-
+*/
+	Nav_RunWaypoints();
   /* Infinite loop */
   for(;;)
   {
 		/* ---- 标定中: 不输出导航电机 ---- */
-		if (g_calib.state != CALIB_IDLE && g_calib.state != CALIB_DONE) {
+/*		if (g_calib.state != CALIB_IDLE && g_calib.state != CALIB_DONE) {
 			osDelay(10);
 			continue;
 		}
-		/* ---- 录制模式: 不输出电机 (手动遥控) ---- */
+		//= ---- 录制模式: 不输出电机 (手动遥控) ---- =/
 		else if (g_waypoint_nav.mode == WP_RECORD) {
-			/* 录制由 OLED_TASK 驱动, 此处不干涉电机 */
+			//= 录制由 OLED_TASK 驱动, 此处不干涉电机 */
 		}
-		/* ---- 空闲模式: 独立 NavController 定点悬停 ---- */
-		else {
-			Nav_Update(&nav,
-				TB_position.xdata, TB_position.ydata,
-				imu_yaw, imu_gz);
-			motor = Mecanum_Calc_Full(nav.cmd_vx, nav.cmd_vy, nav.cmd_w);
-			Send_commandmotor(&motor);
-
-			if (Nav_Arrived(&nav)) {
-				wp = (wp + 1) % n;
-				Nav_SetTarget(&nav, pts[wp].x, pts[wp].y, pts[wp].yaw);
-			}
-		}
-
+		// ---- 空闲模式: 独立 NavController 定点悬停 ---- */
+		// else {
+		// 	Nav_Update(&nav,
+		// 		TB_position.xdata, TB_position.ydata,
+		// 		imu_yaw, imu_gz);
+		// 	motor = Mecanum_Calc_Full(nav.cmd_vx, nav.cmd_vy, nav.cmd_w);
+		// 	Send_commandmotor(&motor);
+		//
+		// 	if (Nav_Arrived(&nav)) {
+		// 		wp = (wp + 1) % n;
+		// 		Nav_SetTarget(&nav, pts[wp].x, pts[wp].y, pts[wp].yaw);
+// 		// 	}
+// 		}
 		osDelay(10);
-  }
+	osDelay(10);
   /* USER CODE END Navigation_TASK */
 }
 
@@ -332,12 +344,7 @@ void Uart1M_task(void *argument)
   /* Infinite loop */
   for(;;)
   {
-		#if ni_he_mode
-		
-		#else
-		shell_print3(x);
-		#endif
-		osDelay(10);
+  	Circle_Follow();
   }
   /* USER CODE END Uart1M_task */
 }

@@ -2,7 +2,9 @@
  * @file k230.h
  * @brief K230 视觉模块通信 — USART3 二进制协议
  *        TX: 单字符命令 'f'/'c'/'x'
- *        RX: 0xA3 0xB3 [H] [L] 0xFF (角度) / 0xA3 0xB4 [dir] 0xFF (方向)
+ *        RX: 0xB3 [aH][aL] 0xFF             — 角度
+ *            0xB3 [aH][aL][xH][xL][yH][yL] 0xFF — 角度+位置 (9字节)
+ *            0xB4 [dir] 0xFF                 — 方向
  *        PB10=TX, PB11=RX
  */
 
@@ -31,6 +33,7 @@ void K230_SetMode(uint8_t mode);
 /* ==================== 数据读取 ==================== */
 bool K230_GetLineAngle(float *angle);
 bool K230_GetCircleDir(char *dir);
+bool K230_GetPosition(float *x, float *y);
 void K230_GetDiag(uint32_t *rx_bytes, uint32_t *rx_ok,
                   uint32_t *rx_err, uint32_t *rx_unk);
 

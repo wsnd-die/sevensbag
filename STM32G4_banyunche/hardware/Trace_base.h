@@ -18,10 +18,10 @@ extern "C" {
 
 /* ======================== 循线控制参数 ======================== */
 #define TRACE_BASE_SPEED       0.25f    /* 基础线速度 (m/s)，前进为正 */
-#define TRACE_KP               0.8f     /* 角度误差比例系数 */
-#define TRACE_KI               0.02f    /* 角度误差积分系数 */
+#define TRACE_KP               2.0f     /* 角度误差比例系数 */
+#define TRACE_KI               0.0f    /* 角度误差积分系数 */
 #define TRACE_KD               0.15f    /* 角度误差微分系数 */
-#define TRACE_CENTER_VALUE     90       /* 传感器中心值 (线在正中间) */
+#define TRACE_CENTER_VALUE     0       /* 传感器中心值 (线在正中间) */
 #define TRACE_INTEGRAL_MAX     5.0f     /* 积分限幅 */
 #define TRACE_W_MAX            2.5f     /* 最大角速度 (rad/s) */
 
@@ -40,6 +40,12 @@ extern "C" {
  *         6. Send_commandmotor 发送电机指令
  */
 void Trace_LineFollow(void);
+
+extern float g_trace_v;
+extern float g_trace_w;
+extern float g_trace_angle;
+extern float g_trace_posx;
+extern float g_trace_posx;
 
 #ifdef __cplusplus
 }

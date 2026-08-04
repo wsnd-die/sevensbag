@@ -13,12 +13,11 @@
 #include "uart2_tbop10.h"
 #include "navigation.h"
 #include "block_basic.h"
-#include "k230.h"
 #include "Trace_base.h"
+#include "NavigationMecanum.h"
 
-//=======
 //#include "color.h"
-//>>>>>>> 542bb7e9542d6e43205cc741221b9a229f3fc6d3
+
 
 #define use_xing_che   0
 #define ni_he_mode     0
