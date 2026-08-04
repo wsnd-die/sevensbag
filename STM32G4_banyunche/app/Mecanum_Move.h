@@ -129,7 +129,6 @@ typedef struct {
 extern MecanumConfig_t g_mecanum_config;
 
 
-void Servo_SetAngle(float Angle);
 
 
 /**

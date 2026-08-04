@@ -154,16 +154,16 @@ void MX_FREERTOS_Init(void) {
   ctrl_servoHandle = osThreadNew(ctrl_servo_task, NULL, &ctrl_servo_attributes);
 
   /* creation of NAVIGATION */
-  //  NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
+	NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
 
   /* creation of uart1_motor */
-  uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
+  //  uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
 
   /* creation of Uart3_k230 */
-  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
+  //  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
 
   /* creation of OLED */
-  OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
+  //  OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -191,7 +191,7 @@ void StartDefaultTask(void *argument)
 
   /* 默认启动循迹模式 */
 
-  K230_RequestMode(K230_MODE_LINE);
+  K230_RequestMode(K230_MODE_CIRCLE);
 
   SW_UART_Printf("STM32 boot, K230 mode=LINE\r\n");
 
@@ -203,28 +203,41 @@ void StartDefaultTask(void *argument)
       /* ---- K230 模式切换（标志驱动）---- */
       K230_ApplyMode();
 
-      /* ---- K230 数据读取 ---- */
-      float angle;
+      /* ---- K230 数据读取 (角度/位置同包, 方向独立) ---- */
+      float angle, posx;
       if (K230_GetLineAngle(&angle)) {
-          // SW_UART_Printf("A=%.2f\r\n", angle);
           last_k230_tick = osKernelGetTickCount();
       }
+      if (K230_GetPosition(&posx, NULL)) {
+          last_k230_tick = osKernelGetTickCount();
+      }
+      static char s_mode = 0;  /* 0=循迹, 非0=找圆 */
       char dir;
       if (K230_GetCircleDir(&dir)) {
-          // SW_UART_Printf("D=%c\r\n", dir);
+          s_mode = dir;         /* 收到方向数据 → 找圆模式 */
           last_k230_tick = osKernelGetTickCount();
       }
 
-      /* DEBUG: 打印 A/X/v/w (每10ms) */
-      SW_UART_Printf("A=%.1f X=%.1f v=%.3f w=%.3f\r\n",
-                     g_trace_angle, g_trace_posx, g_trace_v, g_trace_w);
+      {
+          static uint32_t dbg_cnt = 0;
+          if (++dbg_cnt % 2 == 0) {
+              if (s_mode != 0) {
+                  SW_UART_Printf("D=%c vx=%.3f vy=%.3f\r\n",
+                                 s_mode, g_circle_vx, g_circle_vy);
+              } else {
+                  SW_UART_Printf("A=%.1f X=%.1f T=%.1f v=%.3f w=%.3f\r\n",
+                                 g_trace_angle, g_trace_posx, g_trace_target,
+                                 g_trace_v, g_trace_w);
+              }
+          }
+      }
 
       /*
        * 若超过 2 秒未收到 K230 数据，强制重发 'f' 命令。
        * 处理 K230 Python 启动慢（约 2-3 秒）导致初始命令丢失的问题。
        */
       if ((osKernelGetTickCount() - last_k230_tick) > 2000U) {
-          K230_SetMode(K230_MODE_LINE);
+          K230_SetMode(K230_MODE_CIRCLE);
           last_k230_tick = osKernelGetTickCount();
 
           uint32_t rx_bytes, rx_ok, rx_err, rx_unk;
@@ -250,13 +263,13 @@ void ctrl_servo_task(void *argument)
   /* USER CODE BEGIN ctrl_servo_task */
   /* Infinite loop */
 	// BlockBasic_LiftTo(DOWN,43);
-	// Servo_SetAngle(38);
+	 Servo_SetAngle(38);
 	// uint32_t last_k230_tick = osKernelGetTickCount();
 
   for(;;)
   {
     /* 循迹 — 持续运行 */
-    Trace_LineFollow();
+  	Circle_Follow();
     osDelay(10);
   }
   vTaskDelete(NULL);  /* 安全：永远不应该走到这，但以防万一 */
@@ -275,7 +288,10 @@ void Navigation_TASK(void *argument)
   /* USER CODE BEGIN Navigation_TASK */
 	// NavController nav;
 	// MecanumResult motor;
-	int wp = 0;
+	// int wp = 0;
+	// MecanumResult motor_data={0};
+	// motor_data=Mecanum_Calc(0.2,0.3);
+
 
 	// Nav_Init(&nav);
 	// WaypointNav_Init(&g_waypoint_nav);
@@ -299,10 +315,13 @@ void Navigation_TASK(void *argument)
 	const int n = sizeof(pts) / sizeof(pts[0]);
 	Nav_SetTarget(&nav, pts[wp].x, pts[wp].y, pts[wp].yaw);
 */
-	Nav_RunWaypoints();
+	// Nav_RunWaypoints();
   /* Infinite loop */
   for(;;)
   {
+  	osDelay(100);
+  	// Send_commandmotor(&motor_data);
+
 		/* ---- 标定中: 不输出导航电机 ---- */
 /*		if (g_calib.state != CALIB_IDLE && g_calib.state != CALIB_DONE) {
 			osDelay(10);
