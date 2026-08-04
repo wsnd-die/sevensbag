@@ -1,13 +1,11 @@
 /**
  * @file k230.h
- * @brief 在此写k230相关代码
+ * @brief K230 视觉模块通信 — USART3 二进制协议
+ *        TX: 单字符命令 'f'/'c'/'x'
+ *        RX: 0xA3 0xB3 [H] [L] 0xFF (角度) / 0xA3 0xB4 [dir] 0xFF (方向)
  *        PB10=TX, PB11=RX
- *        其中RX使用DMA接收，TX使用阻塞发送
- * @version 0.1
- * @date 2026-08-02
- * @copyright Copyright (c) 2026
- * 
  */
+
 #ifndef K230_H
 #define K230_H
 
@@ -17,18 +15,29 @@ extern "C" {
 
 #include "stm32g4xx_hal.h"
 #include <stdint.h>
+#include <stdbool.h>
 
-#define K230_RX_BUF_SIZE           10
+/* ---- K230 模式常量 ---- */
+#define K230_MODE_LINE      'f'   /* 循迹模式 */
+#define K230_MODE_CIRCLE    'c'   /* 绕圈模式 */
+#define K230_MODE_STOP      'x'   /* 停止（匹配 K230 Python） */
 
-void K230_Start(void);
-void K230_Clear(void);
-const uint8_t *K230_GetBuffer(uint16_t *len);
-HAL_StatusTypeDef K230_Send(const uint8_t *data, uint16_t len, uint32_t timeout);
+/* ==================== 模式管理 ==================== */
+void K230_Init(void);
+void K230_RequestMode(uint8_t mode);
+void K230_ApplyMode(void);
+void K230_SetMode(uint8_t mode);
 
-void Read_Tracedata(uint8_t * data);
-uint8_t Read_TraceFlag(void);
-void Deel_TraceK230(void);
-void Test(void);
+/* ==================== 数据读取 ==================== */
+bool K230_GetLineAngle(float *angle);
+bool K230_GetCircleDir(char *dir);
+void K230_GetDiag(uint32_t *rx_bytes, uint32_t *rx_ok,
+                  uint32_t *rx_err, uint32_t *rx_unk);
+
+/* ==================== ISR 接口 ==================== */
+void K230_RxProcessByte(void);   /* HAL_UART_RxCpltCallback 中调用 */
+void K230_RxRestart(void);       /* HAL_UART_ErrorCallback 中调用 */
+
 #ifdef __cplusplus
 }
 #endif

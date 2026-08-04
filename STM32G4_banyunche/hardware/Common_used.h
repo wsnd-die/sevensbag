@@ -2,6 +2,8 @@
 #define _COMMON_USED_
 #include "FreeRTOS.h"
 #include <stdio.h>
+#include <math.h>
+
 #include "task.h"
 #include "usart.h"
 #include "emm_5v.h"
@@ -11,8 +13,8 @@
 #include "uart2_tbop10.h"
 #include "navigation.h"
 #include "block_basic.h"
-
 #include "k230.h"
+#include "Trace_base.h"
 
 //=======
 //#include "color.h"

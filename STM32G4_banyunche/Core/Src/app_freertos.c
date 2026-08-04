@@ -31,6 +31,7 @@
 #include "color.h"
 #include "oled.h"
 #include "sw_uart.h"
+#include "k230.h"
 
 /* USER CODE END Includes */
 
@@ -61,7 +62,7 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 128 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for ctrl_servo */
 osThreadId_t ctrl_servoHandle;
@@ -151,16 +152,16 @@ void MX_FREERTOS_Init(void) {
   ctrl_servoHandle = osThreadNew(ctrl_servo_task, NULL, &ctrl_servo_attributes);
 
   /* creation of NAVIGATION */
-  NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
+  //  NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
 
   /* creation of uart1_motor */
-  uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
+  //  uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
 
   /* creation of Uart3_k230 */
-  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
+  //  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
 
   /* creation of OLED */
-  OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
+  //  OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -183,50 +184,49 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
 
-	// SW_UART_Init();
   /* ---- 初始化颜色传感器 ---- */
-  if (Color_Init() != HAL_OK) {
-      /* GY-33 未检测到，闪烁 PC13 报警 */
-      for (;;) {
-          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-#if SW_UART_ENABLE
-          SW_UART_SendString("GY-33 NOT FOUND\r\n");
-#endif
-          osDelay(200);
-      }
-  }
+  //(void)Color_Init();
 
-#if SW_UART_ENABLE
-  SW_UART_SendString("GY-33 Color Sensor Ready\r\n");
-#else
-  /* 可选：设置补光灯亮度 (0~10)，仅 I2C 模式支持 */
-  Color_SetLedLevel(5);
-#endif
+  /* 默认启动循迹模式 */
+  K230_RequestMode(K230_MODE_LINE);
+
+  SW_UART_Printf("STM32 boot, K230 mode=LINE\r\n");
+
+  uint32_t last_k230_tick = osKernelGetTickCount();
 
   /* Infinite loop */
   for(;;)
   {
-      Color_TypeDef result = Color_DetectDominant();
+      /* ---- K230 模式切换（标志驱动）---- */
+      K230_ApplyMode();
 
-#if SW_UART_ENABLE
-      SW_UART_Printf("Color: %s\r\n", Color_ToString(result));
-#endif
-
-      switch (result) {
-      case COLOR_RED:
-          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-          break;
-      case COLOR_GREEN:
-          break;
-      case COLOR_BLUE:
-          break;
-      case COLOR_WHITE:
-          break;
-      case COLOR_BLACK:
-          break;
-      default:
-          break;
+      /* ---- K230 数据读取 ---- */
+      float angle;
+      if (K230_GetLineAngle(&angle)) {
+          SW_UART_Printf("A=%.2f\r\n", angle);
+          last_k230_tick = osKernelGetTickCount();
       }
+      char dir;
+      if (K230_GetCircleDir(&dir)) {
+          SW_UART_Printf("D=%c\r\n", dir);
+          last_k230_tick = osKernelGetTickCount();
+      }
+
+      /*
+       * 若超过 2 秒未收到 K230 数据，强制重发 'f' 命令。
+       * 处理 K230 Python 启动慢（约 2-3 秒）导致初始命令丢失的问题。
+       */
+      if ((osKernelGetTickCount() - last_k230_tick) > 2000U) {
+          K230_SetMode(K230_MODE_LINE);
+          last_k230_tick = osKernelGetTickCount();
+
+          uint32_t rx_bytes, rx_ok, rx_err, rx_unk;
+          K230_GetDiag(&rx_bytes, &rx_ok, &rx_err, &rx_unk);
+          SW_UART_Printf("K230 retry rx:byte=%lu ok=%lu err=%lu unk=%lu\r\n",
+                         rx_bytes, rx_ok, rx_err, rx_unk);
+      }
+
+      osDelay(10);
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -245,6 +245,7 @@ void ctrl_servo_task(void *argument)
   for(;;)
   {
     /* TODO: 舵机控制逻辑 */
+  	Trace_LineFollow();
     osDelay(100);
   }
   /* USER CODE END ctrl_servo_task */
@@ -268,6 +269,7 @@ void Navigation_TASK(void *argument)
 	WaypointNav_Init(&g_waypoint_nav);
 
 	/* 默认目标: 原点 */
+
 	static const struct { float x, y, yaw; } pts[] = {
 		{ 0, 0, 0 },
 		// {213.62,677.14,90},

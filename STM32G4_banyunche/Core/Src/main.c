@@ -64,10 +64,9 @@ void Hal_starte()
         __HAL_UART_CLEAR_FLAG(&huart3, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
 	
 		QRcode_Start();
-		HAL_UART_Receive_IT(&huart3, &rx3, 1);
+		//HAL_UART_Receive_IT(&huart3, &rx3, 1);  /* K230 接管 USART3 RX */
 		//HAL_UART_Receive_IT(&huart1, &rx1, 1);
-		/* DMA ѭ������ + IDLE ֡ͬ�� */
-		K230_Start();
+		K230_Init();  /* USART3 RX 由 K230 模块管理 */
       
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//?????????
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
@@ -100,19 +99,19 @@ FILE __stdin;
 
 int fputc(int ch, FILE *f)
 {
-    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
     return ch;
 }
 
 int __io_putchar(int ch)
 {
-    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
     return ch;
 }
 
 void _ttywrch(int ch)
 {
-    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
 }
 
 void _sys_exit(int x)

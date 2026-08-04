@@ -4,11 +4,8 @@
  *        基于 K230 循迹传感器圆弧切角 → PID 角速度 → Mecanum_Calc 麦轮解算
  */
 
-#include "Trace_base.h"
-#include "k230.h"
-#include "mecanum.h"
+
 #include "Common_used.h"
-#include <math.h>
 
 /* ======================== 内部状态变量 ======================== */
 

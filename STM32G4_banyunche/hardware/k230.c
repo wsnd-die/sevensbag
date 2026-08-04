@@ -1,158 +1,183 @@
+/**
+ * @file k230.c
+ * @brief K230 视觉模块通信 — USART3 二进制协议
+ *
+ * TX (STM32 -> K230):  单字符命令 'f'=循迹, 'c'=找圆, 'x'=停止
+ * RX (K230 -> STM32):
+ *   角度: 0xA3 0xB3 [int16_H] [int16_L] 0xFF  → angle = int16 / 100.0
+ *   方向: 0xA3 0xB4 [dir_char] 0xFF           → 'O','W','E','N','S'
+ */
+
 #include "k230.h"
 #include "usart.h"
 #include <string.h>
 
-static uint8_t k230_dma_rx,Trace_dataFlag=0;
-static uint8_t k230_rx_buf[K230_RX_BUF_SIZE];
-static volatile uint16_t k230_rx_len;
+/* ---- 接收状态机 ---- */
+typedef enum {
+    K230_RX_WAIT_A3 = 0,
+    K230_RX_WAIT_BX,
+    K230_RX_COLLECT,
+} k230_rx_state_t;
 
-#ifndef LEGACY_USART2_ODOM_ENABLE
-#define LEGACY_USART2_ODOM_ENABLE 0
-#endif
+static struct {
+    /* 模式管理 */
+    uint8_t  requested_mode;
+    uint8_t  current_mode;
 
-typedef enum{
-	trace_data,
-	color_data,
-	verify,
-	over,
+    /* 接收状态机 */
+    k230_rx_state_t rx_state;
+    uint8_t  rx_pkt_type;       /* 0xB3=角度, 0xB4=方向 */
+    uint8_t  rx_buf[8];
+    uint8_t  rx_idx;
 
-}K230;
+    /* 解析结果 */
+    float    angle;
+    char     dir;
+    uint8_t  angle_fresh;
+    uint8_t  dir_fresh;
 
+    /* 诊断 */
+    uint32_t rx_bytes;
+    uint32_t rx_ok;
+    uint32_t rx_err;
+    uint32_t rx_unk;
+} k230_ctx;
 
-void K230_Start(void)
+/* ================================================================ */
+
+void K230_Init(void)
 {
-    __HAL_UART_CLEAR_FLAG(&huart2, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
-    HAL_UART_Receive_IT(&huart2, &k230_dma_rx, K230_RX_BUF_SIZE);
+    memset(&k230_ctx, 0, sizeof(k230_ctx));
+    k230_ctx.rx_state = K230_RX_WAIT_A3;
+    HAL_UART_Receive_IT(&huart3, &rx3, 1);
 }
 
-void Deel_TraceK230()
+void K230_RxProcessByte(void)
 {
-	static uint8_t cmd[3]={0xA3,0xB3,0xFF};
-	
-	HAL_UART_Transmit_IT(&huart2,(void *)cmd,3);
-	
-}
+    uint8_t b = rx3;
+    k230_ctx.rx_bytes++;
 
+    switch (k230_ctx.rx_state) {
 
-void Test()
-{
-	uint8_t data[3];
-	
-	if(Read_TraceFlag())
-	{
-		Read_Tracedata(data);
-		
-		HAL_UART_Transmit_IT(&huart2,(void *)data,3);
-	}
-	
-}
+    case K230_RX_WAIT_A3:
+        if (b == 0xA3) {
+            k230_ctx.rx_idx = 0;
+            k230_ctx.rx_buf[k230_ctx.rx_idx++] = b;
+            k230_ctx.rx_state = K230_RX_WAIT_BX;
+        }
+        break;
 
-void K230_Clear(void)
-{
-    k230_rx_len = 0;
-    Trace_dataFlag = 0;
-    memset(k230_rx_buf, 0, sizeof(k230_rx_buf));
-}
+    case K230_RX_WAIT_BX:
+        if (b == 0xB3 || b == 0xB4) {
+            k230_ctx.rx_pkt_type = b;
+            k230_ctx.rx_buf[k230_ctx.rx_idx++] = b;
+            k230_ctx.rx_state = K230_RX_COLLECT;
+        } else if (b == 0xA3) {
+            /* 重新同步 */
+            k230_ctx.rx_idx = 0;
+            k230_ctx.rx_buf[k230_ctx.rx_idx++] = b;
+        } else {
+            k230_ctx.rx_state = K230_RX_WAIT_A3;
+            k230_ctx.rx_err++;
+        }
+        break;
 
-const uint8_t *K230_GetBuffer(uint16_t *len)
-{
-    if (len != NULL) {
-        *len = k230_rx_len;
-    }
-    return k230_rx_buf;
-}
+    case K230_RX_COLLECT:
+        k230_ctx.rx_buf[k230_ctx.rx_idx++] = b;
 
-HAL_StatusTypeDef K230_Send(const uint8_t *data, uint16_t len, uint32_t timeout)
-{
-    return HAL_UART_Transmit(&huart2, (uint8_t *)data, len, timeout);
-}
+        if (b == 0xFF) {
+            /* 包结束 */
+            if (k230_ctx.rx_pkt_type == 0xB3 && k230_ctx.rx_idx >= 5) {
+                /* 角度: [A3, B3, H, L, FF] */
+                int16_t raw = (int16_t)((k230_ctx.rx_buf[2] << 8) | k230_ctx.rx_buf[3]);
+                k230_ctx.angle = raw / 100.0f;
+                k230_ctx.angle_fresh = 1;
+                k230_ctx.rx_ok++;
+            } else if (k230_ctx.rx_pkt_type == 0xB4 && k230_ctx.rx_idx >= 4) {
+                /* 方向: [A3, B4, dir, FF] */
+                k230_ctx.dir = (char)k230_ctx.rx_buf[2];
+                k230_ctx.dir_fresh = 1;
+                k230_ctx.rx_ok++;
+            } else {
+                k230_ctx.rx_err++;
+            }
+            k230_ctx.rx_state = K230_RX_WAIT_A3;
+        }
 
-uint8_t Read_TraceFlag()
-{
-	uint8_t i;
-	i=Trace_dataFlag;
-	Trace_dataFlag=0;
-	return i;
-}
-
-/**
- * @brief  从 K230 接收缓冲区读取循迹偏移数据
- * @param  data: 输出缓冲区 (至少 2 字节)，[0]=int16低字节, [1]=int16高字节
- * @note   数据包格式: 0xA3 0xB3 [int16_lo] [int16_hi] 0xFF
- *         调用前应先通过 Read_TraceFlag() 确认有新数据
- */
-void Read_Tracedata(uint8_t * data)
-{
-    if (data == NULL || k230_rx_len < 5) {
-        return;
-    }
-    /* 验证包头 0xA3 0xB3 */
-    if (k230_rx_buf[0] != 0xA3 || k230_rx_buf[1] != 0xB3) {
-        return;
-    }
-    /* 提取 int16 数据（小端序）：buf[2]=低字节, buf[3]=高字节 */
-    data[0] = k230_rx_buf[2];
-    data[1] = k230_rx_buf[3];
-}
-
-
-void K230_xDeel()
-{
-	static K230 StateSho;
-	static uint8_t k230_DataP;
-	if(StateSho==over)
-	{
-		if(k230_dma_rx==0xA3)
-		{
-			k230_DataP=0;
-			StateSho=verify;
-			k230_rx_buf[k230_DataP++]=k230_dma_rx;
-		}
-	}
-	else if(StateSho==verify)
-	{
-		if(k230_dma_rx==0xB3)
-		{
-			StateSho=trace_data;
-		}
-			
-	}
-	
-	 if(StateSho==trace_data)
-	{
-		
-		k230_rx_buf[k230_DataP++]=k230_dma_rx;
-		
-		if(k230_dma_rx==0xff)
-		{
-			StateSho=over;
-			k230_rx_len = k230_DataP;    /* 记录完整包长度 */
-			Trace_dataFlag=1;
-		}
-		if(k230_DataP>9)
-		{
-			StateSho=over;
-			Trace_dataFlag=0;
-		}
-		
-	}
-	
-	
-	
-}
-
-
-#if !LEGACY_USART2_ODOM_ENABLE
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
-{
-    if (huart->Instance == USART2) {
-       
-			K230_xDeel();
-			
-			
-			HAL_UART_Receive_IT(&huart2, &k230_dma_rx, 1);
+        if (k230_ctx.rx_idx >= 8) {
+            /* 溢出 */
+            k230_ctx.rx_state = K230_RX_WAIT_A3;
+            k230_ctx.rx_err++;
+        }
+        break;
     }
 
-    
+    HAL_UART_Receive_IT(&huart3, &rx3, 1);
 }
-#endif
+
+void K230_RxRestart(void)
+{
+    __HAL_UART_CLEAR_FLAG(&huart3,
+        UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
+    k230_ctx.rx_state = K230_RX_WAIT_A3;
+    k230_ctx.rx_idx = 0;
+    HAL_UART_Receive_IT(&huart3, &rx3, 1);
+}
+
+/* ---- 发送 ---- */
+
+static void k230_send_cmd(uint8_t cmd)
+{
+    while (!(USART3->ISR & USART_ISR_TXE)) {}
+    USART3->TDR = cmd;
+    while (!(USART3->ISR & USART_ISR_TC)) {}
+}
+
+/* ---- 模式管理 ---- */
+
+void K230_RequestMode(uint8_t mode)
+{
+    k230_ctx.requested_mode = mode;
+}
+
+void K230_ApplyMode(void)
+{
+    if (k230_ctx.requested_mode == 0) return;
+    if (k230_ctx.requested_mode == k230_ctx.current_mode) return;
+
+    k230_send_cmd(k230_ctx.requested_mode);
+    k230_ctx.current_mode = k230_ctx.requested_mode;
+}
+
+void K230_SetMode(uint8_t mode)
+{
+    k230_send_cmd(mode);
+    k230_ctx.current_mode = mode;
+}
+
+/* ---- 数据读取 ---- */
+
+bool K230_GetLineAngle(float *angle)
+{
+    if (!k230_ctx.angle_fresh) return false;
+    if (angle) *angle = k230_ctx.angle;
+    k230_ctx.angle_fresh = 0;
+    return true;
+}
+
+bool K230_GetCircleDir(char *dir)
+{
+    if (!k230_ctx.dir_fresh) return false;
+    if (dir) *dir = k230_ctx.dir;
+    k230_ctx.dir_fresh = 0;
+    return true;
+}
+
+void K230_GetDiag(uint32_t *rx_bytes, uint32_t *rx_ok,
+                  uint32_t *rx_err, uint32_t *rx_unk)
+{
+    if (rx_bytes) *rx_bytes = k230_ctx.rx_bytes;
+    if (rx_ok)    *rx_ok    = k230_ctx.rx_ok;
+    if (rx_err)   *rx_err   = k230_ctx.rx_err;
+    if (rx_unk)   *rx_unk   = k230_ctx.rx_unk;
+}

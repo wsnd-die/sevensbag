@@ -1,6 +1,7 @@
 #include "stm32g4xx.h"                  // Device header
 #include "usart.h"
 #include "QRcode.h"
+#include "k230.h"
 #include <string.h>
 
 #ifndef ni_he_mode
@@ -144,9 +145,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   }
   if (huart->Instance == USART3)
   {
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);  /* DEBUG: 收到UART3字节翻转LED */
-    Uart3_deel();
-    HAL_UART_Receive_IT(&huart3, &rx3, 1);
+    K230_RxProcessByte();
+    /* K230_RxProcessByte 内部会重新启动接收 */
   }
 }
 
@@ -165,10 +165,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 #endif
     }
     if (huart->Instance == USART3) {
-        __HAL_UART_CLEAR_FLAG(&huart3,
-            UART_CLEAR_OREF |
-            UART_CLEAR_FEF |
-            UART_CLEAR_NEF);
-        HAL_UART_Receive_IT(&huart3, &rx3, 1);
+        K230_RxRestart();
     }
 }

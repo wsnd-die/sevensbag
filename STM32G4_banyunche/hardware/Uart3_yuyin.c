@@ -2,7 +2,7 @@
 #include "Common_used.h"
 #include "waypoint.h"
 
-uint8_t FlagOFYuyin,rx3;
+uint8_t FlagOFYuyin;
 uint8_t pPack_uart3;
 uint8_t Data_uart3[20];
 uint32_t Data_buffer;
