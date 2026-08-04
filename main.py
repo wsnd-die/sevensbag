@@ -38,10 +38,6 @@ MODE_CIRCLE = 2
 current_mode = MODE_NONE
 last_angle = 0.0
 
-# ---------- 循迹帧率统计 ----------
-line_fps_counter = 0
-line_fps_timer = time.ticks_ms()
-
 # 主循环周期（ms），决定发送频率
 LOOP_PERIOD_MS = 10   # 约100 Hz，实际受处理时间限制
 
@@ -94,18 +90,9 @@ def fill_rect(img, x, y, w, h, color=255):
                 img.set_pixel(px, py, color)
 
 def line_follow(gray_img, disp_img):
-    global last_angle, line_fps_counter, line_fps_timer
+    global last_angle
     W, H = gray_img.width(), gray_img.height()
 
-    # 帧率统计
-    line_fps_counter += 1
-    now = time.ticks_ms()
-    elapsed = time.ticks_diff(now, line_fps_timer)
-    if elapsed >= 1000:
-        fps = line_fps_counter * 1000 / elapsed
-        print(f"Line FPS: {fps:.1f}")
-        line_fps_counter = 0
-        line_fps_timer = now
     y_ref = H // 2
     y_min = max(y_ref - LOCAL_HALF_ROWS, int(H * ROI_TOP_RATIO))
     y_max = min(y_ref + LOCAL_HALF_ROWS, H - 1)
@@ -141,11 +128,13 @@ def line_follow(gray_img, disp_img):
     clean_binary.dilate(3)
     clean_binary.dilate(3)
 
-    # 2. 排除左下角干扰
+    # 2. 排除左下角和右下角干扰（计算 + 显示）
     ix, iy, iw, ih = IGNORE_RECT_LEFT
     fill_rect(clean_binary, ix, iy, iw, ih, 255)
+    fill_rect(disp_img, ix, iy, iw, ih, (255, 255, 255))
     ix, iy, iw, ih = IGNORE_RECT_RIGHT
     fill_rect(clean_binary, ix, iy, iw, ih, 255)
+    fill_rect(disp_img, ix, iy, iw, ih, (255, 255, 255))
 
     # 3. 扫描左右边缘点
     left_pts, right_pts = [], []
@@ -203,30 +192,50 @@ def line_follow(gray_img, disp_img):
 
 # ---------- 圆检测函数 ----------
 def circle_detect(img, disp_img):
+    # 1. 高斯模糊去噪
     img_blur = img.gaussian(GAUSSIAN_KERNEL)
+
+    # 2. 霍夫圆检测
     circles = img_blur.find_circles(
         threshold=CIRCLE_THRESHOLD, x_margin=10, y_margin=10, r_margin=10,
         r_min=CIRCLE_R_MIN, r_max=CIRCLE_R_MAX, r_step=1
     )
+
     if not circles:
-        return   # 无圆不发送
+        print("Circle: none found")
+        uart.write(bytearray([0xA3, 0xB4, ord('X'), 0xFF]))
+        return
+
+    # 3. 按响应强度排序，取最强圆
     circles = sorted(circles, key=lambda c: c.magnitude(), reverse=True)
+
     for c in circles:
-        if c.magnitude() < CIRCLE_MAG_MIN:
+        mag = c.magnitude()
+        if mag < CIRCLE_MAG_MIN:
+            print(f"Circle: mag={mag} < {CIRCLE_MAG_MIN}, skip")
             continue
-        disp_img.draw_circle(c.x(), c.y(), c.r(), color=(255,0,0), thickness=2)
+
+        # 4. 绘制检测到的圆
+        disp_img.draw_circle(c.x(), c.y(), c.r(), color=(255, 0, 0), thickness=4)
+
+        # 5. 计算圆心偏移方向
         dx = c.x() - PICTURE_WIDTH / 2
         dy = c.y() - PICTURE_HEIGHT / 2
-        if dx*dx + dy*dy < AREA_OF_CENTER:
+        if dx * dx + dy * dy < AREA_OF_CENTER:
             dat = 'O'
         elif abs(dx) > abs(dy):
             dat = 'W' if dx > 0 else 'E'
         else:
             dat = 'N' if dy > 0 else 'S'
-        # 发送方向 (A3 B4 dir_char FF)
+
+        # 6. 串口发送 (A3 B4 dir_char FF)
         uart.write(bytearray([0xA3, 0xB4, ord(dat), 0xFF]))
-        print(dat)
+        print(f"Circle: mag={mag}, pos=({c.x()},{c.y()}), dir={dat}")
         return   # 只处理第一个有效圆
+
+    # 所有圆强度都不够，发送 X 让车停止
+    print("Circle: all below mag threshold")
+    uart.write(bytearray([0xA3, 0xB4, ord('X'), 0xFF]))
 
 # ---------- 主循环 ----------
 def main():
@@ -244,7 +253,12 @@ def main():
             loop_start = time.ticks_ms()
 
             img = sensor.snapshot(chn=CAM_CHN_ID_0)
-            disp_img = img.binary([LINE_GRAY_THRESHOLD], invert=True).copy(sensor.RGB565)
+
+            # 循迹模式用二值化显示，圆检测直接用原图（和独立版一致）
+            if current_mode == MODE_LINE:
+                disp_img = img.binary([LINE_GRAY_THRESHOLD], invert=True).copy(sensor.RGB565)
+            else:
+                disp_img = img  # 直接用原始灰度图，circle_detect 会在上面画圆
 
             # 检查串口命令
             cmd = receive_serial_data()
