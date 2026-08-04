@@ -12,7 +12,7 @@
 #include "k230.h"
 #include "usart.h"
 #include <string.h>
-
+uint8_t rx3;
 /* ---- 接收状态机 ---- */
 typedef enum {
     K230_RX_WAIT_A3 = 0,

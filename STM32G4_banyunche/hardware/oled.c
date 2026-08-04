@@ -36,17 +36,12 @@
 // 如果用到中文，编译器附加选项需要加 --no-multibyte-chars  (用AC6编译器的不用加)
 
 /*
-<<<<<<< HEAD
 选择OLED驱动方式，默认使用硬件I2C。如果要用软件I2C就将硬件I2C那行的宏定义注释掉，将软件I2C那行的注释取消。
 不能同时两个都同时取消注释！
 在stm32cubemx中初始化时需要将SCL和SDA引脚的"user lable"分别设置为I2C3_SCL和I2C3_SDA。
 */
 #define OLED_USE_HW_I2C	// 硬件I2C
 //#define OLED_USE_SW_I2C	// 软件I2C
-/*=======
- * OLED 驱动模式宏已移至 oled.h，请在该文件中修改。
- */
-//>>>>>>> 542bb7e9542d6e43205cc741221b9a229f3fc6d3
 
 /*引脚定义，可在此处修改I2C通信引脚*/
 #define OLED_SCL            I2C3_SCL_Pin // SCL

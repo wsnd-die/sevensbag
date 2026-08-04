@@ -1571,11 +1571,6 @@
               <FilePath>..\hardware\QRcode.h</FilePath>
             </File>
             <File>
-              <FileName>Uart3_yuyin.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\hardware\Uart3_yuyin.c</FilePath>
-            </File>
-            <File>
               <FileName>imu660.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\hardware\imu660.h</FilePath>
@@ -1681,9 +1676,24 @@
               <FilePath>..\hardware\Trace_base.h</FilePath>
             </File>
             <File>
-              <FileName>ColorIdentif.c</FileName>
+              <FileName>color.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\hardware\ColorIdentif.c</FilePath>
+              <FilePath>..\hardware\color.c</FilePath>
+            </File>
+            <File>
+              <FileName>color.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\color.h</FilePath>
+            </File>
+            <File>
+              <FileName>sw_uart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\sw_uart.c</FilePath>
+            </File>
+            <File>
+              <FileName>sw_uart.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\sw_uart.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -1709,6 +1719,16 @@
               <FileName>NavigationMecanum.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\app\NavigationMecanum.h</FilePath>
+            </File>
+            <File>
+              <FileName>banyuntask.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\app\banyuntask.c</FilePath>
+            </File>
+            <File>
+              <FileName>banyuntask.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\app\banyuntask.h</FilePath>
             </File>
           </Files>
         </Group>
