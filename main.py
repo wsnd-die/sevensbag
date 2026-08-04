@@ -14,14 +14,14 @@ DISPLAY_HEIGHT = 480
 
 # ---------- 循迹参数 ----------
 LINE_GRAY_THRESHOLD = (0, 90)        # 黑线灰度阈值
-ROI_TOP_RATIO    = 0.2
-LOCAL_HALF_ROWS  = 15
+ROI_TOP_RATIO    = 0.1
+LOCAL_HALF_ROWS  = 25
 DEAD_ANGLE       = 2.0
 SMOOTH_FACTOR    = 0.3
 PIXELS_THRESHOLD = 30
 AREA_THRESHOLD   = 30
-IGNORE_RECT_LEFT = (0, PICTURE_HEIGHT-30, 40, 30)   # 左下角忽略区域
-IGNORE_RECT_RIGHT = (PICTURE_WIDTH-40, PICTURE_HEIGHT-30, 40, 30)  # 右下角
+IGNORE_RECT_LEFT = (0, PICTURE_HEIGHT-40, 60, 40)   # 左下角忽略区域
+IGNORE_RECT_RIGHT = (PICTURE_WIDTH-60, PICTURE_HEIGHT-40, 60, 40)  # 右下角
 
 # ---------- 圆检测参数 ----------
 CIRCLE_THRESHOLD = 2800
@@ -37,6 +37,10 @@ MODE_LINE   = 1
 MODE_CIRCLE = 2
 current_mode = MODE_NONE
 last_angle = 0.0
+
+# ---------- 循迹帧率统计 ----------
+line_fps_counter = 0
+line_fps_timer = time.ticks_ms()
 
 # 主循环周期（ms），决定发送频率
 LOOP_PERIOD_MS = 10   # 约100 Hz，实际受处理时间限制
@@ -90,8 +94,18 @@ def fill_rect(img, x, y, w, h, color=255):
                 img.set_pixel(px, py, color)
 
 def line_follow(gray_img, disp_img):
-    global last_angle
+    global last_angle, line_fps_counter, line_fps_timer
     W, H = gray_img.width(), gray_img.height()
+
+    # 帧率统计
+    line_fps_counter += 1
+    now = time.ticks_ms()
+    elapsed = time.ticks_diff(now, line_fps_timer)
+    if elapsed >= 1000:
+        fps = line_fps_counter * 1000 / elapsed
+        print(f"Line FPS: {fps:.1f}")
+        line_fps_counter = 0
+        line_fps_timer = now
     y_ref = H // 2
     y_min = max(y_ref - LOCAL_HALF_ROWS, int(H * ROI_TOP_RATIO))
     y_max = min(y_ref + LOCAL_HALF_ROWS, H - 1)
