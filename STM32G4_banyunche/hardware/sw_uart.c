@@ -19,7 +19,11 @@
  * 内部宏
  * ================================================================ */
 
-#define SW_UART_BIT_US       (1000000UL / SW_UART_BAUDRATE)
+/* 位延时（CPU 周期），避免 μs 整数除法的截断误差 */
+static uint32_t sw_uart_bit_cycles(void)
+{
+    return SystemCoreClock / SW_UART_BAUDRATE;
+}
 
 /* EXTI 中断线 */
 #define SW_UART_EXTI_LINE    EXTI_LINE_6
@@ -66,11 +70,6 @@ static void SW_UART_DelayCycles(uint32_t cycles)
     );
 }
 
-static void SW_UART_DelayUs(uint32_t us)
-{
-    uint32_t cycles = us * (SystemCoreClock / 1000000UL);
-    SW_UART_DelayCycles(cycles);
-}
 
 /* ================================================================
  * GPIO 基础操作
@@ -166,9 +165,11 @@ void SW_UART_SendByte(uint8_t data)
     primask = __get_PRIMASK();
     __disable_irq();
 
+    uint32_t bit_cycles = sw_uart_bit_cycles();
+
     /* 起始位 */
     SW_UART_TX_Low();
-    SW_UART_DelayUs(SW_UART_BIT_US);
+    SW_UART_DelayCycles(bit_cycles);
 
     /* 数据位 LSB first */
     for (uint8_t i = 0U; i < 8U; i++) {
@@ -177,13 +178,13 @@ void SW_UART_SendByte(uint8_t data)
         } else {
             SW_UART_TX_Low();
         }
-        SW_UART_DelayUs(SW_UART_BIT_US);
+        SW_UART_DelayCycles(bit_cycles);
         data >>= 1U;
     }
 
     /* 停止位 */
     SW_UART_TX_High();
-    SW_UART_DelayUs(SW_UART_BIT_US);
+    SW_UART_DelayCycles(bit_cycles);
 
     /* 恢复中断 */
     if (primask == 0U) {
@@ -266,8 +267,8 @@ void EXTI9_5_IRQHandler(void)
     /*
      * 起始位有效，准备接收。
      *
-     * 设置 TIM16->CNT = ARR/2，使得首次溢出在半位后（1.5 位从边沿起），
-     * 刚好采样 D0 中心点。之后每次溢出间隔恰好 1 位。
+     * CNT = ARR/2 使首次溢出在 0.5 位后（距边沿 1.5 位），
+     * 正好采样 D0 中心。之后每次溢出间隔恰好 1 位。
      */
     if (!sw_uart_rx_active) {
         sw_uart_rx_active   = true;
@@ -275,13 +276,13 @@ void EXTI9_5_IRQHandler(void)
         sw_uart_rx_data     = 0U;
 
         SW_UART_TIM->CNT = SW_UART_TIM->ARR / 2U;
-        SW_UART_TIM->SR  = ~TIM_SR_UIF;      /* 清更新标志 */
-        SW_UART_TIM->CR1 |= TIM_CR1_CEN;     /* 启动 */
+        SW_UART_TIM->SR  = ~TIM_SR_UIF;
+        SW_UART_TIM->CR1 |= TIM_CR1_CEN;
     }
 }
 
 /* ================================================================
- * TIM16 ISR — 逐位采样
+ * TIM7 ISR — 逐位采样
  * ================================================================ */
 
 void TIM7_IRQHandler(void)
@@ -292,7 +293,7 @@ void TIM7_IRQHandler(void)
     SW_UART_TIM->SR = ~TIM_SR_UIF;
 
     if (!sw_uart_rx_active) {
-        SW_UART_TIM->CR1 &= ~TIM_CR1_CEN;    /* 意外，停定时器 */
+        SW_UART_TIM->CR1 &= ~TIM_CR1_CEN;
         return;
     }
 
@@ -306,7 +307,7 @@ void TIM7_IRQHandler(void)
         sw_uart_rx_bit_idx = idx + 1U;
     } else {
         /* 停止位（idx = 8），帧结束 */
-        SW_UART_TIM->CR1 &= ~TIM_CR1_CEN;    /* 停定时器 */
+        SW_UART_TIM->CR1 &= ~TIM_CR1_CEN;
         sw_uart_rx_active = false;
         SW_UART_RxPush(sw_uart_rx_data);
     }

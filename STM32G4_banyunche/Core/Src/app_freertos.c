@@ -43,7 +43,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-SemaphoreHandle_t Sem_Act_M;
+SemaphoreHandle_t Sem_Act_QR;
+SemaphoreHandle_t Sem_Act_FINDCIRCLE;
 SemaphoreHandle_t Sem_Act_Steer;
 SemaphoreHandle_t Sem_Act_FollowLineL;
 SemaphoreHandle_t Sem_Act_FollowLineR;
@@ -133,11 +134,12 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  Sem_Act_M           = xSemaphoreCreateBinary();
+  Sem_Act_QR           = xSemaphoreCreateBinary();
   Sem_Act_Steer       = xSemaphoreCreateBinary();
   Sem_Act_FollowLineL = xSemaphoreCreateBinary();
   Sem_Act_FollowLineR = xSemaphoreCreateBinary();
   Sem_Act_Navigat     = xSemaphoreCreateBinary();
+  Sem_Act_FINDCIRCLE  = xSemaphoreCreateBinary();
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -156,13 +158,13 @@ void MX_FREERTOS_Init(void) {
   ctrl_servoHandle = osThreadNew(ctrl_servo_task, NULL, &ctrl_servo_attributes);
 
   /* creation of NAVIGATION */
-	NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
+  NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
 
   /* creation of uart1_motor */
   uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
 
   /* creation of Uart3_k230 */
-  //  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
+  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
 
   /* creation of OLED */
   OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
@@ -243,10 +245,12 @@ void StartDefaultTask(void *argument)
 
 			case Event_QRCode:
 				/* TODO: K230 扫码 → SetQR(idx) */
+				xSemaphoreGive(Sem_Act_QR);
 				break;
 
 			case Event_FindCircle:
 				/* TODO: K230 视觉找圆 → 导航到圆 */
+				xSemaphoreGive(Sem_Act_FINDCIRCLE);
 				break;
 
 			/* ---- 停止 ---- */
@@ -282,11 +286,10 @@ void ctrl_servo_task(void *argument)
   for(;;)
   {
 		//等待舵机任务
-
+  	xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
   	if (g_last_cmd.Mode==Event_PickUp)
   	{
-  		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
-  		Servo_SetAngle(3);
+  		Servo_SetAngle(38);
   		Color_Init();
 
   		/* ---- 转盘 5 槽位颜色收集 ---- */
@@ -322,7 +325,6 @@ void ctrl_servo_task(void *argument)
   	}
   	if (g_last_cmd.Mode==Event_PlaceDown)
   	{
-  		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
   	}
 
     osDelay(10);
@@ -359,10 +361,17 @@ void Navigation_TASK(void *argument)
   	if (g_last_cmd.Mode==Event_LinFolR)
   	{
   		xSemaphoreTake(Sem_Act_FollowLineR, portMAX_DELAY);
+  		Trace_LineFollow();
   	}
   	if (g_last_cmd.Mode==Event_LinFolL)
   	{
   		xSemaphoreTake(Sem_Act_FollowLineL, portMAX_DELAY);
+  		Trace_LineFollow();
+  	}
+  	if (g_last_cmd.Mode==Event_FindCircle)
+  	{
+  		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
+  		Circle_Follow();
   	}
 		osDelay(10);
   }
