@@ -191,5 +191,4 @@ void Place(char dir)
             osDelay((uint32_t)(move.duration_s * 1000.0f) + 50U);
         }
     }
-
 }
