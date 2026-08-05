@@ -24,12 +24,22 @@ IGNORE_RECT_LEFT = (0, PICTURE_HEIGHT-40, 60, 40)   # 左下角忽略区域
 IGNORE_RECT_RIGHT = (PICTURE_WIDTH-60, PICTURE_HEIGHT-40, 60, 40)  # 右下角
 
 # ---------- 圆检测参数 ----------
-CIRCLE_THRESHOLD = 2800
+CIRCLE_THRESHOLD = 2500
 CIRCLE_R_MIN = 20
 CIRCLE_R_MAX = 30
 CIRCLE_MAG_MIN = 15
 GAUSSIAN_KERNEL = 1
 AREA_OF_CENTER = 3
+MIN_MOVE = 2               # 死区阈值（像素），小于此值不动
+FAST_MOVE = 8              # 超过此像素距离→alpha拉满，跟手最快
+SMOOTH_MIN = 0.1           # 极慢速时的平滑系数（锁死消抖）
+SMOOTH_MAX = 0.75          # 正常/快速时的平滑系数（灵敏跟随）
+
+# 圆平滑状态
+_cx_smooth = 0.0
+_cy_smooth = 0.0
+_cr_smooth = 0.0
+_circle_ready = False      # 是否已有历史值
 
 # ---------- 全局状态 ----------
 MODE_NONE   = 0
@@ -192,35 +202,72 @@ def line_follow(gray_img, disp_img):
 
 # ---------- 圆检测函数 ----------
 def circle_detect(img, disp_img):
-    # 1. 高斯模糊去噪
+    global _cx_smooth, _cy_smooth, _cr_smooth, _circle_ready
+
+    # 1. 直方图均衡化 → 拉匀亮度，消除上下明暗差异
+    img.histeq()
+    # 2. 高斯模糊去噪
     img_blur = img.gaussian(GAUSSIAN_KERNEL)
 
-    # 2. 霍夫圆检测
+    # 3. 霍夫圆检测
     circles = img_blur.find_circles(
-        threshold=CIRCLE_THRESHOLD, x_margin=10, y_margin=10, r_margin=10,
-        r_min=CIRCLE_R_MIN, r_max=CIRCLE_R_MAX, r_step=1
+        threshold=CIRCLE_THRESHOLD,
+        x_margin=10,
+        y_margin=10,
+        r_margin=10,
+        r_min=CIRCLE_R_MIN,
+        r_max=CIRCLE_R_MAX,
+        r_step=1
     )
 
     if not circles:
-        print("Circle: none found")
+        _circle_ready = False
         uart.write(bytearray([0xA3, 0xB4, ord('X'), 0xFF]))
         return
 
-    # 3. 按响应强度排序，取最强圆
+    # 4. 按响应强度排序，取最强圆
     circles = sorted(circles, key=lambda c: c.magnitude(), reverse=True)
 
     for c in circles:
-        mag = c.magnitude()
-        if mag < CIRCLE_MAG_MIN:
-            print(f"Circle: mag={mag} < {CIRCLE_MAG_MIN}, skip")
+        if c.magnitude() < CIRCLE_MAG_MIN:
             continue
 
-        # 4. 绘制检测到的圆
-        disp_img.draw_circle(c.x(), c.y(), c.r(), color=(255, 0, 0), thickness=4)
+        # 5. 自适应消抖：快动快跟、慢动锁死
+        if _circle_ready:
+            dx = c.x() - _cx_smooth
+            dy = c.y() - _cy_smooth
+            dist = math.sqrt(dx * dx + dy * dy)
+            if dist >= MIN_MOVE:
+                # 自适应 alpha：位移大→灵敏，位移小→稳定
+                t = (dist - MIN_MOVE) / (FAST_MOVE - MIN_MOVE)
+                if t > 1.0:
+                    t = 1.0
+                alpha = SMOOTH_MIN + t * (SMOOTH_MAX - SMOOTH_MIN)
+                _cx_smooth = _cx_smooth * (1 - alpha) + c.x() * alpha
+                _cy_smooth = _cy_smooth * (1 - alpha) + c.y() * alpha
+            dr = abs(c.r() - _cr_smooth)
+            if dr >= MIN_MOVE:
+                t_r = (dr - MIN_MOVE) / (FAST_MOVE - MIN_MOVE)
+                if t_r > 1.0:
+                    t_r = 1.0
+                alpha_r = SMOOTH_MIN + t_r * (SMOOTH_MAX - SMOOTH_MIN)
+                _cr_smooth = _cr_smooth * (1 - alpha_r) + c.r() * alpha_r
+        else:
+            _cx_smooth = c.x()
+            _cy_smooth = c.y()
+            _cr_smooth = c.r()
+            _circle_ready = True
 
-        # 5. 计算圆心偏移方向
-        dx = c.x() - PICTURE_WIDTH / 2
-        dy = c.y() - PICTURE_HEIGHT / 2
+        sx = int(_cx_smooth)
+        sy = int(_cy_smooth)
+        sr = int(_cr_smooth)
+
+        # 6. 绘制平滑后的圆
+        disp_img.draw_circle(sx, sy, sr, color=(255, 0, 0), thickness=4)
+
+        # 7. 计算圆心偏移方向
+        dx = _cx_smooth - PICTURE_WIDTH / 2
+        dy = _cy_smooth - PICTURE_HEIGHT / 2
         if dx * dx + dy * dy < AREA_OF_CENTER:
             dat = 'O'
         elif abs(dx) > abs(dy):
@@ -228,14 +275,19 @@ def circle_detect(img, disp_img):
         else:
             dat = 'N' if dy > 0 else 'S'
 
-        # 6. 串口发送 (A3 B4 dir_char FF)
+        # 8. 串口发送
         uart.write(bytearray([0xA3, 0xB4, ord(dat), 0xFF]))
-        print(f"Circle: mag={mag}, pos=({c.x()},{c.y()}), dir={dat}")
-        return   # 只处理第一个有效圆
+        print(dat)
+        return
 
-    # 所有圆强度都不够，发送 X 让车停止
-    print("Circle: all below mag threshold")
+    # 所有圆强度都不够
+    _circle_ready = False
     uart.write(bytearray([0xA3, 0xB4, ord('X'), 0xFF]))
+
+# ---------- FPS 统计 ----------
+_fps_frame_count = 0
+_fps_value = 0
+_fps_timer = 0
 
 # ---------- 主循环 ----------
 def main():
@@ -254,11 +306,11 @@ def main():
 
             img = sensor.snapshot(chn=CAM_CHN_ID_0)
 
-            # 循迹模式用二值化显示，圆检测直接用原图（和独立版一致）
+            # 循迹模式用二值化显示，圆检测直接用原图
             if current_mode == MODE_LINE:
                 disp_img = img.binary([LINE_GRAY_THRESHOLD], invert=True).copy(sensor.RGB565)
             else:
-                disp_img = img  # 直接用原始灰度图，circle_detect 会在上面画圆
+                disp_img = img
 
             # 检查串口命令
             cmd = receive_serial_data()
@@ -279,6 +331,20 @@ def main():
                 line_follow(img, disp_img)
             elif current_mode == MODE_CIRCLE:
                 circle_detect(img, disp_img)
+
+            # FPS 统计
+            global _fps_frame_count, _fps_value, _fps_timer
+            _fps_frame_count += 1
+            now = time.ticks_ms()
+            if _fps_timer == 0:
+                _fps_timer = now
+            elif time.ticks_diff(now, _fps_timer) >= 1000:
+                _fps_value = _fps_frame_count
+                _fps_frame_count = 0
+                _fps_timer = now
+
+            # FPS 显示在图像左上角
+            disp_img.draw_string_advanced(2, 2, 12, f"FPS:{_fps_value}", color=(255,255,255))
 
             # 显示
             try:
