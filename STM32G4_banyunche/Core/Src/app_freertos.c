@@ -316,49 +316,43 @@ void ctrl_servo_task(void *argument)
   	if (g_last_cmd.Mode==Event_PickUp)
   	{
   		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
+  		Servo_SetAngle(3);
   		Color_Init();
 
   		/* ---- 转盘 5 槽位颜色收集 ---- */
   		BlockBasic_TurntableTo(1);
   		if (BlockBasic_TurntableTo(1)==BLOCK_OK)
   		{
-  			TT_SetColor(SLOT_A, Color_DetectDominant());
+  			TT_SetColor(SLOT_1, Color_DetectDominant());
   		}
   		BlockBasic_TurntableTo(2);
   		if (BlockBasic_TurntableTo(2)==BLOCK_OK)
   		{
-  			TT_SetColor(SLOT_B, Color_DetectDominant());
+  			TT_SetColor(SLOT_2, Color_DetectDominant());
   		}
   		BlockBasic_TurntableTo(3);
   		if (BlockBasic_TurntableTo(3)==BLOCK_OK)
   		{
-  			TT_SetColor(SLOT_C, Color_DetectDominant());
+  			TT_SetColor(SLOT_3, Color_DetectDominant());
   		}
   		BlockBasic_TurntableTo(4);
   		if (BlockBasic_TurntableTo(4)==BLOCK_OK)
   		{
-  			TT_SetColor(SLOT_D, Color_DetectDominant());
+  			TT_SetColor(SLOT_4, Color_DetectDominant());
   		}
   		BlockBasic_TurntableTo(5);
   		if (BlockBasic_TurntableTo(5)==BLOCK_OK)
   		{
-  			TT_SetColor(SLOT_E, Color_DetectDominant());
+  			TT_SetColor(SLOT_5, Color_DetectDominant());
   		}
-
   		/* ---- 根据 QR 映射查目标槽位 → 取点位 → 导航 ---- */
   		// uint8_t slot = SlotByColor(target_color);
   		// float x,y,yaw; TogetPos(slot, &x,&y,&yaw);
   		// Nav_SetTarget(&nav, x, y, yaw);
   	}
-
-
-
-
   	if (g_last_cmd.Mode==Event_PlaceDown)
   	{
   		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
-
-
   	}
 
     osDelay(10);
@@ -400,7 +394,6 @@ void Navigation_TASK(void *argument)
   	{
   		xSemaphoreTake(Sem_Act_FollowLineL, portMAX_DELAY);
   	}
-
 		osDelay(10);
   }
   /* USER CODE END Navigation_TASK */

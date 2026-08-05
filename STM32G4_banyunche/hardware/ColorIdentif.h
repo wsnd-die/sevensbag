@@ -21,7 +21,7 @@
  * 槽位
  * ============================================================ */
 enum {
-    SLOT_A = 0, SLOT_B, SLOT_C, SLOT_D, SLOT_E,
+    SLOT_1 = 0, SLOT_2, SLOT_3, SLOT_4, SLOT_5,
     SLOT_NONE = 0xFF
 };
 
