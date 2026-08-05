@@ -2,9 +2,7 @@
  * @file    pid.c
  * @brief   通用 PID — 位置式 / 增量式 / 积分分离增量式
  */
-#include "pid.h"
-#include <math.h>  /* fabsf */
-#include <stddef.h>
+#include "Common_used.h"
 
 #define LIMIT_MAX(input, max)   \
     do {                        \

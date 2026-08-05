@@ -1,10 +1,11 @@
 #ifndef __MECANUM_MOVE_H
 #define __MECANUM_MOVE_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include "Common_used.h"
-#include "tim.h"
+/*
+ * 说明：stdbool / stdint / Common_used / tim 等头文件
+ * 已由 Common_used.h 统一提供，本文件不再重复包含。
+ * （Common_used.h 在包含本文件之前已处理上述依赖）
+ */
 #ifdef __cplusplus
 extern "C" {
 #endif

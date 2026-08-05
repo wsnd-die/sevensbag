@@ -6,9 +6,6 @@
  */
 
 #include "Common_used.h"
-#include "Trace_base.h"
-#include "k230.h"
-#include "pid.h"
 
 /* ======================== 内部状态 ======================== */
 

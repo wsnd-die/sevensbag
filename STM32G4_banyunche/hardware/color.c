@@ -3,13 +3,11 @@
  * @brief   GY-33 颜色传感器封装：I2C 读写、RGB 读取、颜色判断和投票。
  * @note    硬件接口使用 I2C3，PA8=SCL，PB5=SDA。
  */
-#include "color.h"
-#include "sw_uart.h"
+#include "Common_used.h"
 
 #if SW_UART_ENABLE
 /* 软件串口模式：GY-33 通过 PB6/PB7 UART 通信 */
 #else
-#include "oled.h"
 /* I2C 模式：GY-33 通过 PB6/PB7 软件 I2C 通信 */
 #endif
 

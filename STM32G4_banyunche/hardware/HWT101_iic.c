@@ -22,20 +22,15 @@
  *          TX:     阻塞 HAL_I2C_Mem_Write（配置帧极短，DMA 无优势）
  */
 
+#include "Common_used.h"
 #include "HWT101_iic.h"
 #include "wit_protocol.h"
 
 #ifdef HWT101_USE_I2C
-#include "i2c.h"
-#include "FreeRTOS.h"
-#include "semphr.h"
 #endif
 
 #ifdef HWT101_USE_SERIAL
-#include "usart.h"
 #endif
-
-#include <string.h>
 
 /* ========================================================================
    全局角度数据（解析后）

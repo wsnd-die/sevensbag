@@ -1,6 +1,4 @@
-#include "FreeRTOS.h"
-#include "banyuntask.h"
-#include "queue.h"
+#include "Common_used.h"
 
 QueueHandle_t systemEventQueue = NULL;
 
@@ -11,6 +9,13 @@ void task_init()
         xQueueCreate(5, sizeof(TaskCommand_t));
 }
 
+/*Event_Navigation
+     Event_LinFolL
+     Event_LinFolR
+     Event_STOP
+     Event_STEERING_ROTATE
+cmd
+*/
 void task_send(TaskCommand_t *cmd)
 {
     xQueueSend(

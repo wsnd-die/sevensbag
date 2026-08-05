@@ -1,7 +1,3 @@
-#include "stm32g4xx.h" // Device header
-#include <stdbool.h>
-
-#include "cmsis_os2.h"
 #include "Common_used.h"
 uint16_t left_vel,right_vel;
 uint8_t left_acc,left_dir;

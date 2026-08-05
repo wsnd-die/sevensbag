@@ -1,5 +1,4 @@
-#include "key.h"
-#include "main.h"
+#include "Common_used.h"
 
 uint8_t KEY_Read(void)
 {

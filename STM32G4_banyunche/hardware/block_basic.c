@@ -3,12 +3,7 @@
  * @brief   物块基础机构封装：丝杆升降、双机械臂升降、转盘定位。
  * @note    车型 1 使用丝杆机构；车型 2 使用双机械臂机构。
  */
-#include "block_basic.h"
-
-#include "stm32g4xx.h"
-#include "emm_5v.h"
-#include "tim.h"
-#include <math.h>
+#include "Common_used.h"
 
 #define CLAMP_FLOAT(v, lo, hi)  ((v) < (lo) ? (lo) : ((v) > (hi) ? (hi) : (v)))
 #define DEG2RAD(d)              ((d) * 0.01745329252f)

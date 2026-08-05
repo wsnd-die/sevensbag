@@ -45,6 +45,9 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/Trace_base.h
         hardware/Circle_base.c
         hardware/Circle_base.h
+        app/banyuntask.c
+        app/banyuntask.c
+        hardware/ColorIdentif.c
 )
 
 # Add STM32CubeMX generated sources
@@ -65,8 +68,7 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/can.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/color.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/emm_v5.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Gu_dao.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/HWT101_iic.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hardware/HWT101_iic.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/imu_660.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/k230.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Trace_base.c"
@@ -79,9 +81,7 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Send_motor.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/QRcode.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/sw_uart.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Uart1_motor.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Uart3_yuyin.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/wit_protocol.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hardware/wit_protocol.c"
 )
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${USER_SOURCES}

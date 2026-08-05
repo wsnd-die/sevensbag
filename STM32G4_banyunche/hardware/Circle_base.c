@@ -5,8 +5,6 @@
  */
 
 #include "Common_used.h"
-#include "Circle_base.h"
-#include "k230.h"
 
 /* ======================== 全局状态 ======================== */
 

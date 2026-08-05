@@ -26,15 +26,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
-#include "waypoint.h"
-#include "tim.h"
-#include "color.h"
-#include "oled.h"
-#include "NavigationMecanum.h"
-#include "semphr.h"  
-#include "banyuntask.h"
-//#include "sw_uart.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +48,9 @@ SemaphoreHandle_t Sem_Act_Steer;
 SemaphoreHandle_t Sem_Act_FollowLineL;
 SemaphoreHandle_t Sem_Act_FollowLineR;
 SemaphoreHandle_t Sem_Act_Navigat;
+
+volatile Current_Task_t current_task = Event_IDLE;
+volatile TaskCommand_t   g_last_cmd;           /* Worker 可读取最近一次命令 */
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -71,11 +65,11 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4
 };
 /* Definitions for ctrl_motor */
-osThreadId_t ctrl_motorHandle;
-const osThreadAttr_t ctrl_motor_attributes = {
-  .name = "ctrl_motor",
+osThreadId_t ctrl_servoHandle;
+const osThreadAttr_t ctrl_servo_attributes = {
+  .name = "ctrl_servo",
   .priority = (osPriority_t) osPriorityAboveNormal6,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for NAVIGATION */
 osThreadId_t NAVIGATIONHandle;
@@ -91,10 +85,10 @@ const osThreadAttr_t uart1_motor_attributes = {
   .priority = (osPriority_t) osPriorityAboveNormal6,
   .stack_size = 256 * 4
 };
-/* Definitions for Uart3_yuyin */
-osThreadId_t Uart3_yuyinHandle;
-const osThreadAttr_t Uart3_yuyin_attributes = {
-  .name = "Uart3_yuyin",
+/* Definitions for Uart3_k230 */
+osThreadId_t Uart3_k230Handle;
+const osThreadAttr_t Uart3_k230_attributes = {
+  .name = "Uart3_k230",
   .priority = (osPriority_t) osPriorityAboveNormal6,
   .stack_size = 256 * 4
 };
@@ -116,10 +110,10 @@ void led()
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
-void Send_motor(void *argument);
+void ctrl_servo_task(void *argument);
 void Navigation_TASK(void *argument);
 void Uart1M_task(void *argument);
-void Uart3Yuyin_task(void *argument);
+void Uart3K230_task(void *argument);
 void OLED_TASK(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -154,17 +148,17 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of ctrl_motor */
-  ctrl_motorHandle = osThreadNew(Send_motor, NULL, &ctrl_motor_attributes);
+  /* creation of ctrl_servo */
+  ctrl_servoHandle = osThreadNew(ctrl_servo_task, NULL, &ctrl_servo_attributes);
 
   /* creation of NAVIGATION */
-  NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
+	NAVIGATIONHandle = osThreadNew(Navigation_TASK, NULL, &NAVIGATION_attributes);
 
   /* creation of uart1_motor */
   uart1_motorHandle = osThreadNew(Uart1M_task, NULL, &uart1_motor_attributes);
 
-  /* creation of Uart3_yuyin */
-  Uart3_yuyinHandle = osThreadNew(Uart3Yuyin_task, NULL, &Uart3_yuyin_attributes);
+  /* creation of Uart3_k230 */
+  //  Uart3_k230Handle = osThreadNew(Uart3K230_task, NULL, &Uart3_k230_attributes);
 
   /* creation of OLED */
   OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
@@ -190,7 +184,7 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
 	TaskCommand_t cmd;
-	 task_init();	
+	 task_init();
   /* Infinite loop */
   for(;;)
   {
@@ -198,17 +192,99 @@ void StartDefaultTask(void *argument)
 
 		if(cmd.k==1)
 			{
+				/* ============================================================
+				 * 任务互斥规则
+				 * ============================================================
+				 *
+				 *  专属事件 (LinFolL/ LinFolR/ GoHome):
+				 *    → 参与互斥，同组跳过，不同组切换 current_task
+				 *
+				 *  共享事件 (Navigation/ QRCode/ FindCircle/ PickUp/
+				 *            PlaceDown/ STEERING_ROTATE):
+				 *    → 不参与互斥，始终执行，不改变 current_task
+				 *    → 可与专属事件并发（如: 循迹 + 拾取 同时进行）
+				 *
+				 *  STOP:
+				 *    → 始终执行，不参与互斥
+				 */
+				Current_Task_t target;
+				uint8_t flag_exclusive;  /* 1=专属事件(需互斥)  0=共享/停止(始终执行) */
+
+				/* --- 第一遍：确定目标 + 是否专属 --- */
+				flag_exclusive = 1;
 				switch(cmd.Mode)
 					{
-					case Event_Navigation:xSemaphoreGive(Sem_Act_Navigat);
+					/* 专属事件 */
+					case Event_LinFolL:    target = Event_Task1; break;
+					case Event_LinFolR:    target = Event_Task2; break;
+					case Event_GoHome:     target = Event_Task2; break;
+
+					/* 共享事件 — 始终执行，继承上下文 */
+					case Event_Navigation:
+					case Event_QRCode:
+					case Event_FindCircle:
+					case Event_PickUp:
+					case Event_PlaceDown:
+					case Event_STEERING_ROTATE:
+						flag_exclusive = 0;
+						target = (current_task != Event_IDLE)
+						         ? current_task
+						         : Event_IDLE;
 						break;
-					case Event_LinFolL:xSemaphoreGive(Sem_Act_FollowLineL);
+
+					/* 停止 — 始终执行 */
+					case Event_STOP:
+						flag_exclusive = 0;
+						target = Event_IDLE;
 						break;
-					case Event_LinFolR:xSemaphoreGive(Sem_Act_FollowLineR);
+
+					default:
+						flag_exclusive = 0;
+						target = Event_IDLE;
+						break;
+					}
+
+				/* 互斥：仅专属事件 + 同组已运行 → 跳过 */
+				if (flag_exclusive && target == current_task && target != Event_IDLE) {
+					osDelay(30);
+					continue;
+				}
+
+				/* 切换任务状态（仅专属事件触发切换） */
+				if (flag_exclusive && target != Event_IDLE) {
+					current_task = target;
+				}
+
+				/* --- 第二遍：分发信号量（所有事件都执行） --- */
+				g_last_cmd = cmd;
+				switch(cmd.Mode)
+					{
+					case Event_Navigation:
+					case Event_GoHome:
+						xSemaphoreGive(Sem_Act_Navigat);
+						break;
+					case Event_LinFolL:
+						xSemaphoreGive(Sem_Act_FollowLineL);
+						break;
+					case Event_LinFolR:
+						xSemaphoreGive(Sem_Act_FollowLineR);
+						break;
+					case Event_STEERING_ROTATE:
+					case Event_PickUp:
+					    xSemaphoreGive(Sem_Act_Steer);
+					case Event_PlaceDown:
+						xSemaphoreGive(Sem_Act_Steer);
+						break;
+					case Event_QRCode:
+					/*TODO:二维码逻辑处理需要增加，最好是跟我颜色识别的联动好*/
+					case Event_FindCircle:
+						/* TODO: 触发 K230 视觉识别 / 找圆 */
 						break;
 					case Event_STOP:
+
+						/* TODO: 停止所有正在执行的任务 */
 						break;
-					case Event_STEERING_ROTATE:xSemaphoreGive(Sem_Act_Steer);
+					default:
 						break;
 					}
 			}
@@ -217,26 +293,78 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
-/* USER CODE BEGIN Header_Send_motor */
+/* USER CODE BEGIN Header_ctrl_servo_task */
 /**
-* @brief Function implementing the ctrl_motor thread.
+* @brief Function implementing the ctrl_servo thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_Send_motor */
-void Send_motor(void *argument)
+/* USER CODE END Header_ctrl_servo_task */
+void ctrl_servo_task(void *argument)
 {
   /* USER CODE BEGIN Send_motor */
-	
+
   /* Infinite loop */
+	// BlockBasic_LiftTo(DOWN,43);
+	 Servo_SetAngle(38+88);
+	// uint32_t last_k230_tick = osKernelGetTickCount();
+
   for(;;)
   {
 		//等待舵机任务
-		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
-		
+
+  	if (g_last_cmd.Mode==Event_PickUp)
+  	{
+  		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
+  		Color_Init();
+
+  		/* ---- 转盘 5 槽位颜色收集 ---- */
+  		BlockBasic_TurntableTo(1);
+  		if (BlockBasic_TurntableTo(1)==BLOCK_OK)
+  		{
+  			TT_SetColor(SLOT_A, Color_DetectDominant());
+  		}
+  		BlockBasic_TurntableTo(2);
+  		if (BlockBasic_TurntableTo(2)==BLOCK_OK)
+  		{
+  			TT_SetColor(SLOT_B, Color_DetectDominant());
+  		}
+  		BlockBasic_TurntableTo(3);
+  		if (BlockBasic_TurntableTo(3)==BLOCK_OK)
+  		{
+  			TT_SetColor(SLOT_C, Color_DetectDominant());
+  		}
+  		BlockBasic_TurntableTo(4);
+  		if (BlockBasic_TurntableTo(4)==BLOCK_OK)
+  		{
+  			TT_SetColor(SLOT_D, Color_DetectDominant());
+  		}
+  		BlockBasic_TurntableTo(5);
+  		if (BlockBasic_TurntableTo(5)==BLOCK_OK)
+  		{
+  			TT_SetColor(SLOT_E, Color_DetectDominant());
+  		}
+
+  		/* ---- 根据 QR 映射查目标槽位 → 取点位 → 导航 ---- */
+  		// uint8_t slot = SlotByColor(target_color);
+  		// float x,y,yaw; TogetPos(slot, &x,&y,&yaw);
+  		// Nav_SetTarget(&nav, x, y, yaw);
+  	}
+
+
+
+
+  	if (g_last_cmd.Mode==Event_PlaceDown)
+  	{
+  		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
+
+
+  	}
+
     osDelay(10);
   }
-  /* USER CODE END Send_motor */
+  vTaskDelete(NULL);  /* 安全：永远不应该走到这，但以防万一 */
+  /* USER CODE END ctrl_servo_task */
 }
 
 /* USER CODE BEGIN Header_Navigation_TASK */
@@ -249,8 +377,8 @@ void Send_motor(void *argument)
 void Navigation_TASK(void *argument)
 {
   /* USER CODE BEGIN Navigation_TASK */
-		Nav_RunWaypoints();
-	
+		// Nav_RunWaypoints();
+
 	//Emm_V5_Pos_Control( 2,1,100,50,1500,0,0);
 	//Emm_V5_Pos_Control( 4,1,100,50,1500,0,0);
 	//Emm_V5_Pos_Control( 4,1,100,50,1500,0,1);
@@ -260,13 +388,24 @@ void Navigation_TASK(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	 xSemaphoreTake(Sem_Act_Navigat, portMAX_DELAY);
-		
+  	if (g_last_cmd.Mode==Event_Navigation)
+  	{
+  		xSemaphoreTake(Sem_Act_Navigat, portMAX_DELAY);
+  	}
+  	if (g_last_cmd.Mode==Event_LinFolR)
+  	{
+  		xSemaphoreTake(Sem_Act_FollowLineR, portMAX_DELAY);
+  	}
+  	if (g_last_cmd.Mode==Event_LinFolL)
+  	{
+  		xSemaphoreTake(Sem_Act_FollowLineL, portMAX_DELAY);
+  	}
+
 		osDelay(10);
   }
   /* USER CODE END Navigation_TASK */
 }   //Emm_V5_Synchronous_motion(0);
-	
+
 
 /* USER CODE BEGIN Header_Uart1M_task */
 /**
@@ -282,8 +421,7 @@ void Uart1M_task(void *argument)
   /* Infinite loop */
   for(;;)
   {
-
-		osDelay(10);
+  	Circle_Follow();
   }
   /* USER CODE END Uart1M_task */
 }
@@ -294,8 +432,8 @@ void Uart1M_task(void *argument)
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_Uart3Yuyin_task */
-void Uart3Yuyin_task(void *argument)
+/* USER CODE END Header_Uart3K230_task */
+void Uart3K230_task(void *argument)
 {
   /* USER CODE BEGIN Uart3Yuyin_task */
 	uint8_t i=0;
@@ -305,22 +443,22 @@ void Uart3Yuyin_task(void *argument)
 		if(i==0)
 		{
 			xSemaphoreTake(Sem_Act_FollowLineL, portMAX_DELAY);
-			
+
 		}
-		
+
 		else
 		{
 			xSemaphoreTake(Sem_Act_FollowLineR, portMAX_DELAY);
-			
-			
+
+
 		}
-		
-		
-		
-		
+
+
+
+
     osDelay(1);
   }
-  /* USER CODE END Uart3Yuyin_task */
+  /* USER CODE END Uart3K230_task */
 }
 
 /* USER CODE BEGIN Header_OLED_TASK */
@@ -336,36 +474,7 @@ void OLED_TASK(void *argument)
   /* Infinite loop */
   for(;;)
   {
-		/* ---- 路径录制 (录制模式下按间隔自动记录) ---- */
 
-
-		// /* ---- OLED 显示 ---- */
-		// OLED_Clear();
-		// OLED_Printf(1,1,OLED_6X8,"x: %.2f",TB_position.xdata);
-		// OLED_Printf(1,9,OLED_6X8,"y: %.2f",TB_position.ydata);
-		// OLED_Printf(1,17,OLED_6X8,"vx:%.2f vy:%.2f",TB_speed.xdata,TB_speed.ydata);
-		// OLED_// if (g_waypoint_nav.mode == WP_RECORD) {
-		//		// 	WaypointNav_Update(&g_waypoint_nav,
-		//		// 		TB_position.xdata, TB_position.ydata,
-		//		// 		imu_yaw, imu_gz);
-		//		// }
-		//		// /* ---- 里程计标定状态机 ---- */
-		//		// if (g_calib.state != CALIB_IDLE && g_calib.state != CALIB_DONE) {
-		//		// 	Odometry_Calib_Update();
-		//		// }Printf(1,27,OLED_6X8,"PWM:%.2f",(front_angle) / 180 * 2000 + 500);
-		// OLED_Printf(1,37,OLED_6X8,"gz:%.2f",imu_gz);
-		// OLED_Printf(1,47,OLED_6X8,"yaw:%.2f",imu_yaw);
-		//
-		// /* 底部状态栏: 模式 + 航点数 */
-		// const char *mode_str = "IDLE";
-		// if (g_calib.state == CALIB_FWD)   mode_str = "CAL_FWD";
-		// if (g_calib.state == CALIB_RIGHT) mode_str = "CAL_RGT";
-		// if (g_calib.state == CALIB_DONE)  mode_str = "CAL_OK";
-		// if (g_waypoint_nav.mode == WP_RECORD)   mode_str = "REC";
-		// if (g_waypoint_nav.mode == WP_PLAYBACK) mode_str = "PLAY";
-		// OLED_Printf(1,55,OLED_6X8,"%s wp:%d", mode_str, waypoint_count());
-		//
-		// OLED_Update();
 		osDelay(10);
   }
   /* USER CODE END OLED_TASK */
@@ -376,4 +485,3 @@ void OLED_TASK(void *argument)
 
 
 /* USER CODE END Application */
-

@@ -30,11 +30,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
-#include <stdio.h>
-#include "QRcode.h"
-#include "k230.h"
-#include "HWT101_iic.h"
-#include "key.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

@@ -9,9 +9,7 @@
  *   方向:     0xA3 0xB4 [dir] 0xFF                        → dir_char
  */
 
-#include "k230.h"
-#include "usart.h"
-#include <string.h>
+#include "Common_used.h"
 uint8_t rx3;
 /* ---- 接收状态机 ---- */
 typedef enum {

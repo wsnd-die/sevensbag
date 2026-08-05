@@ -1,8 +1,4 @@
-#include "stm32g4xx.h"
-#include "fdcan.h"
-#include "cmsis_os.h"
-#include <stdint.h>
-#include <stdbool.h>
+#include "Common_used.h"
 
 extern FDCAN_HandleTypeDef hfdcan1;
 
@@ -47,7 +43,7 @@ static uint8_t FDCAN_WaitFreeTxFifo(uint32_t timeout_ms)
     return 1;
 }
 
-uint8_t can_SendCmd(uint8_t *cmd, uint8_t len)
+uint8_t can_SendCmd(__IO uint8_t *cmd, uint8_t len)
 {
     uint8_t i = 0;
     uint8_t j = 0;

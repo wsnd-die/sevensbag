@@ -3,7 +3,7 @@
 
 #include "main.h"
 
-// ----------------------- Òý½Å¶¨Òå -----------------------
+// ----------------------- ï¿½ï¿½ï¿½Å¶ï¿½ï¿½ï¿½ -----------------------
 #define SPI_IMU660RC_CS_LOW()   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET)
 #define SPI_IMU660RC_CS_HIGH()  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET)
 
@@ -12,7 +12,7 @@
 #define SPI_IMU660RC_MISO_PIN   GPIO_PIN_14
 #define SPI_IMU660RC_MOSI_PIN   GPIO_PIN_15
 
-// ----------------------- ¼Ä´æÆ÷µØÖ· -----------------------
+// ----------------------- ï¿½Ä´ï¿½ï¿½ï¿½ï¿½ï¿½Ö· -----------------------
 #define IMU660RC_FUNC_CFG_ACCESS    ( 0x01 )
 #define IMU660RC_INT2_CTRL          ( 0x0E )
 #define IMU660RC_CHIP_ID            ( 0x0F )
@@ -49,61 +49,60 @@
 #define IMU660RC_SFLP_ODR           ( 0x5E )
 #define IMU660RC_EMB_FUNC_CFG       ( 0x63 )
 
-// ----------------------- Á¿³Ìºê¶¨Òå -----------------------
-// ¼ÓËÙ¶È¼ÆÁ¿³Ì£¨CTRL1_XL µÄ FS_XL[1:0]£©
+// ----------------------- ï¿½ï¿½ï¿½Ìºê¶¨ï¿½ï¿½ -----------------------
+// ï¿½ï¿½ï¿½Ù¶È¼ï¿½ï¿½ï¿½ï¿½Ì£ï¿½CTRL1_XL ï¿½ï¿½ FS_XL[1:0]ï¿½ï¿½
 #define ACCEL_FS_2G         0x00
 #define ACCEL_FS_4G         0x02
 #define ACCEL_FS_8G         0x03
 #define ACCEL_FS_16G        0x01
 
-// ÍÓÂÝÒÇÁ¿³Ì£¨CTRL6_C µÄ FS_G[3:0]£¬Î»ÓÚ bit7~4£©
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì£ï¿½CTRL6_C ï¿½ï¿½ FS_G[3:0]ï¿½ï¿½Î»ï¿½ï¿½ bit7~4ï¿½ï¿½
 #define GYRO_FS_125DPS      0x00
 #define GYRO_FS_250DPS      0x10    // 0001 0000
 #define GYRO_FS_500DPS      0x20
 #define GYRO_FS_1000DPS     0x30
 #define GYRO_FS_2000DPS     0x40
-#define GYRO_FS_4000DPS     0xC0    // ÌØÊâÖµ 1100 0000
+#define GYRO_FS_4000DPS     0xC0    // ï¿½ï¿½ï¿½ï¿½Öµ 1100 0000
 
-// Ä¬ÈÏÁ¿³Ì
+// Ä¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 #define IMU660RC_ACC_FS_DEFAULT   ACCEL_FS_16G
 #define IMU660RC_GYRO_FS_DEFAULT  GYRO_FS_4000DPS
 
-// ----------------------- Êý¾Ý½á¹¹ -----------------------
+// ----------------------- ï¿½ï¿½ï¿½Ý½á¹¹ -----------------------
 typedef struct {
-    uint8_t acc_fs;     // µ±Ç°¼ÓËÙ¶È¼ÆÁ¿³ÌÅäÖÃÖµ
-    uint8_t gyro_fs;    // µ±Ç°ÍÓÂÝÒÇÁ¿³ÌÅäÖÃÖµ
-    float   acc_sensitivity;   // ¼ÓËÙ¶ÈÏµÊý£¨4096 ¶ÔÓ¦ ¡À8g£©
-    float   gyro_sensitivity;  // ÍÓÂÝÒÇÏµÊý£¨16.384 ¶ÔÓ¦ ¡À2000dps£©
+    uint8_t acc_fs;     // ï¿½ï¿½Ç°ï¿½ï¿½ï¿½Ù¶È¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
+    uint8_t gyro_fs;    // ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
+    float   acc_sensitivity;   // ï¿½ï¿½ï¿½Ù¶ï¿½Ïµï¿½ï¿½ï¿½ï¿½4096 ï¿½ï¿½Ó¦ ï¿½ï¿½8gï¿½ï¿½
+    float   gyro_sensitivity;  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½16.384 ï¿½ï¿½Ó¦ ï¿½ï¿½2000dpsï¿½ï¿½
 } IMU660RC_ConfigType;
 
 typedef struct {
     int16_t ax_raw, ay_raw, az_raw;
     int16_t gx_raw, gy_raw, gz_raw;
-    float   ax, ay, az;      // ¼ÓËÙ¶È g Öµ
-    float   gx, gy, gz;      // ½ÇËÙ¶È dps
-    float   roll, pitch, yaw;// Å·À­½Ç£¨¶È£©
-    float   q[4];            // ËÄÔªÊý
+    float   ax, ay, az;      // ï¿½ï¿½ï¿½Ù¶ï¿½ g Öµ
+    float   gx, gy, gz;      // ï¿½ï¿½ï¿½Ù¶ï¿½ dps
+    float   roll, pitch, yaw;// Å·ï¿½ï¿½ï¿½Ç£ï¿½ï¿½È£ï¿½
+    float   q[4];            // ï¿½ï¿½Ôªï¿½ï¿½
 } IMU660RC_DataType;
 
 
 extern IMU660RC_ConfigType imu_cfg;
 extern IMU660RC_DataType  imu_data;
 
-// ----------------------- º¯ÊýÉùÃ÷ -----------------------
+// ----------------------- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ -----------------------
 uint8_t IMU660RC_ReadRegs(uint8_t reg);
 void    IMU660RC_WriteRegs(uint8_t reg, uint8_t data);
 uint16_t    IMU660RC_ReadReg16b(uint8_t reg_low);
 void IMU660RC_ReadMultiRegs(uint8_t reg, uint8_t *buf, uint8_t len);
 
-void    IMU660RC_Init(void);           // ÆÕÍ¨³õÊ¼»¯
-void    IMU660RC_Init_SFLP(void);      // ¿ªÆôÄÚÖÃ×ËÌ¬½âËã
+void    IMU660RC_Init(void);           // ï¿½ï¿½Í¨ï¿½ï¿½Ê¼ï¿½ï¿½
+void    IMU660RC_Init_SFLP(void);      // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½ï¿½
 void    IMU660RC_ReadAcc(void);
 void    IMU660RC_ReadGyro(void);
-//void    IMU660RC_ReadEuler(void);      // ´Ó SFLP ¶ÁÈ¡Å·À­½Ç
-//void    IMU660RC_ReadQuat(void);       // ¶ÁÈ¡ËÄÔªÊý
+//void    IMU660RC_ReadEuler(void);      // ï¿½ï¿½ SFLP ï¿½ï¿½È¡Å·ï¿½ï¿½ï¿½ï¿½
+//void    IMU660RC_ReadQuat(void);       // ï¿½ï¿½È¡ï¿½ï¿½Ôªï¿½ï¿½
 void quat_to_euler(float q[4], float *roll, float *pitch, float *yaw);
 void IMU660RC_AttitudeUpdate(float dt);
 void IMU660RC_AttitudeInit(void);
 
-static uint32_t fp16_to_float(uint16_t h);
 #endif

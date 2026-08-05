@@ -5,8 +5,8 @@
  *          本文件仅依赖 wit_protocol.h，不直接依赖任何 HAL 或 OS。
  */
 
+#include "Common_used.h"
 #include "wit_protocol.h"
-#include <string.h>
 
 /* ========================================================================
    内部状态

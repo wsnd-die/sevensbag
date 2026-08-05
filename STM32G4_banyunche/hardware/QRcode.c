@@ -1,6 +1,4 @@
-#include "QRcode.h"
-#include "usart.h"
-#include <string.h>
+#include "Common_used.h"
 
 static uint8_t qrcode_rx_byte;
 static uint8_t qrcode_rx_buf[QRCODE_RX_BUF_SIZE];

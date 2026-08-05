@@ -1,13 +1,7 @@
 //
 // Created by 35037 on 2026/4/30.
 //
-#include "spi_imu660rc.h"
-
-#include <stdio.h>
-
-#include "spi.h"
-#include "string.h"
-#include "math.h"
+#include "Common_used.h"
 
 IMU660RC_ConfigType imu_cfg = {0};
 IMU660RC_DataType  imu_data = {0};

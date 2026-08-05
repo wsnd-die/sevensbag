@@ -26,12 +26,7 @@
  * B站主页：	https://space.bilibili.com/8320520
 */
 
-#include "main.h"
-#include "oled.h"
-#include <string.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdarg.h>
+#include "Common_used.h"
 
 // 如果用到中文，编译器附加选项需要加 --no-multibyte-chars  (用AC6编译器的不用加)
 

@@ -2,9 +2,7 @@
  * @file    navigation.c
  * @brief   导航: 位置环(独立) + 角度串级(角度环→角速度环)
  */
-#include "navigation.h"
-#include <math.h>
-#include <string.h>
+#include "Common_used.h"
 
 #define CLAMP(v,lo,hi)  ((v)<(lo)?(lo):((v)>(hi)?(hi):(v)))
 #define DEG2RAD(d)      ((d)*0.01745329252f)

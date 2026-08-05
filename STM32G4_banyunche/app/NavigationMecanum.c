@@ -1,6 +1,4 @@
-#include "NavigationMecanum.h"
-#include "cmsis_os.h"
-#include <math.h>
+#include "Common_used.h"
 
 /* ============================================================
  * 全局变量

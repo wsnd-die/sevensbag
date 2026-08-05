@@ -5,11 +5,7 @@
  * 单位约定：全部 mm（与 TBOP / NavController 一致）
  */
 
-#include "waypoint.h"
 #include "Common_used.h"
-#include <string.h>
-#include <stdio.h>
-#include <math.h>
 
 /* ============================================================
  * 全局实例

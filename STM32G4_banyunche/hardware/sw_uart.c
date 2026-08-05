@@ -7,19 +7,13 @@
  *   - 引脚 PB6/PB7 与 OLED 软件 I2C 互斥，通过 SW_UART_ENABLE / OLED_USE_SW_I2C 切换
  */
 
-#include "sw_uart.h"
-#include "oled.h"
-#include "usart.h"
+#include "Common_used.h"
 
 #if SW_UART_ENABLE
 
 #if defined(OLED_USE_SW_I2C)
 #error "SW_UART and OLED_USE_SW_I2C both use PB6/PB7 — comment out OLED_USE_SW_I2C in oled.h"
 #endif
-
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
 
 /* ================================================================
  * 内部宏

@@ -1,18 +1,12 @@
 //
 // Created by 35037 on 2026/4/30.
 //
-#include "imu660.h"
-
-#include <stdio.h>
-
-#include "spi.h"
-#include "string.h"
-#include "math.h"
+#include "Common_used.h"
 
 IMU660RC_ConfigType imu_cfg = {0};
 IMU660RC_DataType  imu_data = {0};
 
-/* ×ËÌ¬½âËã×¨ÓÃ±äÁ¿ */
+/* ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½ï¿½×¨ï¿½Ã±ï¿½ï¿½ï¿½ */
 #define DEG_TO_RAD      0.017453292519943295f
 #define RAD_TO_DEG      57.29577951308232f
 
@@ -48,7 +42,7 @@ static float acc_lpf[3] = {0.0f, 0.0f, 1.0f};
 //    acc_bias_y = sy / 500.0f;
 
 //    /*
-//       Èç¹ûÄã°Ñ az ÐÞÕý³É¾²Ö¹Ê± +1g£¬ÔòÕâÑù£º
+//       ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ az ï¿½ï¿½ï¿½ï¿½ï¿½É¾ï¿½Ö¹Ê± +1gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //    */
 //    acc_bias_z = sz / 500.0f - 1.0f;
 //}
@@ -64,77 +58,77 @@ void IMU660RC_Init(void)
         return;
     }
 
-    // 1. Èí¼þ¸´Î» (Öð·É·½Ê½£ºFUNC_CFG_ACCESS Ð´ 0x04)
+    // 1. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î» (ï¿½ï¿½É·ï¿½Ê½ï¿½ï¿½FUNC_CFG_ACCESS Ð´ 0x04)
     IMU660RC_WriteRegs(IMU660RC_FUNC_CFG_ACCESS, 0x04);
     HAL_Delay(30);
 
-    // 2. ÆôÓÃ¿é¸üÐÂ¼°µØÖ·×ÔÔö
+    // 2. ï¿½ï¿½ï¿½Ã¿ï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½
     IMU660RC_WriteRegs(IMU660RC_CTRL3, 0x44);
 
-    // 3. ÅäÖÃ¼ÓËÙ¶È¼ÆÁ¿³Ì (Ð´Èë CTRL8)
-    //    Í¬Ê±ÉèÖÃ acc_sensitivity (Ô­Ê¼Öµ / ÁéÃô¶È =  g Öµ)
-    //    ¿ÉÑ¡ ¡À2g/¡À4g/¡À8g/¡À16g£¬ÕâÀïÄ¬ÈÏÓÃ ¡À16g
+    // 3. ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½Ù¶È¼ï¿½ï¿½ï¿½ï¿½ï¿½ (Ð´ï¿½ï¿½ CTRL8)
+    //    Í¬Ê±ï¿½ï¿½ï¿½ï¿½ acc_sensitivity (Ô­Ê¼Öµ / ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ =  g Öµ)
+    //    ï¿½ï¿½Ñ¡ ï¿½ï¿½2g/ï¿½ï¿½4g/ï¿½ï¿½8g/ï¿½ï¿½16gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½16g
     {
-        uint8_t acc_range_val = 0x03;   // 0x00:¡À2g  0x01:¡À4g  0x02:¡À8g  0x03:¡À16g
-        float   acc_sens = 2049.18f;    // ¶ÔÓ¦ ¡À16g µÄÁéÃô¶È
-        // Èç¹ûÏë¸ÄÁ¿³Ì£¬ÊÖ¶¯ÐÞ¸ÄÉÏÃæÁ½ÐÐ¼´¿É
+        uint8_t acc_range_val = 0x03;   // 0x00:ï¿½ï¿½2g  0x01:ï¿½ï¿½4g  0x02:ï¿½ï¿½8g  0x03:ï¿½ï¿½16g
+        float   acc_sens = 2049.18f;    // ï¿½ï¿½Ó¦ ï¿½ï¿½16g ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì£ï¿½ï¿½Ö¶ï¿½ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¼ï¿½ï¿½ï¿½
         IMU660RC_WriteRegs(IMU660RC_CTRL8, acc_range_val);
         imu_cfg.acc_fs = acc_range_val;
         imu_cfg.acc_sensitivity = acc_sens;
     }
 
-    // 4. ÅäÖÃÍÓÂÝÒÇÁ¿³Ì (Ð´Èë CTRL6)
-    //    ¿ÉÑ¡ ¡À125/¡À250/¡À500/¡À1000/¡À2000/¡À4000 dps£¬ÕâÀïÄ¬ÈÏÓÃ ¡À2000dps
+    // 4. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (Ð´ï¿½ï¿½ CTRL6)
+    //    ï¿½ï¿½Ñ¡ ï¿½ï¿½125/ï¿½ï¿½250/ï¿½ï¿½500/ï¿½ï¿½1000/ï¿½ï¿½2000/ï¿½ï¿½4000 dpsï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½2000dps
     {
-        uint8_t gyro_range_val = 0x04;  // 0x00:¡À125  0x01:¡À250  0x02:¡À500  0x03:¡À1000  0x04:¡À2000  0x0C:¡À4000
-        float   gyro_sens = 14.2857f;   // ¶ÔÓ¦ ¡À2000dps µÄÁéÃô¶È
+        uint8_t gyro_range_val = 0x04;  // 0x00:ï¿½ï¿½125  0x01:ï¿½ï¿½250  0x02:ï¿½ï¿½500  0x03:ï¿½ï¿½1000  0x04:ï¿½ï¿½2000  0x0C:ï¿½ï¿½4000
+        float   gyro_sens = 14.2857f;   // ï¿½ï¿½Ó¦ ï¿½ï¿½2000dps ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         IMU660RC_WriteRegs(IMU660RC_CTRL6, gyro_range_val);
         imu_cfg.gyro_fs = gyro_range_val;
         imu_cfg.gyro_sensitivity = gyro_sens;
     }
 
-    // 5. ÉèÖÃ´«¸ÐÆ÷¹¤×÷Ä£Ê½ÓëÊä³öÆµÂÊ
-    IMU660RC_WriteRegs(IMU660RC_CTRL1, 0x15);   // ¼ÓËÙ¶È¼Æ£º¸ß¾«¶ÈÄ£Ê½£¬208 Hz (¿É¸ù¾ÝÐèÒªµ÷)
-    IMU660RC_WriteRegs(IMU660RC_CTRL2, 0x18);   // ÍÓÂÝÒÇ£º  ¸ß¾«¶ÈÄ£Ê½£¬208 Hz
+    // 5. ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½Æµï¿½ï¿½
+    IMU660RC_WriteRegs(IMU660RC_CTRL1, 0x15);   // ï¿½ï¿½ï¿½Ù¶È¼Æ£ï¿½ï¿½ß¾ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½208 Hz (ï¿½É¸ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½)
+    IMU660RC_WriteRegs(IMU660RC_CTRL2, 0x18);   // ï¿½ï¿½ï¿½ï¿½ï¿½Ç£ï¿½  ï¿½ß¾ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½208 Hz
 
-    // 6. ¿ªÆôµÍÍ¨ÂË²¨ (LPF1 / LPF2)
-    IMU660RC_WriteRegs(IMU660RC_CTRL7, 0x01);   // Ê¹ÄÜÍÓÂÝÒÇ LPF1
-    IMU660RC_WriteRegs(IMU660RC_CTRL9, 0x08);   // Ê¹ÄÜ¼ÓËÙ¶È¼Æ LPF2
+    // 6. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨ï¿½Ë²ï¿½ (LPF1 / LPF2)
+    IMU660RC_WriteRegs(IMU660RC_CTRL7, 0x01);   // Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ LPF1
+    IMU660RC_WriteRegs(IMU660RC_CTRL9, 0x08);   // Ê¹ï¿½Ü¼ï¿½ï¿½Ù¶È¼ï¿½ LPF2
 
     printf("IMU660RC_Init() ok\r\n");
 }
 
 // void IMU660RC_Init_SFLP(void)
 // {
-//     // »ù´¡³õÊ¼»¯²»±ä...
+//     // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½...
 //     IMU660RC_Init();
 //
-//     // ½øÈëÇ¶Èë¹¦ÄÜÅäÖÃ
+//     // ï¿½ï¿½ï¿½ï¿½Ç¶ï¿½ë¹¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //     IMU660RC_WriteRegs(CTRL5_C, 0x80);            // FUNC_CFG_ACCESS = 0x80
 //     IMU660RC_WriteRegs(PAGE_SEL, 0x80);        // PAGE_SEL = 0x80
-//     IMU660RC_WriteRegs(PAGE_RW, 0x01);         // ÏÈ½øÈëÖ÷Ç¶ÈëÒ³ (ÖØÒª: ÕâÀï¿ÉÄÜÐèÒª 0x01)
-//     // Ð´ÈëÇ¶Èë¹¦ÄÜ¼Ä´æÆ÷
-//     IMU660RC_WriteRegs(EMB_FUNC_INIT_A, 0x01);// ¸´Î» SFLP
+//     IMU660RC_WriteRegs(PAGE_RW, 0x01);         // ï¿½È½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¶ï¿½ï¿½Ò³ (ï¿½ï¿½Òª: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òª 0x01)
+//     // Ð´ï¿½ï¿½Ç¶ï¿½ë¹¦ï¿½Ü¼Ä´ï¿½ï¿½ï¿½
+//     IMU660RC_WriteRegs(EMB_FUNC_INIT_A, 0x01);// ï¿½ï¿½Î» SFLP
 //     HAL_Delay(1);
-//     IMU660RC_WriteRegs(EMB_FUNC_CFG, 0x30);    // 0x30, ²»ÊÇ 0x20
-//     IMU660RC_WriteRegs(EMB_FUNC_EN_A, 0x02);   // 0x02, ²»ÊÇ 0x01
+//     IMU660RC_WriteRegs(EMB_FUNC_CFG, 0x30);    // 0x30, ï¿½ï¿½ï¿½ï¿½ 0x20
+//     IMU660RC_WriteRegs(EMB_FUNC_EN_A, 0x02);   // 0x02, ï¿½ï¿½ï¿½ï¿½ 0x01
 //     IMU660RC_WriteRegs(SFLP_ODR, 0x5B);        // 120Hz (0x43 | (3<<3))
 //
-//     IMU660RC_WriteRegs(0x0E, 0x80);          // INT2_CTRL: Ê¹ÄÜ INT2 Êä³öÊý¾Ý¾ÍÐ÷
-//     IMU660RC_WriteRegs(CTRL4_C, 0x08);       // CTRL4_C: Ê¹ÄÜ SFLP Êý¾Ý¾ÍÐ÷ÐÅºÅÂ·ÓÉµ½ INT2
-//     IMU660RC_WriteRegs(CTRL1_XL, 0x16);      // ¼ÓËÙ¶È¼Æ ODR ¸ÄÎª 120Hz (Æ¥Åä SFLP)
+//     IMU660RC_WriteRegs(0x0E, 0x80);          // INT2_CTRL: Ê¹ï¿½ï¿½ INT2 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾ï¿½ï¿½ï¿½
+//     IMU660RC_WriteRegs(CTRL4_C, 0x08);       // CTRL4_C: Ê¹ï¿½ï¿½ SFLP ï¿½ï¿½ï¿½Ý¾ï¿½ï¿½ï¿½ï¿½Åºï¿½Â·ï¿½Éµï¿½ INT2
+//     IMU660RC_WriteRegs(CTRL1_XL, 0x16);      // ï¿½ï¿½ï¿½Ù¶È¼ï¿½ ODR ï¿½ï¿½Îª 120Hz (Æ¥ï¿½ï¿½ SFLP)
 //     IMU660RC_WriteRegs(CTRL2_G,  0x16);
-//     // ÍË³ö
+//     // ï¿½Ë³ï¿½
 //     IMU660RC_WriteRegs(PAGE_RW, 0x00);
 //     IMU660RC_WriteRegs(PAGE_SEL, 0x00);
 //     IMU660RC_WriteRegs(CTRL5_C, 0x00);
-//     printf("IMU660RC_Init_SFLP() ³É¹¦\n");
+//     printf("IMU660RC_Init_SFLP() ï¿½É¹ï¿½\n");
 // }
 
 void IMU660RC_ReadAcc(void)
 {
     uint8_t buf[6];
-    IMU660RC_ReadMultiRegs(IMU660RC_OUTX_L_A, buf, 6);  // Ê¹ÓÃÕýÈ·µÄÅúÁ¿¶Áº¯Êý
+    IMU660RC_ReadMultiRegs(IMU660RC_OUTX_L_A, buf, 6);  // Ê¹ï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     imu_data.ax_raw = (int16_t)((buf[1]<<8) | buf[0]);
     imu_data.ay_raw = (int16_t)((buf[3]<<8) | buf[2]);
     imu_data.az_raw = (int16_t)((buf[5]<<8) | buf[4]);
@@ -178,23 +172,23 @@ void IMU660RC_WriteRegs(uint8_t reg,uint8_t data)
 //     uint16_t buff[4];
 //     uint8_t *buff_ptr = (uint8_t *)buff;
 //
-//     // ½øÈëÇ¶Èë¹¦ÄÜÒ³
+//     // ï¿½ï¿½ï¿½ï¿½Ç¶ï¿½ë¹¦ï¿½ï¿½Ò³
 //     IMU660RC_WriteRegs(0x01, 0x80);      // FUNC_CFG_ACCESS
 //     IMU660RC_WriteRegs(PAGE_RW, 0x20);   // Ð´ 0x20
 //     IMU660RC_WriteRegs(PAGE_SEL, 0x31);  // Ð´ 0x31
 //
 //     for(i = 0; i < 4; i++) {
 //         IMU660RC_WriteRegs(0x08, (uint8_t)(0x4C + i*2 + 0));
-//         buff_ptr[i*2 + 0] = IMU660RC_ReadRegs(0x09);   // µÍ×Ö½Ú
+//         buff_ptr[i*2 + 0] = IMU660RC_ReadRegs(0x09);   // ï¿½ï¿½ï¿½Ö½ï¿½
 //         IMU660RC_WriteRegs(0x08, (uint8_t)(0x4C + i*2 + 1));
-//         buff_ptr[i*2 + 1] = IMU660RC_ReadRegs(0x09);   // ¸ß×Ö½Ú
+//         buff_ptr[i*2 + 1] = IMU660RC_ReadRegs(0x09);   // ï¿½ï¿½ï¿½Ö½ï¿½
 //     }
 //
-//     // ÍË³öÇ¶ÈëÒ³Ãæ
+//     // ï¿½Ë³ï¿½Ç¶ï¿½ï¿½Ò³ï¿½ï¿½
 //     IMU660RC_WriteRegs(PAGE_RW, 0x00);
 //     IMU660RC_WriteRegs(0x01, 0x00);
 //
-//     // °ë¾«¶È×ª¸¡µã + ¹éÒ»»¯
+//     // ï¿½ë¾«ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ + ï¿½ï¿½Ò»ï¿½ï¿½
 //     float temp[4];
 //     *(uint32_t*)(&temp[0]) = fp16_to_float(buff[0]);
 //     *(uint32_t*)(&temp[1]) = fp16_to_float(buff[1]);
@@ -203,7 +197,7 @@ void IMU660RC_WriteRegs(uint8_t reg,uint8_t data)
 //
 //     float n = sqrtf(temp[0]*temp[0] + temp[1]*temp[1] + temp[2]*temp[2] + temp[3]*temp[3]);
 //     if (n > 0.001f) {
-//         n = temp[3] < 0.0f ? -n : n;   // Öð·É¿âµÄÌØÊâ´¦Àí
+//         n = temp[3] < 0.0f ? -n : n;   // ï¿½ï¿½É¿ï¿½ï¿½ï¿½ï¿½ï¿½â´¦ï¿½ï¿½
 //         imu_data.q[0] = temp[1] / n;
 //         imu_data.q[1] = temp[2] / n;
 //         imu_data.q[2] = temp[0] / n;
@@ -256,7 +250,7 @@ static void NormalizeQuaternion(void)
 
 uint8_t IMU660RC_ReadRegs(uint8_t reg)
 {
-    uint8_t tx[2] = {reg|0x80,0xFF};//tx[0]1ºÅÎ»Îª1ÊÇ¶Á¼Ä´æÆ÷ºóÆßÎ»ÎªµØÖ· tx[1]ÎªÌî³äÒ²¿ÉÒÔÖ»ÓÃÒ»¸ö
+    uint8_t tx[2] = {reg|0x80,0xFF};//tx[0]1ï¿½ï¿½Î»Îª1ï¿½Ç¶ï¿½ï¿½Ä´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»Îªï¿½ï¿½Ö· tx[1]Îªï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½Ò»ï¿½ï¿½
     uint8_t rx[2] = {0,0};
     SPI_IMU660RC_CS_LOW();
     HAL_SPI_TransmitReceive(&hspi2,tx,rx,2,1000);
@@ -264,7 +258,7 @@ uint8_t IMU660RC_ReadRegs(uint8_t reg)
     return rx[1];
 }
 
-uint16_t IMU660RC_ReadReg16b(uint8_t reg_low)//ÊäÈëµÄÊÇµÍÎ»µØÖ·,+1Îª¸ßÎ»
+uint16_t IMU660RC_ReadReg16b(uint8_t reg_low)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Çµï¿½Î»ï¿½ï¿½Ö·,+1Îªï¿½ï¿½Î»
 {
     uint8_t data_l=IMU660RC_ReadRegs(reg_low);
     uint8_t data_h=IMU660RC_ReadRegs(reg_low+1);
@@ -273,14 +267,14 @@ uint16_t IMU660RC_ReadReg16b(uint8_t reg_low)//ÊäÈëµÄÊÇµÍÎ»µØÖ·,+1Îª¸ßÎ»
 void IMU660RC_ReadMultiRegs(uint8_t reg, uint8_t *buf, uint8_t len) {
     uint8_t tx[len + 1];
     tx[0] = reg | 0x80;
-    for (int i = 0; i < len; i++) tx[i + 1] = 0xFF;   // dummy ×Ö½Ú
+    for (int i = 0; i < len; i++) tx[i + 1] = 0xFF;   // dummy ï¿½Ö½ï¿½
 
     uint8_t rx[len + 1];
     SPI_IMU660RC_CS_LOW();
     HAL_SPI_TransmitReceive(&hspi2, tx, rx, len + 1, 1000);
     SPI_IMU660RC_CS_HIGH();
 
-    memcpy(buf, &rx[1], len);   // ºöÂÔµÚÒ»¸ö½ÓÊÕ×Ö½Ú
+    memcpy(buf, &rx[1], len);   // ï¿½ï¿½ï¿½Ôµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½ï¿½
 }
 
 void quat_to_euler(float q[4], float *roll, float *pitch, float *yaw)
@@ -352,8 +346,8 @@ static uint32_t fp16_to_float(uint16_t h)
     }
 }
 /*
- * @brief Mahony »¥²¹ÂË²¨×ËÌ¬¸üÐÂ
- * @param dt ¾àÀëÉÏ´Î¸üÐÂµÄÊ±¼ä£¨Ãë£©£¬Èô²»´«ÔòÄÚ²¿ÓÃ HAL_GetTick ¼ÆËã
+ * @brief Mahony ï¿½ï¿½ï¿½ï¿½ï¿½Ë²ï¿½ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½ï¿½
+ * @param dt ï¿½ï¿½ï¿½ï¿½ï¿½Ï´Î¸ï¿½ï¿½Âµï¿½Ê±ï¿½ä£¨ï¿½ë£©ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ HAL_GetTick ï¿½ï¿½ï¿½ï¿½
  */
 void IMU660RC_AttitudeUpdate(float dt)
 {
@@ -374,20 +368,20 @@ void IMU660RC_AttitudeUpdate(float dt)
         return;
     }
 
-    /* 1. ¶ÁÈ¡ÍÓÂÝÒÇ */
+    /* 1. ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
     IMU660RC_ReadGyro();
 
     gx = imu_data.gx - gyro_bias[0];   // dps
     gy = imu_data.gy - gyro_bias[1];
     gz = imu_data.gz - gyro_bias[2];
 
-    /* 2. ¶ÁÈ¡¼ÓËÙ¶È */
+    /* 2. ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ù¶ï¿½ */
     IMU660RC_ReadAcc();
 
     /*
-       ¼ÓËÙ¶ÈµÍÍ¨ÂË²¨¡£
-       0.90 Ô½´óÔ½ÎÈµ«ÏìÓ¦Ô½Âý£»
-       0.80 ÏìÓ¦¿ìÒ»µãµ«¸ü¶¶¡£
+       ï¿½ï¿½ï¿½Ù¶Èµï¿½Í¨ï¿½Ë²ï¿½ï¿½ï¿½
+       0.90 Ô½ï¿½ï¿½Ô½ï¿½Èµï¿½ï¿½ï¿½Ó¦Ô½ï¿½ï¿½ï¿½ï¿½
+       0.80 ï¿½ï¿½Ó¦ï¿½ï¿½Ò»ï¿½ãµ«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     */
     acc_lpf[0] = 0.90f * acc_lpf[0] + 0.10f * imu_data.ax;
     acc_lpf[1] = 0.90f * acc_lpf[1] + 0.10f * imu_data.ay;
@@ -400,9 +394,9 @@ void IMU660RC_AttitudeUpdate(float dt)
     acc_norm = sqrtf(ax * ax + ay * ay + az * az);
 
     /*
-       ¾²Ö¹ÅÐ¶Ï£º
-       1. ¼ÓËÙ¶ÈÄ£³¤½Ó½ü 1g
-       2. ÈýÖá½ÇËÙ¶È¶¼ºÜÐ¡
+       ï¿½ï¿½Ö¹ï¿½Ð¶Ï£ï¿½
+       1. ï¿½ï¿½ï¿½Ù¶ï¿½Ä£ï¿½ï¿½ï¿½Ó½ï¿½ 1g
+       2. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È¶ï¿½ï¿½ï¿½Ð¡
     */
     if ((acc_norm > 0.95f && acc_norm < 1.05f) &&
         (AbsFloat(gx) < 1.0f) &&
@@ -417,8 +411,8 @@ void IMU660RC_AttitudeUpdate(float dt)
     }
 
     /*
-       ¾²Ö¹Ê±ÔÚÏßÐÞÕýÍÓÂÝÒÇÁãÆ«¡£
-       ×¢Òâ£ºÕâÀïÖ»ÄÜÂýÂýÐÞ£¬²»ÄÜÐÞÌ«¿ì¡£
+       ï¿½ï¿½Ö¹Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½
+       ×¢ï¿½â£ºï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Þ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì«ï¿½ì¡£
     */
     if (is_static)
     {
@@ -432,8 +426,8 @@ void IMU660RC_AttitudeUpdate(float dt)
     }
 
     /*
-       Ð¡½ÇËÙ¶ÈËÀÇø¡£
-       ·ÀÖ¹¾²Ö¹Ê±Î¢Ð¡ÔëÉù²»¶Ï»ý·Ö¡£
+       Ð¡ï¿½ï¿½ï¿½Ù¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+       ï¿½ï¿½Ö¹ï¿½ï¿½Ö¹Ê±Î¢Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï»ï¿½ï¿½Ö¡ï¿½
     */
     if (AbsFloat(gx) < 0.05f) gx = 0.0f;
     if (AbsFloat(gy) < 0.05f) gy = 0.0f;
@@ -450,8 +444,8 @@ void IMU660RC_AttitudeUpdate(float dt)
     q3 = att_q[3];
 
     /*
-       ¼ÓËÙ¶ÈÄ£³¤½Ó½ü 1g Ê±²ÅÓÃËüÐÞÕý×ËÌ¬¡£
-       Ð¡³µ¼ÓËÙ¡¢Õð¶¯¡¢×²»÷Ê±£¬²»ÒªÇ¿ÐÐÏàÐÅ¼ÓËÙ¶È¡£
+       ï¿½ï¿½ï¿½Ù¶ï¿½Ä£ï¿½ï¿½ï¿½Ó½ï¿½ 1g Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¬ï¿½ï¿½
+       Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½Ù¡ï¿½ï¿½ð¶¯¡ï¿½×²ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ÒªÇ¿ï¿½ï¿½ï¿½ï¿½ï¿½Å¼ï¿½ï¿½Ù¶È¡ï¿½
     */
     if (acc_norm > 0.85f && acc_norm < 1.15f)
     {
@@ -459,19 +453,19 @@ void IMU660RC_AttitudeUpdate(float dt)
         ay /= acc_norm;
         az /= acc_norm;
 
-        /* µ±Ç°×ËÌ¬¹À¼Æ³öÀ´µÄÖØÁ¦·½Ïò */
+        /* ï¿½ï¿½Ç°ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
         vx = 2.0f * (q1 * q3 - q0 * q2);
         vy = 2.0f * (q0 * q1 + q2 * q3);
         vz = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
 
-        /* ²æ³ËÎó²î */
+        /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
         ex = ay * vz - az * vy;
         ey = az * vx - ax * vz;
         ez = ax * vy - ay * vx;
 
         /*
-           »ý·ÖÐÞÕý¡£
-           ×¢Òâ£º6Öá IMU Ã»ÓÐ´ÅÁ¦¼Æ£¬ez ¶Ô yaw µÄ¾ø¶ÔÐÞÕýÄÜÁ¦ºÜÈõ¡£
+           ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+           ×¢ï¿½â£º6ï¿½ï¿½ IMU Ã»ï¿½Ð´ï¿½ï¿½ï¿½ï¿½Æ£ï¿½ez ï¿½ï¿½ yaw ï¿½Ä¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         */
         integral_fb[0] += MAHONY_KI * ex * dt;
         integral_fb[1] += MAHONY_KI * ey * dt;
@@ -486,7 +480,7 @@ void IMU660RC_AttitudeUpdate(float dt)
         gz += MAHONY_KP * ez + integral_fb[2];
     }
 
-    /* ËÄÔªÊý»ý·Ö */
+    /* ï¿½ï¿½Ôªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
     q_dot0 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
     q_dot1 = 0.5f * ( q0 * gx + q2 * gz - q3 * gy);
     q_dot2 = 0.5f * ( q0 * gy - q1 * gz + q3 * gx);
@@ -509,11 +503,11 @@ void IMU660RC_AttitudeUpdate(float dt)
 
 
 /**
- * @brief Mahony »¥²¹ÂË²¨×ËÌ¬¸üÐÂ
- * @param dt ¾àÀëÉÏ´Î¸üÐÂµÄÊ±¼ä¼ä¸ô£¨Ãë£©
+ * @brief Mahony ï¿½ï¿½ï¿½ï¿½ï¿½Ë²ï¿½ï¿½ï¿½Ì¬ï¿½ï¿½ï¿½ï¿½
+ * @param dt ï¿½ï¿½ï¿½ï¿½ï¿½Ï´Î¸ï¿½ï¿½Âµï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë£©
  */
 /**
- * @brief »¥²¹ÂË²¨×ËÌ¬³õÊ¼»¯£¨»ñÈ¡ÁãÆ«²¢ÉèÖÃ³õÊ¼ËÄÔªÊý£©
+ * @brief ï¿½ï¿½ï¿½ï¿½ï¿½Ë²ï¿½ï¿½ï¿½Ì¬ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¡ï¿½ï¿½Æ«ï¿½ï¿½ï¿½ï¿½ï¿½Ã³ï¿½Ê¼ï¿½ï¿½Ôªï¿½ï¿½ï¿½ï¿½
  */
 void IMU660RC_AttitudeInit(void)
 {
@@ -540,7 +534,7 @@ void IMU660RC_AttitudeInit(void)
 
     HAL_Delay(200);
 
-    /* ÍÓÂÝÒÇÁãÆ« */
+    /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ« */
     for (i = 0; i < 800; i++)
     {
         IMU660RC_ReadGyro();
@@ -556,7 +550,7 @@ void IMU660RC_AttitudeInit(void)
     gyro_bias[1] = gy_sum / 800.0f;
     gyro_bias[2] = gz_sum / 800.0f;
 
-    /* ¼ÓËÙ¶È³õÊ¼»¯ roll / pitch */
+    /* ï¿½ï¿½ï¿½Ù¶È³ï¿½Ê¼ï¿½ï¿½ roll / pitch */
     for (i = 0; i < 200; i++)
     {
         IMU660RC_ReadAcc();

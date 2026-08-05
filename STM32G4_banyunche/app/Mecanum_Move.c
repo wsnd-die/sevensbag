@@ -1,11 +1,4 @@
-#include "Mecanum_Move.h"
-#include "stm32g4xx.h"
-#include "emm_5v.h"
-#include "cmsis_os.h"
-
-#include <limits.h>
-#include <math.h>
-#include <stddef.h>
+#include "Common_used.h"
 
 #define MECANUM_SYNC_ADDR   0U
 #define MECANUM_EPSILON     1.0e-7f

@@ -1,10 +1,4 @@
-#include "stm32g4xx.h"
-#include "fdcan.h"
-#include "mecanum.h"
-#include "arm_math.h"
-#include "can.h"
-#include "cmsis_os.h"
-#include <stdio.h>
+#include "Common_used.h"
 
 /**
   * @brief  麦轮单轮转速转换
@@ -259,9 +253,7 @@ uint8_t Mecanum_Read_AllPositions(EncoderData *enc, uint32_t timeout_ms)
 
 extern void Send_commandmotor(MecanumResult *data);
 
-/* TBOP 位置 (来自 Uart2_tbop10.c) */
-typedef struct { float xdata, ydata; } TBData_t;
-extern TBData_t TB_position;
+/* TBData_t / TB_position 由 uart2_tbop10.h 提供 */
 
 OdometryCalib g_calib = {.state = CALIB_IDLE};
 

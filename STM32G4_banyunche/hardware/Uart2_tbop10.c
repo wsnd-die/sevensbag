@@ -1,5 +1,4 @@
-#include "uart2_tbop10.h"
-#include "usart.h"
+#include "Common_used.h"
 
 TBData_t TB_position = {0};
 TBData_t TB_speed = {0};
