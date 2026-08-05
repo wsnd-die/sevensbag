@@ -133,7 +133,11 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+  Sem_Act_M           = xSemaphoreCreateBinary();
+  Sem_Act_Steer       = xSemaphoreCreateBinary();
+  Sem_Act_FollowLineL = xSemaphoreCreateBinary();
+  Sem_Act_FollowLineR = xSemaphoreCreateBinary();
+  Sem_Act_Navigat     = xSemaphoreCreateBinary();
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -191,104 +195,70 @@ void StartDefaultTask(void *argument)
    cmd= task_recive();
 
 		if(cmd.k==1)
+		{
+			/* ============================================================
+			 * 三态状态机: IDLE / Task1 / Task2
+			 *
+			 *  状态入口:
+			 *    Event_LinFolL  → Task1 (圆柱: 循迹左 + 拾取颜色)
+			 *    Event_LinFolR  → Task2 (奖杯: 循迹右 + 导航 + 放置 + 回家)
+			 *
+			 *  同状态重复 → 跳过
+			 *  STOP          → IDLE
+			 *
+			 *  子事件不改变状态, 在 current_task 上下文中执行
+			 * ============================================================ */
+			g_last_cmd = cmd;
+
+			switch(cmd.Mode)
 			{
-				/* ============================================================
-				 * 任务互斥规则
-				 * ============================================================
-				 *
-				 *  专属事件 (LinFolL/ LinFolR/ GoHome):
-				 *    → 参与互斥，同组跳过，不同组切换 current_task
-				 *
-				 *  共享事件 (Navigation/ QRCode/ FindCircle/ PickUp/
-				 *            PlaceDown/ STEERING_ROTATE):
-				 *    → 不参与互斥，始终执行，不改变 current_task
-				 *    → 可与专属事件并发（如: 循迹 + 拾取 同时进行）
-				 *
-				 *  STOP:
-				 *    → 始终执行，不参与互斥
-				 */
-				Current_Task_t target;
-				uint8_t flag_exclusive;  /* 1=专属事件(需互斥)  0=共享/停止(始终执行) */
+			/* ---- 状态入口 ---- */
+			case Event_LinFolL:
+				if (current_task == Event_Task1) break;
+				current_task = Event_Task1;
+				xSemaphoreGive(Sem_Act_FollowLineL);
+				break;
 
-				/* --- 第一遍：确定目标 + 是否专属 --- */
-				flag_exclusive = 1;
-				switch(cmd.Mode)
-					{
-					/* 专属事件 */
-					case Event_LinFolL:    target = Event_Task1; break;
-					case Event_LinFolR:    target = Event_Task2; break;
-					case Event_GoHome:     target = Event_Task2; break;
+			case Event_LinFolR:
+				if (current_task == Event_Task2) break;
+				current_task = Event_Task2;
+				xSemaphoreGive(Sem_Act_FollowLineR);
+				break;
 
-					/* 共享事件 — 始终执行，继承上下文 */
-					case Event_Navigation:
-					case Event_QRCode:
-					case Event_FindCircle:
-					case Event_PickUp:
-					case Event_PlaceDown:
-					case Event_STEERING_ROTATE:
-						flag_exclusive = 0;
-						target = (current_task != Event_IDLE)
-						         ? current_task
-						         : Event_IDLE;
-						break;
+			/* ---- 子事件 (不改变状态) ---- */
+			case Event_Navigation:
+				xSemaphoreGive(Sem_Act_Navigat);
+				break;
 
-					/* 停止 — 始终执行 */
-					case Event_STOP:
-						flag_exclusive = 0;
-						target = Event_IDLE;
-						break;
+			case Event_GoHome:
+				current_task = Event_Task2;
+				xSemaphoreGive(Sem_Act_Navigat);
+				break;
 
-					default:
-						flag_exclusive = 0;
-						target = Event_IDLE;
-						break;
-					}
+			case Event_PickUp:
+			case Event_PlaceDown:
+			case Event_STEERING_ROTATE:
+				xSemaphoreGive(Sem_Act_Steer);
+				break;
 
-				/* 互斥：仅专属事件 + 同组已运行 → 跳过 */
-				if (flag_exclusive && target == current_task && target != Event_IDLE) {
-					osDelay(30);
-					continue;
-				}
+			case Event_QRCode:
+				/* TODO: K230 扫码 → SetQR(idx) */
+				break;
 
-				/* 切换任务状态（仅专属事件触发切换） */
-				if (flag_exclusive && target != Event_IDLE) {
-					current_task = target;
-				}
+			case Event_FindCircle:
+				/* TODO: K230 视觉找圆 → 导航到圆 */
+				break;
 
-				/* --- 第二遍：分发信号量（所有事件都执行） --- */
-				g_last_cmd = cmd;
-				switch(cmd.Mode)
-					{
-					case Event_Navigation:
-					case Event_GoHome:
-						xSemaphoreGive(Sem_Act_Navigat);
-						break;
-					case Event_LinFolL:
-						xSemaphoreGive(Sem_Act_FollowLineL);
-						break;
-					case Event_LinFolR:
-						xSemaphoreGive(Sem_Act_FollowLineR);
-						break;
-					case Event_STEERING_ROTATE:
-					case Event_PickUp:
-					    xSemaphoreGive(Sem_Act_Steer);
-					case Event_PlaceDown:
-						xSemaphoreGive(Sem_Act_Steer);
-						break;
-					case Event_QRCode:
-					/*TODO:二维码逻辑处理需要增加，最好是跟我颜色识别的联动好*/
-					case Event_FindCircle:
-						/* TODO: 触发 K230 视觉识别 / 找圆 */
-						break;
-					case Event_STOP:
+			/* ---- 停止 ---- */
+			case Event_STOP:
+				current_task = Event_IDLE;
+				break;
 
-						/* TODO: 停止所有正在执行的任务 */
-						break;
-					default:
-						break;
-					}
+			default:
+				break;
 			}
-			 osDelay(30);
+		}
+		 osDelay(30);
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -414,7 +384,6 @@ void Uart1M_task(void *argument)
   /* Infinite loop */
   for(;;)
   {
-  	Circle_Follow();
   }
   /* USER CODE END Uart1M_task */
 }
@@ -429,27 +398,12 @@ void Uart1M_task(void *argument)
 void Uart3K230_task(void *argument)
 {
   /* USER CODE BEGIN Uart3Yuyin_task */
-	uint8_t i=0;
   /* Infinite loop */
   for(;;)
   {
-		if(i==0)
-		{
-			xSemaphoreTake(Sem_Act_FollowLineL, portMAX_DELAY);
-
-		}
-
-		else
-		{
-			xSemaphoreTake(Sem_Act_FollowLineR, portMAX_DELAY);
 
 
-		}
-
-
-
-
-    osDelay(1);
+    osDelay(10);
   }
   /* USER CODE END Uart3K230_task */
 }
