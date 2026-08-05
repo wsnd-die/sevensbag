@@ -46,7 +46,6 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/Circle_base.c
         hardware/Circle_base.h
         app/banyuntask.c
-        app/banyuntask.c
         hardware/ColorIdentif.c
 )
 
@@ -105,7 +104,7 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
-
+    m
     # Add user defined libraries
 )
 

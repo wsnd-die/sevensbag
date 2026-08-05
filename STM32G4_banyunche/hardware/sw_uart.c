@@ -19,11 +19,7 @@
  * 内部宏
  * ================================================================ */
 
-/* 位延时（CPU 周期），避免 μs 整数除法的截断误差 */
-static uint32_t sw_uart_bit_cycles(void)
-{
-    return SystemCoreClock / SW_UART_BAUDRATE;
-}
+#define SW_UART_BIT_US       (1000000UL / SW_UART_BAUDRATE)
 
 /* EXTI 中断线 */
 #define SW_UART_EXTI_LINE    EXTI_LINE_6
@@ -49,6 +45,13 @@ static volatile uint8_t  sw_uart_rx_data;
 static volatile uint8_t  sw_uart_rx_bit_idx;
 static volatile bool     sw_uart_rx_active = false;
 
+/* DEBUG: RX 诊断计数器 (pyOCD 可读) */
+volatile uint32_t sw_uart_dbg_exti = 0;   /* EXTI ISR 触发次数 */
+volatile uint32_t sw_uart_dbg_start = 0;  /* 起始位确认次数 */
+volatile uint32_t sw_uart_dbg_tim7 = 0;   /* TIM7 ISR 触发次数 */
+volatile uint32_t sw_uart_dbg_push = 0;   /* 成功接收字节数 */
+volatile uint32_t sw_uart_dbg_active = 0; /* rx_active 被跳过次数 */
+
 /* ================================================================
  * 延时（仅 TX 路径使用）
  *
@@ -70,6 +73,11 @@ static void SW_UART_DelayCycles(uint32_t cycles)
     );
 }
 
+static void SW_UART_DelayUs(uint32_t us)
+{
+    uint32_t cycles = us * (SystemCoreClock / 1000000UL);
+    SW_UART_DelayCycles(cycles);
+}
 
 /* ================================================================
  * GPIO 基础操作
@@ -111,17 +119,18 @@ static void SW_UART_RxPush(uint8_t byte)
 
 void SW_UART_Init(void)
 {
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-
     /* ---- 1. GPIO 时钟 ---- */
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
     /* ---- 2. TX (PB7) 推挽输出 ---- */
-    GPIO_InitStruct.Pin   = SW_UART_TX_PIN;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(SW_UART_TX_PORT, &GPIO_InitStruct);
+    {
+        GPIO_InitTypeDef g = {0};
+        g.Pin   = SW_UART_TX_PIN;
+        g.Mode  = GPIO_MODE_OUTPUT_PP;
+        g.Pull  = GPIO_PULLUP;
+        g.Speed = GPIO_SPEED_FREQ_HIGH;
+        HAL_GPIO_Init(SW_UART_TX_PORT, &g);
+    }
     SW_UART_TX_High();
 
     /* ---- 3. TIM7 时钟使能（必须在 EXTI 中断使能之前！）
@@ -137,18 +146,47 @@ void SW_UART_Init(void)
     HAL_NVIC_SetPriority(SW_UART_TIM_IRQn, 7U, 0U);
     HAL_NVIC_EnableIRQ(SW_UART_TIM_IRQn);
 
-    /* ---- 4. RX (PB6) 上拉输入 + EXTI 下降沿 ---- */
-    GPIO_InitStruct.Pin   = SW_UART_RX_PIN;
-    GPIO_InitStruct.Mode  = GPIO_MODE_IT_FALLING;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    HAL_GPIO_Init(SW_UART_RX_PORT, &GPIO_InitStruct);
+    /* ---- 4. RX (PB6) — 手动配置 EXTI，绕过 HAL 可能的 MODER 误写 ---- */
+    {
+        uint32_t pinpos = 6U;  /* PB6 */
 
-    /* 清除 I2C3 通信残留的 EXTI6 pending 标志，再打开 NVIC */
+        /* 4a. 设 MODER = 00 (输入) */
+        SW_UART_RX_PORT->MODER = (SW_UART_RX_PORT->MODER & ~(3UL << (pinpos * 2U))) | (0UL << (pinpos * 2U));
+        __DSB();
+        sw_uart_dbg_start = SW_UART_RX_PORT->MODER;  /* 存 MODER 值 */
+
+        /* 4b. 上拉 (PUPDR = 01) */
+        SW_UART_RX_PORT->PUPDR = (SW_UART_RX_PORT->PUPDR & ~(3UL << (pinpos * 2U)))
+                                 | (1UL << (pinpos * 2U));
+
+        /* 4c. EXTI 配置: SYSCFG 选通 PB6 → EXTI6 */
+        uint32_t exti_cfg_shift = (pinpos % 4U) * 4U;
+        uint32_t exti_cfg_reg;
+        if (pinpos < 4U) {
+            exti_cfg_reg = SYSCFG->EXTICR[0];
+            exti_cfg_reg &= ~(0xFUL << exti_cfg_shift);
+            exti_cfg_reg |= (1UL << exti_cfg_shift);  /* 1 = PORTB */
+            SYSCFG->EXTICR[0] = exti_cfg_reg;
+        } else if (pinpos < 8U) {
+            exti_cfg_reg = SYSCFG->EXTICR[1];
+            exti_cfg_reg &= ~(0xFUL << exti_cfg_shift);
+            exti_cfg_reg |= (1UL << exti_cfg_shift);
+            SYSCFG->EXTICR[1] = exti_cfg_reg;
+        }
+
+        /* 4d. EXTI 下降沿触发，使能中断 */
+        EXTI->FTSR1 |= (1UL << pinpos);
+        EXTI->RTSR1 &= ~(1UL << pinpos);
+        EXTI->IMR1  |= (1UL << pinpos);
+    }
+
+    /* 清除残留 EXTI6 pending，再打开 NVIC */
     __HAL_GPIO_EXTI_CLEAR_IT(SW_UART_EXTI_LINE);
 
     HAL_NVIC_SetPriority(SW_UART_EXTI_IRQn, 7U, 0U);
     HAL_NVIC_EnableIRQ(SW_UART_EXTI_IRQn);
+
+    sw_uart_dbg_exti = 0xBEEF0001;  /* 标记 SW_UART_Init 已完成 */
 }
 
 /* ================================================================
@@ -165,11 +203,9 @@ void SW_UART_SendByte(uint8_t data)
     primask = __get_PRIMASK();
     __disable_irq();
 
-    uint32_t bit_cycles = sw_uart_bit_cycles();
-
     /* 起始位 */
     SW_UART_TX_Low();
-    SW_UART_DelayCycles(bit_cycles);
+    SW_UART_DelayUs(SW_UART_BIT_US);
 
     /* 数据位 LSB first */
     for (uint8_t i = 0U; i < 8U; i++) {
@@ -178,13 +214,13 @@ void SW_UART_SendByte(uint8_t data)
         } else {
             SW_UART_TX_Low();
         }
-        SW_UART_DelayCycles(bit_cycles);
+        SW_UART_DelayUs(SW_UART_BIT_US);
         data >>= 1U;
     }
 
     /* 停止位 */
     SW_UART_TX_High();
-    SW_UART_DelayCycles(bit_cycles);
+    SW_UART_DelayUs(SW_UART_BIT_US);
 
     /* 恢复中断 */
     if (primask == 0U) {
@@ -240,20 +276,55 @@ uint16_t SW_UART_Available(void)
 
 uint8_t SW_UART_ReadByte(void)
 {
-    if (SW_UART_Available() == 0U) {
-        return 0U;
+    /* 轮询等待至少一字节可用 */
+    uint32_t timeout = 100000;
+    while (SW_UART_Available() == 0U && --timeout) {
+        SW_UART_PollStartBit();
     }
+    if (SW_UART_Available() == 0U) return 0U;
+
     uint8_t byte = sw_uart_rx_buf[sw_uart_rx_tail];
     sw_uart_rx_tail = (sw_uart_rx_tail + 1U) % SW_UART_RX_BUF_SIZE;
     return byte;
 }
 
 /* ================================================================
- * EXTI ISR — 起始位检测，启动 TIM16
+ * RX 轮询 — 替代 EXTI 检测起始位
+ * ================================================================ */
+
+/**
+ * @brief  轮询 PB6，检测 HIGH→LOW 边沿后启动 TIM7 接收
+ */
+void SW_UART_PollStartBit(void)
+{
+    if (sw_uart_rx_active) return;
+
+    /* 检测下降沿: 上次 HIGH + 本次 LOW = 起始位 */
+    static uint8_t last = 1;
+    uint8_t now = (SW_UART_RX_PORT->IDR & SW_UART_RX_PIN) ? 1 : 0;
+
+    if (last && !now) {
+        sw_uart_rx_active   = true;
+        sw_uart_rx_bit_idx  = 0U;
+        sw_uart_rx_data     = 0U;
+
+        /* CNT=0: 首次溢出在 ~8.7μs (1 bit), 采样 D0 中心 */
+        SW_UART_TIM->CNT = 0U;
+        SW_UART_TIM->SR  = ~TIM_SR_UIF;
+        SW_UART_TIM->CR1 |= TIM_CR1_CEN;
+    }
+    last = now;
+}
+
+/* ================================================================
+ * EXTI ISR — 起始位检测，启动 TIM7
  * ================================================================ */
 
 void EXTI9_5_IRQHandler(void)
 {
+    sw_uart_dbg_exti++;  /* 计数器 + 清所有挂起的 EXTI5-9 */
+    EXTI->PR1 = 0x3E0;   /* 清 EXTI5~EXTI9 pending */
+
     if (__HAL_GPIO_EXTI_GET_IT(SW_UART_EXTI_LINE) == 0U) {
         return;
     }
@@ -263,6 +334,8 @@ void EXTI9_5_IRQHandler(void)
     if (SW_UART_RX_Read() != 0U) {
         return;
     }
+
+    sw_uart_dbg_start++;
 
     /*
      * 起始位有效，准备接收。
@@ -278,6 +351,8 @@ void EXTI9_5_IRQHandler(void)
         SW_UART_TIM->CNT = SW_UART_TIM->ARR / 2U;
         SW_UART_TIM->SR  = ~TIM_SR_UIF;
         SW_UART_TIM->CR1 |= TIM_CR1_CEN;
+    } else {
+        sw_uart_dbg_active++;
     }
 }
 
@@ -291,6 +366,8 @@ void TIM7_IRQHandler(void)
         return;
     }
     SW_UART_TIM->SR = ~TIM_SR_UIF;
+
+    sw_uart_dbg_tim7++;
 
     if (!sw_uart_rx_active) {
         SW_UART_TIM->CR1 &= ~TIM_CR1_CEN;
@@ -309,6 +386,7 @@ void TIM7_IRQHandler(void)
         /* 停止位（idx = 8），帧结束 */
         SW_UART_TIM->CR1 &= ~TIM_CR1_CEN;
         sw_uart_rx_active = false;
+        sw_uart_dbg_push++;
         SW_UART_RxPush(sw_uart_rx_data);
     }
 }
