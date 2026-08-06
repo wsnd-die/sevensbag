@@ -172,6 +172,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of IMU_TASK */
   IMU_TASKHandle = osThreadNew(IMU_FUCTION, NULL, &IMU_TASK_attributes);
 
+  SW_UART_Init();
+  Color_CalibLoad();
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
   SW_UART_Init();
