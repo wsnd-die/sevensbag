@@ -181,14 +181,21 @@ void Navigation_TASK(void *argument)
 void Uart1M_task(void *argument)
 {
   /* USER CODE BEGIN Uart1M_task */
-  for(;;) { osDelay(10); }
+  for(;;) { osDelay(500); }
   /* USER CODE END Uart1M_task */
 }
 
 void Uart3K230_task(void *argument)
 {
   /* USER CODE BEGIN Uart3Yuyin_task */
-  for(;;) { osDelay(10); }
+  for(;;) {
+    if (Flag_TBOFdata) {
+      Flag_TBOFdata = 0;
+      printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
+        TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
+    }
+    osDelay(50);
+  }
   /* USER CODE END Uart3K230_task */
 }
 
@@ -241,28 +248,28 @@ void OLED_TASK(void *argument)
 #else
   for(;;)
   {
-		char b[400]; int n = 0;
-
-		/* 实时 RGB + 颜色 */
-		Color_DataTypeDef d;
-		if (Color_ReadData(&d) == HAL_OK) {
-			Color_TypeDef c = Color_Judge(&d);
-			n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
-				d.red, d.green, d.blue, Color_ToString(c));
-		} else {
-			n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
-		}
-
-		/* 校准数据摘要 */
-		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) | ",
-			g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
-		for (int i = 0; i < COLOR_COUNT; i++) {
-			Color_Calib_t *c = &g_color_calib[i];
-			n += snprintf(b+n, sizeof(b)-n, "%s(%d,%d,%d,%d) ",
-				Color_ToString((Color_TypeDef)i), c->r, c->g, c->b, c->enabled);
-		}
-		n += snprintf(b+n, sizeof(b)-n, "\r\n");
-		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
+		// char b[400]; int n = 0;
+		//
+		// /* 实时 RGB + 颜色 */
+		// Color_DataTypeDef d;
+		// if (Color_ReadData(&d) == HAL_OK) {
+		// 	Color_TypeDef c = Color_Judge(&d);
+		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
+		// 		d.red, d.green, d.blue, Color_ToString(c));
+		// } else {
+		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
+		// }
+		//
+		// /* 校准数据摘要 */
+		// n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) | ",
+		// 	g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
+		// for (int i = 0; i < COLOR_COUNT; i++) {
+		// 	Color_Calib_t *c = &g_color_calib[i];
+		// 	n += snprintf(b+n, sizeof(b)-n, "%s(%d,%d,%d,%d) ",
+		// 		Color_ToString((Color_TypeDef)i), c->r, c->g, c->b, c->enabled);
+		// }
+		// n += snprintf(b+n, sizeof(b)-n, "\r\n");
+		// HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
 		osDelay(500);
   }
 #endif

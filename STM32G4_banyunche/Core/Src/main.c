@@ -95,19 +95,19 @@ FILE __stdin;
 
 int fputc(int ch, FILE *f)
 {
-    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
     return ch;
 }
 
 int __io_putchar(int ch)
 {
-    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
     return ch;
 }
 
 void _ttywrch(int ch)
 {
-    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
 }
 
 void _sys_exit(int x)
@@ -131,7 +131,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-uint8_t data=0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -164,13 +163,12 @@ uint8_t data=0;
   MX_USART3_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-
+  UART2_StartDMAReceive();
  //    Color_Init();
 //	IMU660RC_Init();
 //	IMU660RC_AttitudeInit();
 	Hal_starte();
 	HAL_Delay(1000);
-	HAL_UART_Transmit_IT(&huart2,(void *)&data,1);
 	
 	
  //  Emm_V5_Vel_Control(1,1,10,10,0);

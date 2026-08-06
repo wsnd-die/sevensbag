@@ -68,8 +68,10 @@ void UART2_FSM_Parse_Byte(uint8_t byte)
     }
 }
 
+volatile uint32_t dbg_rx_cb = 0;  /* CALLBACK å…¥å£è®¡æ•° */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
+    dbg_rx_cb++;
     if (huart->Instance == USART2) {
         for (uint16_t i = 0; i < Size; i++) {
             UART2_FSM_Parse_Byte(dma_rx_buf[i]);
@@ -87,7 +89,7 @@ void UART2_StartDMAReceive(void)
 #endif
 }
 
-/* ¹¹Ôì²¢·¢ËÍµ¥×Ö½ÚÖ¸ÁîÖ¡ */
+/* ï¿½ï¿½ï¿½ì²¢ï¿½ï¿½ï¿½Íµï¿½ï¿½Ö½ï¿½Ö¸ï¿½ï¿½Ö¡ */
 static void UART2_SendCmd(uint8_t cmd)
 {
     uint8_t tx_buf[4];
@@ -100,7 +102,7 @@ static void UART2_SendCmd(uint8_t cmd)
     UART2_Send(tx_buf, idx);
 }
 
-/* Çý¶¯²½½øµç»ú£¨ÂóÂÖµ×ÅÌ£©°´³µÌå×ø±êÆ½ÒÆ£¬²¢µÈ´ý¶¯×÷Íê³É */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½Ì£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ½ï¿½Æ£ï¿½ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 static void Mecanum_MoveBlocking(float body_dx_m, float body_dy_m)
 {
     MecanumMove_t move;
@@ -116,20 +118,20 @@ static void UART2_Send(uint8_t *DATA, uint8_t len)
     HAL_UART_Transmit(&huart2, DATA, len, HAL_MAX_DELAY);
 
     UART2_SendCmd('x');                       /* AA CC x BB DD */
-    osDelay(1000U);                           /* µÈ´ý 1 Ãë */
+    osDelay(1000U);                           /* ï¿½È´ï¿½ 1 ï¿½ï¿½ */
 
-    Mecanum_MoveBlocking(1.0f, 0.0f);         /* Ç°½ø 1m£¨³µÌå +X ÎªÇ°£© */
+    Mecanum_MoveBlocking(1.0f, 0.0f);         /* Ç°ï¿½ï¿½ 1mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ +X ÎªÇ°ï¿½ï¿½ */
 
     UART2_SendCmd('z');                       /* AA CC z BB DD */
-    osDelay(1000U);                           /* µÈ´ý 1 Ãë */
+    osDelay(1000U);                           /* ï¿½È´ï¿½ 1 ï¿½ï¿½ */
 
     UART2_SendCmd('y');                       /* AA CC y BB DD */
-    osDelay(1000U);                           /* µÈ´ý 1 Ãë */
+    osDelay(1000U);                           /* ï¿½È´ï¿½ 1 ï¿½ï¿½ */
 
-    Mecanum_MoveBlocking(0.0f, -1.0f);        /* Ë®Æ½ÏòÓÒ 1m£¨³µÌå +Y Îª×ó£¬¹ÊÓÒÎª -Y£© */
+    Mecanum_MoveBlocking(0.0f, -1.0f);        /* Ë®Æ½ï¿½ï¿½ï¿½ï¿½ 1mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ +Y Îªï¿½ó£¬¹ï¿½ï¿½ï¿½Îª -Yï¿½ï¿½ */
     osDelay(1000U);
 
     UART2_SendCmd('z');                       /* AA CC z BB DD */
-    osDelay(1000U);                           /* µÈ´ý 1 Ãë */
+    osDelay(1000U);                           /* ï¿½È´ï¿½ 1 ï¿½ï¿½ */
 }
 

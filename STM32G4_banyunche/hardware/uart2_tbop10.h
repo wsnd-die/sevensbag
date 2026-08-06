@@ -63,5 +63,6 @@ void UART2_FSM_Parse_Byte(uint8_t byte);
 
 static void UART2_Send(uint8_t *DATA, uint8_t len);
 void UART2_StartDMAReceive(void);
+void UART2_calibrate(void);
 
 #endif

@@ -251,13 +251,22 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
   /* USER CODE BEGIN USART2_MspInit 1 */
-    /* DMA1 & DMAMUX 时钟使能 */
-
-    /* DMA 通道初始化：USART2_RX */
-
-    /* 将 DMA 句柄链接到 UART2 */
-
-    /* DMA 中断使能 */
+    extern DMA_HandleTypeDef hdma_usart2_rx;
+    __HAL_RCC_DMA1_CLK_ENABLE();
+    __HAL_RCC_DMAMUX1_CLK_ENABLE();
+    hdma_usart2_rx.Instance                 = DMA1_Channel2;
+    hdma_usart2_rx.Init.Request             = DMA_REQUEST_USART2_RX;
+    hdma_usart2_rx.Init.Direction           = DMA_PERIPH_TO_MEMORY;
+    hdma_usart2_rx.Init.PeriphInc           = DMA_PINC_DISABLE;
+    hdma_usart2_rx.Init.MemInc              = DMA_MINC_ENABLE;
+    hdma_usart2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_usart2_rx.Init.MemDataAlignment    = DMA_MDATAALIGN_BYTE;
+    hdma_usart2_rx.Init.Mode                = DMA_NORMAL;
+    hdma_usart2_rx.Init.Priority            = DMA_PRIORITY_LOW;
+    HAL_DMA_Init(&hdma_usart2_rx);
+    __HAL_LINKDMA(uartHandle, hdmarx, hdma_usart2_rx);
+    HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* USER CODE END USART2_MspInit 1 */
   }
   else if(uartHandle->Instance==USART3)
@@ -372,5 +381,9 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 }
 
 /* USER CODE BEGIN 1 */
+DMA_HandleTypeDef hdma_usart2_rx;
+/* USER CODE END 1 */
 
+/* USER CODE BEGIN 1 */
+DMA_HandleTypeDef hdma_usart2_rx;
 /* USER CODE END 1 */
