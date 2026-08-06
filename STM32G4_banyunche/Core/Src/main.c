@@ -148,6 +148,7 @@ uint8_t data=0;
 
   /* USER CODE BEGIN SysInit */
 
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
