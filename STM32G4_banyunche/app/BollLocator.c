@@ -216,3 +216,32 @@ void BL_Update(BollLocator *bl)
     MecanumResult motor = Mecanum_Calc_Full(bl->cmd_vx, bl->cmd_vy, 0.0f);
     Send_commandmotor(&motor);
 }
+
+/* ============================================================
+ * 阻塞式移动: 设目标 → 等到达 → 停止
+ * ============================================================ */
+bool BL_MoveTo(BollLocator *bl, float x_mm, float y_mm, uint32_t timeout_ms)
+{
+    if (!bl) return false;
+
+    BL_SetTarget(bl, x_mm, y_mm);
+
+    uint32_t t0 = osKernelGetTickCount();
+
+    while (!BL_Arrived(bl)) {
+        BL_Update(bl);
+        osDelay(10);  /* 100Hz 控制周期 */
+
+        /* 超时检查 */
+        if (timeout_ms > 0) {
+            uint32_t elapsed = osKernelGetTickCount() - t0;
+            if (elapsed >= timeout_ms) {
+                BL_Stop(bl);
+                return false;
+            }
+        }
+    }
+
+    BL_Stop(bl);
+    return true;
+}

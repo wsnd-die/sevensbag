@@ -100,6 +100,15 @@ void BL_Update(BollLocator *bl);
 bool BL_Arrived(const BollLocator *bl);
 
 /**
+ * @brief 阻塞式移动到目标点: 设目标 → 等到达 → 停止
+ * @param x_mm  目标 X 坐标 (mm)
+ * @param y_mm  目标 Y 坐标 (mm)
+ * @param timeout_ms  超时时间 (ms), 0 = 不限
+ * @return true=到达, false=超时
+ */
+bool BL_MoveTo(BollLocator *bl, float x_mm, float y_mm, uint32_t timeout_ms);
+
+/**
  * @brief 立即停止并退出位置环
  */
 void BL_Stop(BollLocator *bl);
