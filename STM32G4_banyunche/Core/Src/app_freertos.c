@@ -96,6 +96,7 @@ void MX_FREERTOS_Init(void) {
   OLEDHandle = osThreadNew(OLED_TASK, NULL, &OLED_attributes);
 
   SW_UART_Init();
+  Color_CalibLoad();
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
@@ -147,17 +148,16 @@ void ctrl_servo_task(void *argument)
   	xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
   	if (g_last_cmd.Mode==Event_PickUp)
   	{
-  		Servo_SetAngle(38); Color_Init();
-  		BlockBasic_TurntableTo(1);
-  		if (BlockBasic_TurntableTo(1)==BLOCK_OK) TT_SetColor(SLOT_1, Color_DetectDominant());
-  		BlockBasic_TurntableTo(2);
-  		if (BlockBasic_TurntableTo(2)==BLOCK_OK) TT_SetColor(SLOT_2, Color_DetectDominant());
-  		BlockBasic_TurntableTo(3);
-  		if (BlockBasic_TurntableTo(3)==BLOCK_OK) TT_SetColor(SLOT_3, Color_DetectDominant());
-  		BlockBasic_TurntableTo(4);
-  		if (BlockBasic_TurntableTo(4)==BLOCK_OK) TT_SetColor(SLOT_4, Color_DetectDominant());
-  		BlockBasic_TurntableTo(5);
-  		if (BlockBasic_TurntableTo(5)==BLOCK_OK) TT_SetColor(SLOT_5, Color_DetectDominant());
+  		Servo_SetAngle(38);
+  		Color_SetLedLevel(5);
+  		HAL_Delay(50);
+  		Color_Init();
+  		HAL_Delay(50);
+  		for (uint8_t slot = 1; slot <= 5; slot++) {
+  			if (BlockBasic_TurntableTo(slot) != BLOCK_OK) continue;
+  			Color_TypeDef color = Color_DetectDominant();
+  			if (color != COLOR_UNKNOWN) TT_SetColor(slot - 1, color);
+  		}
   	}
     osDelay(10);
   }
@@ -193,32 +193,76 @@ void Uart3K230_task(void *argument)
 }
 
 /* USER CODE BEGIN Header_OLED_TASK */
+#define COLOR_CALIB_MODE  0  /* 1=鏍″噯, 0=姝ｅ父 */
+
 void OLED_TASK(void *argument)
 {
   /* USER CODE BEGIN OLED_TASK */
-	HAL_UART_Transmit(&huart1, (uint8_t *)"Color Test\r\n", 13, 100);
-	Color_SetLedLevel(0);//切记是先设置在初始化否则没办法写入寄存器
+	Color_SetLedLevel(5);
 	HAL_Delay(50);
 	Color_Init();
 	HAL_Delay(50);
+	Servo_SetAngle(38);
 
+#if COLOR_CALIB_MODE
+	const char *steps[] = {"EMPTY","RED","GREEN","BLUE","WHITE","BLACK"};
+	const Color_TypeDef colors[] = {COLOR_RED,COLOR_GREEN,COLOR_BLUE,COLOR_WHITE,COLOR_BLACK};
+	char msg[64];
+
+	HAL_UART_Transmit(&huart1, (uint8_t *)"=== EMPTY slot ===\r\n", 20, 100);
+	osDelay(3000);
+	Color_CalibAmbient();
+	HAL_UART_Transmit(&huart1, (uint8_t *)"Ambient OK\r\n", 13, 100);
+
+	for (int i = 0; i < 5; i++) {
+		int n = snprintf(msg, sizeof(msg), "=== Slot %d: %s ===\r\n", i+1, steps[i+1]);
+		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
+
+		if (BlockBasic_TurntableTo(i+1) == BLOCK_OK) {
+			osDelay(2000);
+			Color_DataTypeDef d;
+			if (Color_ReadData(&d) == HAL_OK) {
+				n = snprintf(msg, sizeof(msg), "  R=%d G=%d B=%d\r\n", d.red, d.green, d.blue);
+				HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
+			}
+			Color_Calibrate(colors[i]);
+			n = snprintf(msg, sizeof(msg), "Slot %d OK\r\n", i+1);
+		} else {
+			n = snprintf(msg, sizeof(msg), "Slot %d FAIL\r\n", i+1);
+		}
+		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
+		osDelay(500);
+	}
+	Color_CalibSave();
+	HAL_UART_Transmit(&huart1, (uint8_t *)"=== SAVED ===\r\n", 14, 100);
+
+  for(;;) { osDelay(1000); }
+
+#else
   for(;;)
   {
-		Color_DataTypeDef d;
-		HAL_StatusTypeDef rc = Color_ReadData(&d);
-		Color_TypeDef c = (rc == HAL_OK) ? Color_Judge(&d) : COLOR_UNKNOWN;
+		char b[400]; int n = 0;
 
-		char buf[64];
-		int n = snprintf(buf, sizeof(buf), "R=%d G=%d B=%d -> ", d.red, d.green, d.blue);
-		if      (c == COLOR_RED)   n += snprintf(buf+n, sizeof(buf)-n, "RED\r\n");
-		else if (c == COLOR_GREEN) n += snprintf(buf+n, sizeof(buf)-n, "GREEN\r\n");
-		else if (c == COLOR_BLUE)  n += snprintf(buf+n, sizeof(buf)-n, "BLUE\r\n");
-		else if (c == COLOR_WHITE) n += snprintf(buf+n, sizeof(buf)-n, "WHITE\r\n");
-		else if (c == COLOR_BLACK) n += snprintf(buf+n, sizeof(buf)-n, "BLACK\r\n");
-		else                       n += snprintf(buf+n, sizeof(buf)-n, "? (rc=%d)\r\n", rc);
-		HAL_UART_Transmit(&huart1, (uint8_t *)buf, n, 100);
-		osDelay(200);
+		/* 瀹炴椂 RGB + 棰滆壊 */
+		Color_DataTypeDef d;
+		if (Color_ReadData(&d) == HAL_OK) {
+			Color_TypeDef c = Color_Judge(&d);
+			n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
+				d.red, d.green, d.blue, Color_ToString(c));
+		} else {
+			n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
+		}
+
+		/* 鏍″噯鏁版嵁鎽樿 */
+		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
+			g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
+		for (int i = 0; i < COLOR_COUNT; i++)
+			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
+		n += snprintf(b+n, sizeof(b)-n, "\r\n");
+		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
+		osDelay(500);
   }
+#endif
   /* USER CODE END OLED_TASK */
 }
 

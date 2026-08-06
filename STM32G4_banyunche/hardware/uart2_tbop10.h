@@ -6,7 +6,7 @@
 #include <string.h>
 
 #ifndef LEGACY_USART2_ODOM_ENABLE
-#define LEGACY_USART2_ODOM_ENABLE 0
+#define LEGACY_USART2_ODOM_ENABLE 1
 #endif
 
 #define TB_RX_BUFF_SIZE 64
@@ -62,7 +62,6 @@ void UART2_FSM_Parse_Byte(uint8_t byte);
 #endif
 
 void UART2_Send(uint8_t *DATA, uint8_t len);
-void UART2_SendCode(uint8_t *DATA, uint8_t len);
 void UART2_StartDMAReceive(void);
 
 #endif
