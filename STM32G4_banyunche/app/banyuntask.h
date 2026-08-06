@@ -82,7 +82,7 @@ extern QueueHandle_t systemEventQueue ;
  * API
  * ============================================================ */
 void           task_init(void);
-void           task_send(TaskCommand_t *cmd);
+void           task_send(SystemMode_t mode);
 TaskCommand_t  task_recive(void);
 
 #ifdef __cplusplus

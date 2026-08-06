@@ -32,7 +32,7 @@ extern "C" {
 /* ======================== 函数声明 ======================== */
 
 void Trace_LineFollow(void);
-
+void Trace_LineTask(void);
 extern float g_trace_v;
 extern float g_trace_w;
 extern float g_trace_angle;

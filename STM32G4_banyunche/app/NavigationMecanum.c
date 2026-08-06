@@ -121,6 +121,21 @@ bool Nav_GoToWorld(float target_x, float target_y, float target_yaw)
     return true;
 }
 
+
+
+bool Nav_FeDuanPoint() {
+    static uint8_t PontIntex=1;
+
+    if (!Nav_GoToWorld(g_waypoints[PontIntex++].x,
+                          g_waypoints[PontIntex++].y,
+                          g_waypoints[PontIntex++].yaw)) {
+            return false;
+        }
+
+    return true;
+}
+
+
 /**
  * @brief 依次执行所有路径点
  */

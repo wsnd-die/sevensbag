@@ -73,3 +73,12 @@ void Trace_LineFollow(void)
     motor = Mecanum_Calc(v, w);
     Send_commandmotor(&motor);
 }
+
+void Trace_LineTask(void) {
+
+    while (1) {
+        Trace_LineFollow();
+        osDelay(20);
+    }
+
+}

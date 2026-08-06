@@ -193,6 +193,7 @@ void StartDefaultTask(void *argument)
 	task_send(Event_PickUp);
 	TaskCommand_t cmd;
 	task_init();
+	task_send(Event_Navigation);
   for(;;)
   {
    cmd= task_recive();
@@ -237,13 +238,14 @@ void NLF_TASK(void *argument)
 	 *导航循线任务
 	 */
 
-
   /* Infinite loop */
   for(;;)
   {
-  	if (g_last_cmd.Mode==Event_Navigation)  { xSemaphoreTake(Sem_Act_Navigat, portMAX_DELAY); }
-  	if (g_last_cmd.Mode==Event_LinFolR)     { xSemaphoreTake(Sem_Act_FollowLineR, portMAX_DELAY); Trace_LineFollow(); }
-  	if (g_last_cmd.Mode==Event_LinFolL)     { xSemaphoreTake(Sem_Act_FollowLineL, portMAX_DELAY); Trace_LineFollow(); }
+  	if (g_last_cmd.Mode==Event_Navigation)  { xSemaphoreTake(Sem_Act_Navigat, portMAX_DELAY); Nav_FeDuanPoint(); task_send(Event_LinFolL); }
+  	if (g_last_cmd.Mode==Event_LinFolR)     { xSemaphoreTake(Sem_Act_FollowLineR, portMAX_DELAY);  Trace_LineTask();task_send(Event_Navigation); }
+  	if (g_last_cmd.Mode==Event_LinFolL)     { xSemaphoreTake(Sem_Act_FollowLineL, portMAX_DELAY);  Trace_LineTask();task_send(Event_Navigation); }
+
+
 
   	osDelay(10);
     osDelay(1);
