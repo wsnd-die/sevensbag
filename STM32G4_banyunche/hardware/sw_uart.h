@@ -87,6 +87,11 @@ uint8_t SW_UART_ReadByte(void);
  */
 bool SW_UART_TxBusy(void);
 
+/**
+ * @brief  轮询 PB6 检测起始位（替代 EXTI，当 EXTI 中断不可用时）
+ */
+void SW_UART_PollStartBit(void);
+
 #endif /* SW_UART_ENABLE */
 
 #ifdef __cplusplus
