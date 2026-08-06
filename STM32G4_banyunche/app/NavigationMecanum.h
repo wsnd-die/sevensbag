@@ -62,7 +62,7 @@ void Chassis_WorldMoveTest(void);
  * @return false      解算失败或执行失败
  */
 bool Nav_GoToWorld(float target_x, float target_y, float target_yaw);
-
+bool Nav_FeDuanPoint(void);
 /**
  * @brief 依次执行所有路径点
  *

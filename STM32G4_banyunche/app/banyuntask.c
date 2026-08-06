@@ -16,11 +16,14 @@ void task_init()
      Event_STEERING_ROTATE
 cmd
 */
-void task_send(TaskCommand_t *cmd)
+void task_send(SystemMode_t mode)
 {
+    TaskCommand_t cmd;
+    cmd.k = 1;
+    cmd.Mode = mode;
     xQueueSend(
         systemEventQueue,
-        cmd,
+        &cmd,
         pdMS_TO_TICKS(100)
     );
 }
@@ -38,3 +41,5 @@ TaskCommand_t task_recive()
     receivedCmd.k = 0;
     return receivedCmd;
 }
+
+
