@@ -87,8 +87,26 @@ void UART2_StartDMAReceive(void)
 #endif
 }
 
-void UART2_Send(uint8_t *DATA, uint8_t len)
+static void UART2_Send(uint8_t *DATA, uint8_t len)
 {
     HAL_UART_Transmit(&huart2, DATA, len, HAL_MAX_DELAY);
 }
+//*TODO:»±…Ÿ∑¢ÀÕ∂À÷∏¡Ó*/
+// void uart_send_ball_binary(uart_ball_send_t *param)
+// {
+//     uint8 tx_buf[32];
+//     uint8 idx = 0;
+//     tx_buf[idx++] = TB_Header1;
+//     tx_buf[idx++] = TB_Header2;
+//     memcpy(&tx_buf[idx], &fusion.global_x_mm, 4); idx += 4;
+//     memcpy(&tx_buf[idx], &fusion.global_y_mm, 4); idx += 4;
+//     memcpy(&tx_buf[idx], &fusion.global_vx_mm_s, 4); idx += 4;
+//     memcpy(&tx_buf[idx], &fusion.global_vy_mm_s, 4); idx += 4;
+//     memcpy(&tx_buf[idx], (const void *)&imu_gz, 4); idx += 4;
+//     float yaw = fusion.yaw_deg;
+//     memcpy(&tx_buf[idx], &yaw, 4); idx += 4;
+//     tx_buf[idx++] = TB_Tail1;
+//     tx_buf[idx++] = TB_Tail2;
+//     uart_write_buffer(UART_0, tx_buf, idx);
+// }
 
