@@ -251,7 +251,6 @@ void NLF_TASK(void *argument)
 
 
   	osDelay(10);
-    osDelay(1);
   }
   /* USER CODE END NLF_TASK */
 }
@@ -415,12 +414,20 @@ void QR_TASK(void *argument)
 {
   /* USER CODE BEGIN QR_TASK */
 	uint8_t QR_result=0;
-
+		uint8_t P=0;
   /* Infinite loop */
   for(;;)
   {
 
-  	if (g_last_cmd.Mode==Event_QRCode)  { xSemaphoreTake(Sem_Act_QR, portMAX_DELAY);  QR_result=Qr_Get(); }
+  	if (g_last_cmd.Mode==Event_QRCode) {
+  		xSemaphoreTake(Sem_Act_QR, portMAX_DELAY);  QR_result=Qr_Get();
+  		if (P=0) {
+  			task_send(Event_LinFolL);
+  		}
+  		else {
+  			task_send(Event_LinFolR);
+  		}
+  	}
 
     osDelay(50);
   }
