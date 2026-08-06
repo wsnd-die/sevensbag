@@ -25,11 +25,10 @@ void QRcode_Start(void);
 void QRcode_Clear(void);
 const uint8_t *QRcode_GetBuffer(uint16_t *len);
 HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeout);
-void QRcode_UART_RxCpltCallback(UART_HandleTypeDef *huart);
-void QRcode_UART_ErrorCallback(UART_HandleTypeDef *huart);
-uint8_t Read_QrFlag(void);
-uint8_t GetQR(void);
 
+uint8_t Read_QrFlag(void);
+uint8_t QR_deel(void);
+uint8_t Qr_Get(void);
 #ifdef __cplusplus
 }
 #endif
