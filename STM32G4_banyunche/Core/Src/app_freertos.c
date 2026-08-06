@@ -172,6 +172,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of IMU_TASK */
   IMU_TASKHandle = osThreadNew(IMU_FUCTION, NULL, &IMU_TASK_attributes);
 
+  SW_UART_Init();
+  Color_CalibLoad();
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
 
@@ -322,7 +325,7 @@ void Color_task(void *argument)
 		// 	n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
 		// n += snprintf(b+n, sizeof(b)-n, "\r\n");
 		// HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
-		// osDelay(50);
+		osDelay(50);
   }
 #endif
   /* USER CODE END Color_task */
