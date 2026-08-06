@@ -32,12 +32,14 @@ static bool Color_ReadFrame(uint8_t *r, uint8_t *g, uint8_t *b)
 {
     uint8_t buf[10], chk, sum;
 
-    /* 同步双帧头 */
+    /* 同步双帧头，最多等 500 次避免死循环 */
     uint8_t last = 0, cur = 0;
-    while (!(last == 0x5A && cur == 0x5A)) {
+    int retry = 500;
+    while (!(last == 0x5A && cur == 0x5A) && --retry > 0) {
         last = cur;
         cur = SW_UART_ReadByte();
     }
+    if (retry <= 0) return false;
 
     uint8_t dtype = SW_UART_ReadByte();
     uint8_t qty   = SW_UART_ReadByte();

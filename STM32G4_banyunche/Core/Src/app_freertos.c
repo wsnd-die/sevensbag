@@ -52,7 +52,7 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 128 * 4
+  .stack_size = 256 * 4
 };
 /* Definitions for NLFKION */
 osThreadId_t NLFKIONHandle;
@@ -66,7 +66,7 @@ osThreadId_t ColorFunionHandle;
 const osThreadAttr_t ColorFunion_attributes = {
   .name = "ColorFunion",
   .priority = (osPriority_t) osPriorityAboveNormal6,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for BsRtFunion */
 osThreadId_t BsRtFunionHandle;
@@ -96,6 +96,13 @@ const osThreadAttr_t QRFUNION_attributes = {
   .priority = (osPriority_t) osPriorityLow,
   .stack_size = 256 * 4
 };
+/* Definitions for IMU_TASK */
+osThreadId_t IMU_TASKHandle;
+const osThreadAttr_t IMU_TASK_attributes = {
+  .name = "IMU_TASK",
+  .priority = (osPriority_t) osPriorityHigh,
+  .stack_size = 256 * 4
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -109,6 +116,7 @@ void BsRt_task(void *argument);
 void OLED_TASK(void *argument);
 void FC_TASK(void *argument);
 void QR_TASK(void *argument);
+void IMU_FUCTION(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -160,6 +168,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of QRFUNION */
   QRFUNIONHandle = osThreadNew(QR_TASK, NULL, &QRFUNION_attributes);
+
+  /* creation of IMU_TASK */
+  IMU_TASKHandle = osThreadNew(IMU_FUCTION, NULL, &IMU_TASK_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
@@ -249,7 +260,7 @@ void NLF_TASK(void *argument)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
- Color_SetLedLevel(5);
+    Color_SetLedLevel(0);
 	HAL_Delay(50);
 	Color_Init();
 	HAL_Delay(50);
@@ -292,26 +303,26 @@ void Color_task(void *argument)
 #else
   for(;;)
   {
-		char b[400]; int n = 0;
-
-		/* 实时 RGB + 颜色 */
-		Color_DataTypeDef d;
-		if (Color_ReadData(&d) == HAL_OK) {
-			Color_TypeDef c = Color_Judge(&d);
-			n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
-				d.red, d.green, d.blue, Color_ToString(c));
-		} else {
-			n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
-		}
-
-		/* 校准数据摘要 */
-		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
-			g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
-		for (int i = 0; i < COLOR_COUNT; i++)
-			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
-		n += snprintf(b+n, sizeof(b)-n, "\r\n");
-		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
-		osDelay(500);
+		// char b[400]; int n = 0;
+		//
+		// /* 实时 RGB + 颜色 */
+		// Color_DataTypeDef d;
+		// if (Color_ReadData(&d) == HAL_OK) {
+		// 	Color_TypeDef c = Color_Judge(&d);
+		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
+		// 		d.red, d.green, d.blue, Color_ToString(c));
+		// } else {
+		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
+		// }
+		//
+		// /* 校准数据摘要 */
+		// n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
+		// 	g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
+		// for (int i = 0; i < COLOR_COUNT; i++)
+		// 	n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
+		// n += snprintf(b+n, sizeof(b)-n, "\r\n");
+		// HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
+		// osDelay(50);
   }
 #endif
   /* USER CODE END Color_task */
@@ -382,7 +393,7 @@ void FC_TASK(void *argument)
   {
   	if (g_last_cmd.Mode==Event_FindCircle)  { xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY); Circle_Follow(); }
 
-    osDelay(10);
+    osDelay(50);
   }
   /* USER CODE END FC_TASK */
 }
@@ -405,9 +416,31 @@ void QR_TASK(void *argument)
 
   	if (g_last_cmd.Mode==Event_QRCode)  { xSemaphoreTake(Sem_Act_QR, portMAX_DELAY);  QR_result=Qr_Get(); }
 
-    osDelay(10);
+    osDelay(50);
   }
   /* USER CODE END QR_TASK */
+}
+
+/* USER CODE BEGIN Header_IMU_FUCTION */
+/**
+* @brief Function implementing the IMU_TASK thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_IMU_FUCTION */
+void IMU_FUCTION(void *argument)
+{
+  /* USER CODE BEGIN IMU_FUCTION */
+  for(;;)
+  {
+    if (Flag_TBOFdata) {
+      Flag_TBOFdata = 0;
+      printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
+        TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
+    }
+    osDelay(10);
+  }
+  /* USER CODE END IMU_FUCTION */
 }
 
 /* Private application code --------------------------------------------------*/

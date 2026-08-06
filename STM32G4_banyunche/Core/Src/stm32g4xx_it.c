@@ -180,11 +180,6 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE END DMA1_Channel1_IRQn 1 */
 }
 
-void DMA1_Channel2_IRQHandler(void)
-{
-  HAL_DMA_IRQHandler(&hdma_usart2_rx);
-}
-
 /**
   * @brief This function handles FDCAN1 interrupt 0.
   */
