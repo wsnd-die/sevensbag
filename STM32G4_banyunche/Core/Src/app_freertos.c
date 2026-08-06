@@ -198,7 +198,7 @@ void Uart3K230_task(void *argument)
 void OLED_TASK(void *argument)
 {
   /* USER CODE BEGIN OLED_TASK */
-	Color_SetLedLevel(5);
+	Color_SetLedLevel(0);
 	HAL_Delay(50);
 	Color_Init();
 	HAL_Delay(50);
@@ -254,10 +254,13 @@ void OLED_TASK(void *argument)
 		}
 
 		/* 校准数据摘要 */
-		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
+		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) | ",
 			g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
-		for (int i = 0; i < COLOR_COUNT; i++)
-			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
+		for (int i = 0; i < COLOR_COUNT; i++) {
+			Color_Calib_t *c = &g_color_calib[i];
+			n += snprintf(b+n, sizeof(b)-n, "%s(%d,%d,%d,%d) ",
+				Color_ToString((Color_TypeDef)i), c->r, c->g, c->b, c->enabled);
+		}
 		n += snprintf(b+n, sizeof(b)-n, "\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
 		osDelay(500);
