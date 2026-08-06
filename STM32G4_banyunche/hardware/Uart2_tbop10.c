@@ -87,26 +87,49 @@ void UART2_StartDMAReceive(void)
 #endif
 }
 
+/* 构造并发送单字节指令帧 */
+static void UART2_SendCmd(uint8_t cmd)
+{
+    uint8_t tx_buf[4];
+    uint8_t idx = 0;
+    tx_buf[idx++] = TB_Header1;
+    tx_buf[idx++] = TB_Header2;
+    tx_buf[idx++] = cmd;
+    tx_buf[idx++] = TB_Tail1;
+    tx_buf[idx++] = TB_Tail2;
+    UART2_Send(tx_buf, idx);
+}
+
+/* 驱动步进电机（麦轮底盘）按车体坐标平移，并等待动作完成 */
+static void Mecanum_MoveBlocking(float body_dx_m, float body_dy_m)
+{
+    MecanumMove_t move;
+    if (Mecanum_CalculateMove(&g_mecanum_config, body_dx_m, body_dy_m, 0.0f, &move))
+    {
+        Mecanum_ExecuteMove(&g_mecanum_config, &move);
+        osDelay((uint32_t)(move.duration_s * 1000.0f) + 50U);
+    }
+}
+
 static void UART2_Send(uint8_t *DATA, uint8_t len)
 {
     HAL_UART_Transmit(&huart2, DATA, len, HAL_MAX_DELAY);
+
+    UART2_SendCmd('x');                       /* AA CC x BB DD */
+    osDelay(1000U);                           /* 等待 1 秒 */
+
+    Mecanum_MoveBlocking(1.0f, 0.0f);         /* 前进 1m（车体 +X 为前） */
+
+    UART2_SendCmd('z');                       /* AA CC z BB DD */
+    osDelay(1000U);                           /* 等待 1 秒 */
+
+    UART2_SendCmd('y');                       /* AA CC y BB DD */
+    osDelay(1000U);                           /* 等待 1 秒 */
+
+    Mecanum_MoveBlocking(0.0f, -1.0f);        /* 水平向右 1m（车体 +Y 为左，故右为 -Y） */
+    osDelay(1000U);
+
+    UART2_SendCmd('z');                       /* AA CC z BB DD */
+    osDelay(1000U);                           /* 等待 1 秒 */
 }
-//*TODO:缺少发送端指令*/
-// void uart_send_ball_binary(uart_ball_send_t *param)
-// {
-//     uint8 tx_buf[32];
-//     uint8 idx = 0;
-//     tx_buf[idx++] = TB_Header1;
-//     tx_buf[idx++] = TB_Header2;
-//     memcpy(&tx_buf[idx], &fusion.global_x_mm, 4); idx += 4;
-//     memcpy(&tx_buf[idx], &fusion.global_y_mm, 4); idx += 4;
-//     memcpy(&tx_buf[idx], &fusion.global_vx_mm_s, 4); idx += 4;
-//     memcpy(&tx_buf[idx], &fusion.global_vy_mm_s, 4); idx += 4;
-//     memcpy(&tx_buf[idx], (const void *)&imu_gz, 4); idx += 4;
-//     float yaw = fusion.yaw_deg;
-//     memcpy(&tx_buf[idx], &yaw, 4); idx += 4;
-//     tx_buf[idx++] = TB_Tail1;
-//     tx_buf[idx++] = TB_Tail2;
-//     uart_write_buffer(UART_0, tx_buf, idx);
-// }
 
