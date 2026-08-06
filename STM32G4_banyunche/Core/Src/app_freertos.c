@@ -354,6 +354,8 @@ void Navigation_TASK(void *argument)
   /* Infinite loop */
   for(;;)
   {
+
+
   	if (g_last_cmd.Mode==Event_Navigation)
   	{
   		xSemaphoreTake(Sem_Act_Navigat, portMAX_DELAY);
@@ -389,10 +391,15 @@ void Navigation_TASK(void *argument)
 void Uart1M_task(void *argument)
 {
   /* USER CODE BEGIN Uart1M_task */
-	uint8_t *x;
+
   /* Infinite loop */
   for(;;)
   {
+			if(Read_QrFlag())
+		{
+			GetQR();
+		}
+  	osDelay(10);
   }
   /* USER CODE END Uart1M_task */
 }

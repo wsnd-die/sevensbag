@@ -1695,6 +1695,26 @@
               <FileType>5</FileType>
               <FilePath>..\hardware\sw_uart.h</FilePath>
             </File>
+            <File>
+              <FileName>Circle_base.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\Circle_base.c</FilePath>
+            </File>
+            <File>
+              <FileName>Circle_base.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\Circle_base.h</FilePath>
+            </File>
+            <File>
+              <FileName>ColorIdentif.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\ColorIdentif.c</FilePath>
+            </File>
+            <File>
+              <FileName>ColorIdentif.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\ColorIdentif.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

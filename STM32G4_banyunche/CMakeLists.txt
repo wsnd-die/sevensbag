@@ -7,6 +7,11 @@ cmake_minimum_required(VERSION 3.22)
 # User is free to modify the file as much as necessary
 #
 
+# Suppress "unused variable" warning when CMAKE_TOOLCHAIN_FILE is already cached
+if(DEFINED CMAKE_TOOLCHAIN_FILE)
+    message(STATUS "Toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+endif()
+
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -45,7 +50,6 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/Trace_base.h
         hardware/Circle_base.c
         hardware/Circle_base.h
-        app/banyuntask.c
         app/banyuntask.c
         hardware/ColorIdentif.c
 )
