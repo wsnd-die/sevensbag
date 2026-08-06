@@ -52,6 +52,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/Circle_base.h
         app/banyuntask.c
         hardware/ColorIdentif.c
+        app/BollLocator.c
+        app/BollLocator.h
 )
 
 # Add STM32CubeMX generated sources

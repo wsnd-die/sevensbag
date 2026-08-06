@@ -30,8 +30,17 @@ HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeou
     return HAL_UART_Transmit(&huart1, (uint8_t *)data, len, timeout);
 }
 
+uint8_t Qr_Get() {
 
-uint8_t GetQR()
+    while (Read_QrFlag()==0) {
+        osDelay(50);
+    }
+
+    return QR_deel();
+}
+
+
+uint8_t QR_deel()
 {
     uint8_t P,i;
     static uint8_t 	result=0;
@@ -46,8 +55,7 @@ uint8_t GetQR()
         result=result*10+(P-0x30);
     }
     HAL_UART_Transmit_IT(&huart1,&result ,1 );
-    result=0;
-    i=result;
+    result=0;i=result;
     return i;
 }
 uint8_t Read_QrFlag()
