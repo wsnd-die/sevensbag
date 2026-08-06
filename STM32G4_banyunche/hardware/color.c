@@ -186,7 +186,7 @@ void Color_CalibAmbient(void)
         g_color_ambient.r = d.red;
         g_color_ambient.g = d.green;
         g_color_ambient.b = d.blue;
-        g_color_ambient.tolerance = 20U;  /* 环境光容差较小 */
+        g_color_ambient.tolerance = 20U;  /* 环境光容差放大，减少误判 */
         g_color_ambient.enabled = 1U;
     }
 }

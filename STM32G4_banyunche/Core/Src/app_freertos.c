@@ -72,7 +72,7 @@ const osThreadAttr_t ColorFunion_attributes = {
 osThreadId_t BsRtFunionHandle;
 const osThreadAttr_t BsRtFunion_attributes = {
   .name = "BsRtFunion",
-  .priority = (osPriority_t) osPriorityAboveNormal6,
+  .priority = (osPriority_t) osPriorityAboveNormal,
   .stack_size = 256 * 4
 };
 /* Definitions for OLED */
@@ -175,10 +175,6 @@ void MX_FREERTOS_Init(void) {
   SW_UART_Init();
   Color_CalibLoad();
 
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* USER CODE END RTOS_THREADS */
-  SW_UART_Init();
-  Color_CalibLoad();
   /* USER CODE BEGIN RTOS_EVENTS */
   /* USER CODE END RTOS_EVENTS */
 
@@ -194,6 +190,7 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+	task_send(Event_PickUp);
 	TaskCommand_t cmd;
 	task_init();
   for(;;)
@@ -264,11 +261,12 @@ void NLF_TASK(void *argument)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
-    Color_SetLedLevel(0);
-	HAL_Delay(50);
-	Color_Init();
-	HAL_Delay(50);
-	Servo_SetAngle(38);
+#define COLOR_CALIB_MODE 1
+ //    Color_SetLedLevel(0);
+	// HAL_Delay(50);
+	// Color_Init();
+	// HAL_Delay(50);
+	// Servo_SetAngle(38);
 
 #if COLOR_CALIB_MODE
 	const char *steps[] = {"EMPTY","RED","GREEN","BLUE","WHITE","BLACK"};
@@ -276,7 +274,7 @@ void Color_task(void *argument)
 	char msg[64];
 
 	HAL_UART_Transmit(&huart1, (uint8_t *)"=== EMPTY slot ===\r\n", 20, 100);
-	osDelay(3000);
+	osDelay(1000);
 	Color_CalibAmbient();
 	HAL_UART_Transmit(&huart1, (uint8_t *)"Ambient OK\r\n", 13, 100);
 
@@ -285,7 +283,7 @@ void Color_task(void *argument)
 		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
 
 		if (BlockBasic_TurntableTo(i+1) == BLOCK_OK) {
-			osDelay(2000);
+			osDelay(1000);
 			Color_DataTypeDef d;
 			if (Color_ReadData(&d) == HAL_OK) {
 				n = snprintf(msg, sizeof(msg), "  R=%d G=%d B=%d\r\n", d.red, d.green, d.blue);
@@ -326,7 +324,7 @@ void Color_task(void *argument)
 		// 	n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
 		// n += snprintf(b+n, sizeof(b)-n, "\r\n");
 		// HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
-		osDelay(50);
+		osDelay(500);
   }
 #endif
   /* USER CODE END Color_task */
@@ -341,113 +339,139 @@ void Color_task(void *argument)
 /* USER CODE END Header_BsRt_task */
 void BsRt_task(void *argument)
 {
-  /* USER CODE BEGIN BsRt_task */
+	/* USER CODE BEGIN BsRt_task */
 	/*
 	 *舵机转盘任务
 	 */
+	Servo_SetAngle(38);
+	BlockBasic_TurntableTo(1);
+	HAL_Delay(1000);
+	for(;;)
+	{
+		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
+		if (g_last_cmd.Mode==Event_PickUp)
+		{
+				Servo_SetAngle(38);
+			Color_SetLedLevel(0);
+			HAL_Delay(50);
+			Color_Init();
+			HAL_Delay(50);
+			/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
+			for (uint8_t slot = 1; slot <= 5; slot++) {
+				Color_DataTypeDef d;
+				if (Color_ReadData(&d) != HAL_OK) {slot--;continue;}
+				/* 计算和环境光基线的 RGB 差值（绝对值之和） */
+				int dr = abs((int)d.red   - g_color_ambient.r);
+				int dg = abs((int)d.green - g_color_ambient.g);
+				int db = abs((int)d.blue  - g_color_ambient.b);
+				if (dr < 6 && dg < 20 && db < 20) {
+					/* 跳变太小 → 环境光/空槽 → 停止 */
+					slot--;
+					continue;
+				}
+				/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
+				Color_TypeDef c = Color_Judge(&d);
+				TT_SetColor(slot - 1, c);
+				if (slot < 5) {
+					if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
+					HAL_Delay(500);  /* 等待舵机转到位 */
+				}
+			}
+			}
+			osDelay(10);
+			/* USER CODE END BsRt_task */
+		}
+	}
 
+	/* USER CODE BEGIN Header_OLED_TASK */
+	/**
+	* @brief Function implementing the OLED thread.
+	* @param argument: Not used
+	* @retval None
+	*/
+	/* USER CODE END Header_OLED_TASK */
+	void OLED_TASK(void *argument)
+	{
+		/* USER CODE BEGIN OLED_TASK */
 
-  /* Infinite loop */
-  for(;;)
-  {
+		for(;;)
+		{
 
+			osDelay(500);
+		}
 
-    osDelay(10);
-  }
-  /* USER CODE END BsRt_task */
-}
+		/* USER CODE END OLED_TASK */
+	}
 
-/* USER CODE BEGIN Header_OLED_TASK */
-/**
-* @brief Function implementing the OLED thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_OLED_TASK */
-void OLED_TASK(void *argument)
-{
-  /* USER CODE BEGIN OLED_TASK */
+	/* USER CODE BEGIN Header_FC_TASK */
+	/**
+	* @brief Function implementing the FCFUION thread.
+	* @param argument: Not used
+	* @retval None
+	*/
+	/* USER CODE END Header_FC_TASK */
+	void FC_TASK(void *argument)
+	{
+		/* USER CODE BEGIN FC_TASK */
+		/*
+		 *找圆任务
+		 *
+		 */
 
-  for(;;)
-  {
+		/* Infinite loop */
+		for(;;)
+		{
+			if (g_last_cmd.Mode==Event_FindCircle)  { xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY); Circle_Follow(); }
 
-		osDelay(500);
-  }
+			osDelay(50);
+		}
+		/* USER CODE END FC_TASK */
+	}
 
-  /* USER CODE END OLED_TASK */
-}
+	/* USER CODE BEGIN Header_QR_TASK */
+	/**
+	* @brief Function implementing the QRFUNION thread.
+	* @param argument: Not used
+	* @retval None
+	*/
+	/* USER CODE END Header_QR_TASK */
+	void QR_TASK(void *argument)
+	{
+		/* USER CODE BEGIN QR_TASK */
+		uint8_t QR_result=0;
 
-/* USER CODE BEGIN Header_FC_TASK */
-/**
-* @brief Function implementing the FCFUION thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_FC_TASK */
-void FC_TASK(void *argument)
-{
-  /* USER CODE BEGIN FC_TASK */
-	/*
-	 *找圆任务
-	 *
-	 */
+		/* Infinite loop */
+		for(;;)
+		{
+			if (g_last_cmd.Mode==Event_QRCode)  { xSemaphoreTake(Sem_Act_QR, portMAX_DELAY);  QR_result=Qr_Get(); }
 
-  /* Infinite loop */
-  for(;;)
-  {
-  	if (g_last_cmd.Mode==Event_FindCircle)  { xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY); Circle_Follow(); }
+			osDelay(50);
+		}
+		/* USER CODE END QR_TASK */
+	}
 
-    osDelay(50);
-  }
-  /* USER CODE END FC_TASK */
-}
+	/* USER CODE BEGIN Header_IMU_FUCTION */
+	/**
+	* @brief Function implementing the IMU_TASK thread.
+	* @param argument: Not used
+	* @retval None
+	*/
+	/* USER CODE END Header_IMU_FUCTION */
+	void IMU_FUCTION(void *argument)
+	{
+		/* USER CODE BEGIN IMU_FUCTION */
+		for(;;)
+		{
+			// if (Flag_TBOFdata) {
+			// 	Flag_TBOFdata = 0;
+			// 	printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
+			// 	  TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
+			// }
+			osDelay(10);
+		}
+		/* USER CODE END IMU_FUCTION */
+	}
 
-/* USER CODE BEGIN Header_QR_TASK */
-/**
-* @brief Function implementing the QRFUNION thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_QR_TASK */
-void QR_TASK(void *argument)
-{
-  /* USER CODE BEGIN QR_TASK */
-	uint8_t QR_result=0;
-
-  /* Infinite loop */
-  for(;;)
-  {
-
-  	if (g_last_cmd.Mode==Event_QRCode)  { xSemaphoreTake(Sem_Act_QR, portMAX_DELAY);  QR_result=Qr_Get(); }
-
-    osDelay(50);
-  }
-  /* USER CODE END QR_TASK */
-}
-
-/* USER CODE BEGIN Header_IMU_FUCTION */
-/**
-* @brief Function implementing the IMU_TASK thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_IMU_FUCTION */
-void IMU_FUCTION(void *argument)
-{
-  /* USER CODE BEGIN IMU_FUCTION */
-  for(;;)
-  {
-    if (Flag_TBOFdata) {
-      Flag_TBOFdata = 0;
-      printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
-        TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
-    }
-    osDelay(10);
-  }
-  /* USER CODE END IMU_FUCTION */
-}
-
-/* Private application code --------------------------------------------------*/
-/* USER CODE BEGIN Application */
-/* USER CODE END Application */
-
+	/* Private application code --------------------------------------------------*/
+	/* USER CODE BEGIN Application */
+	/* USER CODE END Application */
