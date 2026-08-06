@@ -177,7 +177,8 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
-
+  SW_UART_Init();
+  Color_CalibLoad();
   /* USER CODE BEGIN RTOS_EVENTS */
   /* USER CODE END RTOS_EVENTS */
 
