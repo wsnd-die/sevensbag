@@ -31,6 +31,7 @@ void Circle_Follow(void);
 
 extern float g_circle_vx;
 extern float g_circle_vy;
+extern char  g_circle_dir;
 
 #ifdef __cplusplus
 }

@@ -236,14 +236,14 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
-	K230_SetMode(K230_MODE_LINE);
+	K230_SetMode(K230_MODE_CIRCLE);
 	K230_ApplyMode();
 
 
   /* Infinite loop */
   for(;;)
   {
-  	Trace_LineFollow();
+  	Circle_Follow();
   	osDelay(10);
     osDelay(1);
   }
@@ -331,8 +331,11 @@ void Color_task(void *argument)
 #endif
 	for (;;)
 	{
-		printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f\r\n",
-		       g_trace_angle, g_trace_posx, g_trace_v, g_trace_w);
+		printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f | CIRCLE: dir=%c vx=%.2f vy=%.2f\r\n",
+		       g_trace_angle, g_trace_posx, g_trace_v, g_trace_w,
+		       g_circle_dir, g_circle_vx, g_circle_vy);
+
+
 		osDelay(100);
 
 	}
@@ -357,11 +360,11 @@ void BsRt_task(void *argument)
 	BlockBasic_TurntableTo(1);
 	HAL_Delay(1000);
 	for(;;)
-	{osDelay(10);
+	{
+		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
 
 		if (g_last_cmd.Mode==Event_PickUp)
 		{
-			xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
 				Servo_SetAngle(38);
 			Color_SetLedLevel(0);
 			HAL_Delay(50);
@@ -475,11 +478,11 @@ void IMU_FUCTION(void *argument)
   /* USER CODE BEGIN IMU_FUCTION */
   for(;;)
   {
-    if (Flag_TBOFdata) {
-      Flag_TBOFdata = 0;
-      printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
-        TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
-    }
+    // if (Flag_TBOFdata) {
+    //   Flag_TBOFdata = 0;
+    //   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
+    //     TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
+    // }
     osDelay(10);
   }
   /* USER CODE END IMU_FUCTION */

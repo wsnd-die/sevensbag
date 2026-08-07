@@ -10,6 +10,7 @@
 
 float g_circle_vx = 0.0f;
 float g_circle_vy = 0.0f;
+char  g_circle_dir = '?';
 
 /* ======================== 找圆跟随主函数 ======================== */
 
@@ -22,6 +23,7 @@ void Circle_Follow(void)
     if (!K230_GetCircleDir(&dir)) {
         return;  /* 无新数据，保持当前状态 */
     }
+    g_circle_dir = dir;  /* 保存方向供外部打印 */
 
     /* ---- 2. 方向 → 速度映射 ---- */
     switch (dir) {
