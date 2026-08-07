@@ -234,8 +234,8 @@ void NLF_TASK(void *argument)
 	 */
 	SystemMode_t Navafter_mode[4]={Event_QRCode,Event_FindCircle,Event_QRCode,Event_PickUp};
 	uint8_t NavafterNum[4]={1,5,1,3};
-	uint8_t P_Nava=0,P_LineFow=0;
-	SystemMode_t LineFowfter_mode[2]={Event_Navigation,Event_Navigation};
+	uint8_t P_Nava=0;
+
 
 	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
@@ -263,8 +263,8 @@ void NLF_TASK(void *argument)
   	}
   	else if (g_last_cmd.Mode==Event_LinFolR)
   	{
-  		//Circle_Follow();
-  		task_send(Event_Navigation);
+
+
   	}
   	osDelay(20);
   }
@@ -377,49 +377,70 @@ void BsRt_task(void *argument)
 	/*
 	 *舵机转盘任务
 	 */
+	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
 	Servo_SetAngle(38);
 	BlockBasic_TurntableTo(1);
 	HAL_Delay(1000);
 	for(;;)
 	{
 		osDelay(10);
-		if (g_last_cmd.Mode==Event_LinFolL)//任务颜色物块
-		{
+
 
 		if (g_last_cmd.Mode==Event_PickUp)
 		{
-				Servo_SetAngle(38);
+			Servo_SetAngle(38);
 			Color_SetLedLevel(0);
 			HAL_Delay(50);
 			Color_Init();
 			HAL_Delay(50);
-			/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
-			for (uint8_t slot = 1; slot <= 5; slot++) {
-				Color_DataTypeDef d;
-				if (Color_ReadData(&d) != HAL_OK) {slot--;continue;}
-				/* 计算和环境光基线的 RGB 差值（绝对值之和） */
-				int dr = abs((int)d.red   - g_color_ambient.r);
-				int dg = abs((int)d.green - g_color_ambient.g);
-				int db = abs((int)d.blue  - g_color_ambient.b);
-				if (dr < 30 && dg < 30 && db < 30) {
-					/* 跳变太小 → 环境光/空槽 → 停止 */
-					slot--;
-					continue;
+			if (K==0) {
+				/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
+				for (uint8_t slot = 1; slot <= 5; slot++) {
+					Color_DataTypeDef d;
+					if (Color_ReadData(&d) != HAL_OK) {slot--;continue;}
+					/* 计算和环境光基线的 RGB 差值（绝对值之和） */
+					int dr = abs((int)d.red   - g_color_ambient.r);
+					int dg = abs((int)d.green - g_color_ambient.g);
+					int db = abs((int)d.blue  - g_color_ambient.b);
+					if (dr < 30 && dg < 30 && db < 30) {
+						/* 跳变太小 → 环境光/空槽 → 停止 */
+						slot--;
+						continue;
+					}
+					/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
+					Color_TypeDef c = Color_Judge(&d);
+					TT_SetColor(slot - 1, c);
+					if (slot < 5) {
+						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
+						HAL_Delay(500);  /* 等待舵机转到位 */
+					}
 				}
-				/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
-				Color_TypeDef c = Color_Judge(&d);
-				TT_SetColor(slot - 1, c);
-				if (slot < 5) {
-					if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
-					HAL_Delay(500);  /* 等待舵机转到位 */
-				}
+
 			}
-			task_send(Event_Navigation);
-
-		}
-		else if (g_last_cmd.Mode==Event_LinFolR)//任务奖杯
-		{
-
+			else {
+				/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
+				for (uint8_t slot = 1; slot <= 3; slot++) {
+					Color_DataTypeDef d;
+					if (Color_ReadData(&d) != HAL_OK) {slot--;continue;}
+					/* 计算和环境光基线的 RGB 差值（绝对值之和） */
+					int dr = abs((int)d.red   - g_color_ambient.r);
+					int dg = abs((int)d.green - g_color_ambient.g);
+					int db = abs((int)d.blue  - g_color_ambient.b);
+					if (dr < 30 && dg < 30 && db < 30) {
+						/* 跳变太小 → 环境光/空槽 → 停止 */
+						slot--;
+						continue;
+					}
+					/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
+					Color_TypeDef c = Color_Judge(&d);
+					//TT_SetColor(slot - 1, c);
+					if (slot < 3) {
+						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
+						HAL_Delay(500);  /* 等待舵机转到位 */
+					}
+				}
+				K=0;
+			}
 			task_send(Event_Navigation);
 		}
 

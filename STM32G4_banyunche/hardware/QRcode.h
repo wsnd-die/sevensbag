@@ -18,8 +18,24 @@ extern "C" {
 
 #include "stm32g4xx_hal.h"
 #include <stdint.h>
+#include "Common_used.h"
 
 #define QRCODE_RX_BUF_SIZE 8
+
+typedef enum {
+    champion,
+    second_place,
+    third_place,
+
+}Jang_type;
+
+typedef struct {
+    Color_TypeDef Color_xu[5];
+} Qr_Yantitl;
+typedef struct {
+    uint8_t Jang[3];
+
+}Qr_Jantitl;
 
 void QRcode_Start(void);
 void QRcode_Clear(void);
