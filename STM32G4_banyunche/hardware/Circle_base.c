@@ -26,9 +26,7 @@ void Circle_Follow(void)
     /* ---- 2. 方向 → 速度映射 ---- */
     switch (dir) {
     case 'O':
-        /* 圆心在中心: 停止 */
-        g_circle_vx = 0.0f;
-        g_circle_vy = 0.0f;
+        Place();
         break;
 
     case 'N':
