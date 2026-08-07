@@ -232,6 +232,7 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
+	task_send(Event_LinFolL);
 	SystemMode_t Navafter_mode[4]={Event_QRCode,Event_FindCircle,Event_QRCode,Event_PickUp};
 	uint8_t NavafterNum[4]={1,5,1,3};
 	uint8_t P_Nava=0;

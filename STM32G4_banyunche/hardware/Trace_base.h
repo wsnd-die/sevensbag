@@ -1,8 +1,8 @@
 /**
  * @file  Trace_base.h
  * @brief 循迹底盘控制 — 串级 PID
- *        外环: 角度偏差 → 目标横轴位置
- *        内环: 位置误差 → 角速度 w
+ *        外环: 位置误差 → 目标角度
+ *        内环: 角度偏差 → 角速度 w
  */
 
 #ifndef TRACE_BASE_H
@@ -14,16 +14,16 @@ extern "C" {
 
 #include <stdint.h>
 
-/* ======================== 外环: 角度 → 目标位置 ======================== */
-#define ANGLE_KP      0.025f     /* 外环 P */
-#define ANGLE_KI      0.0f     /* 外环 I */
-#define ANGLE_KD      0.009f     /* 外环 D */
-#define ANGLE_OUT_MAX  80.0f   /* 外环输出限幅 (像素) */
-/* ======================== 内环: 位置 → 角速度 ======================== */
-#define POS_KP        0.2f    /* 内环 P */
-#define POS_KI        0.00f   /* 内环 I */
-#define POS_KD        0.05f    /* 内环 D */
-#define POS_INTEGRAL_MAX  3.0f /* 内环积分限幅 */
+/* ======================== 外环: 位置 → 目标角度 ======================== */
+#define ANGLE_KP      0.035f     /* 外环 P (作用于位置环) */
+#define ANGLE_KI      0.0f     /* 外环 I (作用于位置环) */
+#define ANGLE_KD      0.0f     /* 外环 D (作用于位置环) */
+#define ANGLE_OUT_MAX  100.0f   /* 外环输出限幅 (目标角度, deg) */
+/* ======================== 内环: 角度 → 角速度 ======================== */
+#define POS_KP        0.21f    /* 内环 P (作用于角度环) */
+#define POS_KI        0.0f   /* 内环 I (作用于角度环) */
+#define POS_KD        0.0f    /* 内环 D (作用于角度环) */
+#define POS_INTEGRAL_MAX  10.0f /* 内环积分限幅 */
 
 /* ======================== 共用 ======================== */
 #define TRACE_BASE_SPEED   0.8f   /* 基础线速度 (m/s) */

@@ -16,6 +16,7 @@
  * 1. 标准 C 库
  * ============================================================ */
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdbool.h>

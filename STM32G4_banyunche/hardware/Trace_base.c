@@ -1,8 +1,8 @@
 /**
  * @file  Trace_base.c
  * @brief 循迹底盘控制 — 串级 PID
- *        外环: 角度 → PID → 目标横轴位置
- *        内环: 位置 → PID → 角速度 w → Mecanum_Calc → 电机
+ *        外环: 位置 → PID → 目标角度
+ *        内环: 角度 → PID → 角速度 w → Mecanum_Calc → 电机
  */
 
 #include "Common_used.h"
@@ -42,15 +42,13 @@ void Trace_LineFollow(void)
         g_pid_inited = 1;
     }
 
-    /* ---- 3. 外环: 角度 → 目标位置 ---- */
-    float target_pos = PID_calc(&g_pid_angle, k230_angle, 0.0f);
+    /* ---- 3. 外环: 位置 → 目标角度 ---- */
+    float target_angle = PID_calc(&g_pid_pos, k230_posx, 0.0f);
+    if (target_angle >  ANGLE_OUT_MAX) target_angle =  ANGLE_OUT_MAX;
+    if (target_angle < -ANGLE_OUT_MAX) target_angle = -ANGLE_OUT_MAX;
 
-    /* ---- 4. 内环: 位置 → 角速度 w ---- */
-    if (has_pos) {
-        w = PID_calc(&g_pid_pos, k230_posx, target_pos);
-    } else {
-        w = k230_angle * 0.03f;
-    }
+    /* ---- 4. 内环: 角度 → 角速度 w ---- */
+    w = PID_calc(&g_pid_angle, k230_angle, target_angle);
     if (w >  TRACE_W_MAX) w =  TRACE_W_MAX;
     if (w < -TRACE_W_MAX) w = -TRACE_W_MAX;
 
@@ -67,7 +65,7 @@ void Trace_LineFollow(void)
     g_trace_w      = w;
     g_trace_angle  = k230_angle;
     g_trace_posx   = k230_posx;
-    g_trace_target = target_pos;
+    g_trace_target = target_angle;
 
 
     /* ---- 7. 麦轮解算 + 发送 ---- */
