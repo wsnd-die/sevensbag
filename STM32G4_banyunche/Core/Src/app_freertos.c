@@ -448,7 +448,7 @@ void BsRt_task(void *argument)
 		/* USER CODE END BsRt_task */
 	}
 }
-}
+
 
 
 /* USER CODE BEGIN Header_OLED_TASK */

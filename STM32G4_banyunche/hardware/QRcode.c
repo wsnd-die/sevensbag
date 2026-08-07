@@ -4,36 +4,7 @@ static uint8_t qrcode_rx_byte;
 static uint8_t qrcode_rx_buf[QRCODE_RX_BUF_SIZE];
 static volatile uint16_t qrcode_rx_len=0;
 uint8_t QR_Flag;
-Qr_Yantitl Qr_YanBiao[16] = {
-    /* 数字 1-3: 完整 5 色 */
-    [0]  = { .Color_xu = { COLOR_BLACK, COLOR_WHITE, COLOR_RED,   COLOR_GREEN, COLOR_BLUE  } },
-    [1]  = { .Color_xu = { COLOR_WHITE, COLOR_BLACK, COLOR_RED,   COLOR_GREEN, COLOR_BLUE  } },
-    [2]  = { .Color_xu = { COLOR_WHITE, COLOR_BLACK, COLOR_GREEN, COLOR_RED,   COLOR_BLUE  } },
-    /* 数字 4-16: 4 色 + 第 5 位补充 */
-    [3]  = { .Color_xu = { COLOR_BLUE,  COLOR_WHITE, COLOR_BLACK, COLOR_RED,    COLOR_GREEN } },
-    [4]  = { .Color_xu = { COLOR_WHITE, COLOR_RED,   COLOR_BLUE,  COLOR_BLACK,  COLOR_GREEN } },
-    [5]  = { .Color_xu = { COLOR_BLACK, COLOR_RED,   COLOR_BLUE,  COLOR_WHITE,  COLOR_GREEN } },
-    [6]  = { .Color_xu = { COLOR_BLUE,  COLOR_GREEN, COLOR_BLACK, COLOR_WHITE,  COLOR_RED   } },
-    [7]  = { .Color_xu = { COLOR_GREEN, COLOR_WHITE, COLOR_BLUE,  COLOR_BLACK,  COLOR_RED   } },
-    [8]  = { .Color_xu = { COLOR_WHITE, COLOR_GREEN, COLOR_BLACK, COLOR_BLUE,   COLOR_RED   } },
-    [9]  = { .Color_xu = { COLOR_BLACK, COLOR_RED,   COLOR_BLUE,  COLOR_GREEN,  COLOR_WHITE } },
-    [10] = { .Color_xu = { COLOR_RED,   COLOR_BLUE,  COLOR_GREEN, COLOR_BLACK,  COLOR_WHITE } },
-    [11] = { .Color_xu = { COLOR_GREEN, COLOR_RED,   COLOR_BLACK, COLOR_BLUE,   COLOR_WHITE } },
-    [12] = { .Color_xu = { COLOR_WHITE, COLOR_RED,   COLOR_BLUE,  COLOR_GREEN,  COLOR_BLACK } },
-    [13] = { .Color_xu = { COLOR_RED,   COLOR_GREEN, COLOR_WHITE, COLOR_BLUE,   COLOR_BLACK } },
-    [14] = { .Color_xu = { COLOR_BLUE,  COLOR_WHITE, COLOR_GREEN, COLOR_RED,    COLOR_BLACK } },
-    [15] = { .Color_xu = { COLOR_GREEN, COLOR_BLUE,  COLOR_RED,   COLOR_WHITE,  COLOR_BLACK } },
-};
 
-
-Qr_Jantitl Qr_JanBiao[6] = {
-    [0] = { .Jang = { champion,     second_place, third_place  } },  /* A B C */
-    [1] = { .Jang = { champion,     third_place,  second_place } },  /* A C B */
-    [2] = { .Jang = { second_place, champion,     third_place  } },  /* B A C */
-    [3] = { .Jang = { second_place, third_place,  champion     } },  /* B C A */
-    [4] = { .Jang = { third_place,  champion,     second_place } },  /* C A B */
-    [5] = { .Jang = { third_place,  second_place, champion     } },  /* C B A */
-};
 void QRcode_Start(void)
 {
     __HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
@@ -64,7 +35,7 @@ HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeou
 
 
 
-void Qr_Get() {
+uint8_t Qr_Get(void) {
 
     while (Read_QrFlag()==0) {
         osDelay(50);
@@ -74,12 +45,12 @@ void Qr_Get() {
 }
 
 
-void  QR_deel()
+uint8_t  QR_deel(void)
 {
     uint8_t P;
     static uint8_t 	result=0;
 
-    for(i=0;i<3;i++)
+    for(uint8_t i=0;i<3;i++)
     {
         P=qrcode_rx_buf[i];
         if(P==0x0D)

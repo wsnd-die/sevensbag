@@ -18,7 +18,7 @@ extern "C" {
 
 #include "stm32g4xx_hal.h"
 #include <stdint.h>
-#include "Common_used.h"
+#include "color.h"
 
 #define QRCODE_RX_BUF_SIZE 8
 
