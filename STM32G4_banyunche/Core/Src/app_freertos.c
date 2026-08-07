@@ -231,16 +231,26 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
-	K230_SetMode(K230_MODE_CIRCLE);
+	bool flag_finish=false;
+	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
 
 
   /* Infinite loop */
   for(;;)
   {
-  	Circle_Follow();
+  	Trace_LineFollow();
+  	// if (g_circle_dir=='O'&&flag_finish==false)
+  	// {
+  	// 	Place('O');
+  	// 	flag_finish=true;
+  	// }
+  	// if (flag_finish!=true)
+  	// {
+  	// 	Circle_Follow();
+  	// }
+
   	osDelay(10);
-    osDelay(1);
   }
   /* USER CODE END NLF_TASK */
 }
@@ -359,7 +369,7 @@ void BsRt_task(void *argument)
 
 		if (g_last_cmd.Mode==Event_PickUp)
 		{
-				Servo_SetAngle(38);
+			Servo_SetAngle(38);
 			Color_SetLedLevel(0);
 			HAL_Delay(50);
 			Color_Init();
@@ -470,6 +480,7 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
+
   for(;;)
   {
     // if (Flag_TBOFdata) {

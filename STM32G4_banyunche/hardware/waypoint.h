@@ -64,7 +64,7 @@ typedef struct {
  *   WaypointNav_StartPlayback(&wn);
  *   // 在 Send_yuyin 中:
  *   WaypointNav_Update(&wn, cur_x, cur_y, cur_yaw, cur_w);
- *   motor = Mecanum_Calc_Full(wn.nav.cmd_vx, wn.nav.cmd_vy, wn.nav.cmd_w);
+ *   motor = Mecanum_Calc(0.0f, wn.nav.cmd_w);  // 纯旋转
  * ============================================================ */
 typedef struct {
     NavController nav;           // 复用现有导航控制器

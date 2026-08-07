@@ -139,7 +139,7 @@ void WaypointNav_StartPlayback(WaypointNav *wn)
     /* 设置第一个目标 */
     float x, y, yaw;
     waypoint_get(0, &x, &y, &yaw);
-    Nav_SetTarget(&wn->nav, x, y, yaw);
+    Nav_SetTarget(&wn->nav, yaw);
 
     wn->mode = WP_PLAYBACK;
     printf("PLAY START, %d points\r\n", n);
@@ -160,8 +160,6 @@ void WaypointNav_Update(WaypointNav *wn,
             waypoint_record(cur_x, cur_y, cur_yaw);
         }
         /* 录制模式下不输出电机控制量 */
-        wn->nav.cmd_vx = 0.0f;
-        wn->nav.cmd_vy = 0.0f;
         wn->nav.cmd_w  = 0.0f;
         break;
     }
@@ -170,14 +168,12 @@ void WaypointNav_Update(WaypointNav *wn,
         if (wn->target_idx >= wn->total) {
             /* 回放完成 */
             wn->mode = WP_IDLE;
-            wn->nav.cmd_vx = 0.0f;
-            wn->nav.cmd_vy = 0.0f;
             wn->nav.cmd_w  = 0.0f;
             return;
         }
 
         /* 喂入 NavController */
-        Nav_Update(&wn->nav, cur_x, cur_y, cur_yaw, cur_w);
+        Nav_Update(&wn->nav, cur_yaw, cur_w);
 
         /* 到达当前点 → 切换到下一个 */
         if (Nav_Arrived(&wn->nav)) {
@@ -186,8 +182,6 @@ void WaypointNav_Update(WaypointNav *wn,
             if (wn->target_idx >= wn->total) {
                 /* 全部完成 */
                 wn->mode = WP_IDLE;
-                wn->nav.cmd_vx = 0.0f;
-                wn->nav.cmd_vy = 0.0f;
                 wn->nav.cmd_w  = 0.0f;
                 return;
             }
@@ -195,15 +189,13 @@ void WaypointNav_Update(WaypointNav *wn,
             /* 设置下一个目标 */
             float x, y, yaw;
             waypoint_get(wn->target_idx, &x, &y, &yaw);
-            Nav_SetTarget(&wn->nav, x, y, yaw);
+            Nav_SetTarget(&wn->nav, yaw);
         }
         break;
     }
 
     case WP_IDLE:
     default:
-        wn->nav.cmd_vx = 0.0f;
-        wn->nav.cmd_vy = 0.0f;
         wn->nav.cmd_w  = 0.0f;
         break;
     }
