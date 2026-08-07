@@ -87,6 +87,9 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
         __HAL_UART_CLEAR_FLAG(&huart2, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
         HAL_UARTEx_ReceiveToIdle_DMA(&huart2, dma_rx_buf, DMA_RX_BUF_SIZE);
     }
+    else if (huart->Instance == USART3) {
+        K230_RxRestart();
+    }
 }
 #endif
 

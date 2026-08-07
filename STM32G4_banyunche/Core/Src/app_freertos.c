@@ -236,15 +236,14 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
+	K230_SetMode(K230_MODE_LINE);
+	K230_ApplyMode();
 
 
   /* Infinite loop */
   for(;;)
   {
-  	if (g_last_cmd.Mode==Event_Navigation)  { xSemaphoreTake(Sem_Act_Navigat, portMAX_DELAY); }
-  	if (g_last_cmd.Mode==Event_LinFolR)     { xSemaphoreTake(Sem_Act_FollowLineR, portMAX_DELAY); Trace_LineFollow(); }
-  	if (g_last_cmd.Mode==Event_LinFolL)     { xSemaphoreTake(Sem_Act_FollowLineL, portMAX_DELAY); Trace_LineFollow(); }
-
+  	Trace_LineFollow();
   	osDelay(10);
     osDelay(1);
   }
@@ -261,6 +260,9 @@ void NLF_TASK(void *argument)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
+#define COLOR_CALIB 0
+#if COLOR_CALIB
+#define COLOR_CALIB_MODE 0
     Color_SetLedLevel(0);
 	HAL_Delay(50);
 	Color_Init();
@@ -304,28 +306,37 @@ void Color_task(void *argument)
 #else
   for(;;)
   {
-		// char b[400]; int n = 0;
-		//
-		// /* 实时 RGB + 颜色 */
-		// Color_DataTypeDef d;
-		// if (Color_ReadData(&d) == HAL_OK) {
-		// 	Color_TypeDef c = Color_Judge(&d);
-		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
-		// 		d.red, d.green, d.blue, Color_ToString(c));
-		// } else {
-		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
-		// }
-		//
-		// /* 校准数据摘要 */
-		// n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
-		// 	g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
-		// for (int i = 0; i < COLOR_COUNT; i++)
-		// 	n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
-		// n += snprintf(b+n, sizeof(b)-n, "\r\n");
-		// HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
+		char b[400]; int n = 0;
+
+		/* 实时 RGB + 颜色 */
+		Color_DataTypeDef d;
+		if (Color_ReadData(&d) == HAL_OK) {
+			Color_TypeDef c = Color_Judge(&d);
+			n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
+				d.red, d.green, d.blue, Color_ToString(c));
+		} else {
+			n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
+		}
+
+		/* 校准数据摘要 */
+		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
+			g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
+		for (int i = 0; i < COLOR_COUNT; i++)
+			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
+		n += snprintf(b+n, sizeof(b)-n, "\r\n");
+		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
 		osDelay(50);
   }
 #endif
+#endif
+	for (;;)
+	{
+		printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f\r\n",
+		       g_trace_angle, g_trace_posx, g_trace_v, g_trace_w);
+		osDelay(100);
+
+	}
+
   /* USER CODE END Color_task */
 }
 
@@ -351,7 +362,7 @@ void BsRt_task(void *argument)
 		if (g_last_cmd.Mode==Event_PickUp)
 		{
 			xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
-			Servo_SetAngle(38);
+				Servo_SetAngle(38);
 			Color_SetLedLevel(0);
 			HAL_Delay(50);
 			Color_Init();

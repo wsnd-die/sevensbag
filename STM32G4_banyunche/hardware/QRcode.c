@@ -82,14 +82,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         }
 
         HAL_UART_Receive_IT(&huart1, &qrcode_rx_byte, 1);
-
-
-
+    }
+    else if (huart->Instance == USART3) {
+        K230_RxProcessByte();
     }
 
 }
 void QRcode_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
+    if (huart->Instance == USART3) {
+        K230_RxRestart();
+        return;
+    }
     if (huart->Instance != USART1) {
         return;
     }
