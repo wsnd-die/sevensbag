@@ -231,26 +231,46 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
-	bool flag_finish=false;
-	K230_SetMode(K230_MODE_LINE);
+	SystemMode_t Navafter_mode[4]={Event_QRCode,Event_FindCircle,Event_QRCode,Event_PickUp};
+	uint8_t NavafterNum[4]={1,5,1,3};
+	uint8_t P_Nava=0,P_LineFow=0;
+	SystemMode_t LineFowfter_mode[2]={Event_Navigation,Event_Navigation};
+
+	K230_SetMode(K230_MODE_CIRCLE);
 	K230_ApplyMode();
 
 
   /* Infinite loop */
   for(;;)
   {
-  	Trace_LineFollow();
-  	// if (g_circle_dir=='O'&&flag_finish==false)
-  	// {
-  	// 	Place('O');
-  	// 	flag_finish=true;
-  	// }
-  	// if (flag_finish!=true)
-  	// {
-  	// 	Circle_Follow();
-  	// }
+  	if (g_last_cmd.Mode==Event_Navigation) {
 
-  	osDelay(10);
+  		Nav_FeDuanPoint();
+
+		if (NavafterNum[P_Nava]==0) {
+			P_Nava++;
+		}
+  		task_send(Navafter_mode[P_Nava]);
+  		NavafterNum[P_Nava]--;
+
+  	}
+  	else if (g_last_cmd.Mode==Event_LinFolL)
+  	{
+		/*
+		 *加入循线代码
+		 */
+
+  		task_send(Event_Navigation);
+  	}
+  	else if (g_last_cmd.Mode==Event_LinFolR)
+  	{
+		/*
+		 *加入循线代码
+		 */
+  		task_send(Event_Navigation);
+  	}
+  	//Circle_Follow();
+  	osDelay(20);
   }
   /* USER CODE END NLF_TASK */
 }
@@ -365,11 +385,14 @@ void BsRt_task(void *argument)
 	BlockBasic_TurntableTo(1);
 	HAL_Delay(1000);
 	for(;;)
-	{osDelay(10);
+	{
+		osDelay(10);
+		if (g_last_cmd.Mode==Event_LinFolL)//任务颜色物块
+		{
 
 		if (g_last_cmd.Mode==Event_PickUp)
 		{
-			Servo_SetAngle(38);
+				Servo_SetAngle(38);
 			Color_SetLedLevel(0);
 			HAL_Delay(50);
 			Color_Init();
@@ -395,7 +418,15 @@ void BsRt_task(void *argument)
 					HAL_Delay(500);  /* 等待舵机转到位 */
 				}
 			}
+			task_send(Event_Navigation);
+
 		}
+		else if (g_last_cmd.Mode==Event_LinFolR)//任务奖杯
+		{
+
+			task_send(Event_Navigation);
+		}
+
 		osDelay(10);
 		/* USER CODE END BsRt_task */
 	}
@@ -457,13 +488,13 @@ void FC_TASK(void *argument)
 void QR_TASK(void *argument)
 {
   /* USER CODE BEGIN QR_TASK */
-	uint8_t QR_result=0;
-
+	uint8_t QR_result=0,i=0;
+	SystemMode_t  QR_after[2]={Event_LinFolR,Event_LinFolL};
   /* Infinite loop */
   for(;;)
   {
 
-  	if (g_last_cmd.Mode==Event_QRCode)  {  QR_result=Qr_Get(); }
+  	if (g_last_cmd.Mode==Event_QRCode)  {  QR_result=Qr_Get();task_send(QR_after[i++]); }
 
     osDelay(50);
   }
@@ -480,7 +511,6 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
-
   for(;;)
   {
     // if (Flag_TBOFdata) {

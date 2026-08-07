@@ -86,8 +86,8 @@ float BlockBasic_LiftTo(uint8_t dir,float height_mm)
     }
 
     BlockArmResult result = BlockBasic_ArmCalc(height_mm);
-    block_servo_write(TIM_CHANNEL_2, result.front_angle_deg, BLOCK_SERVO_180_DEG);
-    block_servo_write(TIM_CHANNEL_3, result.rear_angle_deg, BLOCK_SERVO_180_DEG);
+    block_servo_write(TIM_CHANNEL_1, result.front_angle_deg);
+    block_servo_write(TIM_CHANNEL_3, result.rear_angle_deg);
     return result.turntable_retreat_mm;
 #else
     /* 丝杆型：使用 5 号步进电机升降。 */
@@ -105,6 +105,8 @@ float BlockBasic_LiftTo(uint8_t dir,float height_mm)
     }
 #endif
 }
+
+
 
 #if BLOCK_USE_DUAL_ARM
 /**
@@ -132,6 +134,32 @@ BlockArmResult BlockBasic_ArmCalc(float height_mm)
     result.rear_angle_deg = servo1_deg - BLOCK_ARM_S2_OFFSET_DEG;
     result.turntable_retreat_mm = height * BLOCK_ARM_RETREAT_PER_MM;
     return result;
+}
+
+/**
+ * @brief   双机械臂预设位置控制。
+ * @param   pos  位置编号：1=初始(170°,30°)  2=最低(72°,79°)  3=第二位置(94°,101°)
+ * @note    CH1 → 前级舵机（舵机1），CH3 → 后级舵机（舵机2），均为 180° 舵机。
+ *          驱动公式：角度/180° * 2000 + 500 us
+ */
+void BlockBasic_DualArmSetPos(uint8_t pos)
+{
+    float angle1, angle2;
+
+    switch (pos) {
+        case 1:  angle1 = 170.0f; angle2 = 90.0f;  break;  /* 初始位置 */
+        case 2:  angle1 = 72.0f;  angle2 = 79.0f;  break;  /* 最低点 */
+        case 3:  angle1 = 94.0f;  angle2 = 101.0f; break;  /* 第二位置 */
+        default: return;  /* 无效位置，不做任何操作 */
+    }
+
+    /* 舵机1 前级 → CH1 */
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2,
+                          (uint32_t)(angle1 / 180.0f * 2000.0f + 500.0f + 0.5f));
+
+    /* 舵机2 后级 → CH3 */
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3,
+                          (uint32_t)(angle2 / 180.0f * 2000.0f + 500.0f + 0.5f));
 }
 #endif
 

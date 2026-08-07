@@ -31,7 +31,7 @@ extern "C" {
 #define BLOCK_SERVO_DEG              360.0f
 
 #if BLOCK_USE_DUAL_ARM
-/* 双机械臂参数：CH2 为前级舵机，CH3 为后级舵机。 */
+/* 双机械臂参数：CH1 为前级舵机（舵机1），CH3 为后级舵机（舵机2）。 */
 #define BLOCK_ARM_MIN_HEIGHT_MM          0.0f
 #define BLOCK_ARM_MAX_HEIGHT_MM          100.0f
 #define BLOCK_ARM_LINK_CM                10.5f
@@ -65,7 +65,7 @@ typedef enum {
 #if BLOCK_USE_DUAL_ARM
 /* 双机械臂高度换算结果。 */
 typedef struct {
-    float front_angle_deg;       /* 前级舵机 CH2 角度，单位 deg。 */
+    float front_angle_deg;       /* 前级舵机 CH1 角度，单位 deg。 */
     float rear_angle_deg;        /* 后级舵机 CH3 角度，单位 deg。 */
     float turntable_retreat_mm;  /* 转盘相对后退距离，单位 mm。 */
 } BlockArmResult;
@@ -86,6 +86,12 @@ typedef struct {
  * @retval 前级舵机角度、后级舵机角度、转盘相对后退距离。
  */
 BlockArmResult BlockBasic_ArmCalc(float height_mm);
+
+/**
+ * @brief  双机械臂预设位置控制（CH1 前级 + CH3 后级）。
+ * @param  pos  1=初始(170°,30°)  2=最低(72°,79°)  3=第二位置(94°,101°)
+ */
+void BlockBasic_DualArmSetPos(uint8_t pos);
 #endif
 
 /**
