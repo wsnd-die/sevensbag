@@ -196,7 +196,8 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
 	TaskCommand_t cmd;
 	task_init();
-	task_send(Event_Navigation);
+	//task_send(Event_Navigation);
+	task_send(Event_PickUp);
   for(;;)
   {
    cmd= task_recive();
