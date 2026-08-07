@@ -66,7 +66,7 @@ osThreadId_t ColorFunionHandle;
 const osThreadAttr_t ColorFunion_attributes = {
   .name = "ColorFunion",
   .priority = (osPriority_t) osPriorityAboveNormal6,
-  .stack_size = 512 * 4
+  .stack_size = 512 * 6
 };
 /* Definitions for BsRtFunion */
 osThreadId_t BsRtFunionHandle;
@@ -101,7 +101,7 @@ osThreadId_t IMU_TASKHandle;
 const osThreadAttr_t IMU_TASK_attributes = {
   .name = "IMU_TASK",
   .priority = (osPriority_t) osPriorityHigh,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 6
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -190,13 +190,14 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
-	task_send(Event_PickUp);
+	// task_send(Event_PickUp);
 	TaskCommand_t cmd;
 	task_init();
 	task_send(Event_Navigation);
   for(;;)
   {
-   cmd= task_recive();
+  	task_send(Event_PickUp);
+    cmd= task_recive();
 		if(cmd.k==1)
 		{
 			g_last_cmd = cmd;
@@ -263,12 +264,14 @@ void NLF_TASK(void *argument)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
-#define COLOR_CALIB_MODE 1
- //    Color_SetLedLevel(0);
-	// HAL_Delay(50);
-	// Color_Init();
-	// HAL_Delay(50);
-	// Servo_SetAngle(38);
+#define COLOR_CALIB 0
+#if COLOR_CALIB
+#define COLOR_CALIB_MODE 0
+    Color_SetLedLevel(0);
+	HAL_Delay(50);
+	Color_Init();
+	HAL_Delay(50);
+	Servo_SetAngle(38);
 
 #if COLOR_CALIB_MODE
 	const char *steps[] = {"EMPTY","RED","GREEN","BLUE","WHITE","BLACK"};
@@ -285,7 +288,7 @@ void Color_task(void *argument)
 		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
 
 		if (BlockBasic_TurntableTo(i+1) == BLOCK_OK) {
-			osDelay(1000);
+			// osDelay(1000);
 			Color_DataTypeDef d;
 			if (Color_ReadData(&d) == HAL_OK) {
 				n = snprintf(msg, sizeof(msg), "  R=%d G=%d B=%d\r\n", d.red, d.green, d.blue);
@@ -297,7 +300,7 @@ void Color_task(void *argument)
 			n = snprintf(msg, sizeof(msg), "Slot %d FAIL\r\n", i+1);
 		}
 		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
-		osDelay(500);
+		// osDelay(500);
 	}
 	Color_CalibSave();
 	HAL_UART_Transmit(&huart1, (uint8_t *)"=== SAVED ===\r\n", 14, 100);
@@ -307,28 +310,30 @@ void Color_task(void *argument)
 #else
   for(;;)
   {
-		// char b[400]; int n = 0;
-		//
-		// /* 实时 RGB + 颜色 */
-		// Color_DataTypeDef d;
-		// if (Color_ReadData(&d) == HAL_OK) {
-		// 	Color_TypeDef c = Color_Judge(&d);
-		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
-		// 		d.red, d.green, d.blue, Color_ToString(c));
-		// } else {
-		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
-		// }
-		//
-		// /* 校准数据摘要 */
-		// n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
-		// 	g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
-		// for (int i = 0; i < COLOR_COUNT; i++)
-		// 	n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
-		// n += snprintf(b+n, sizeof(b)-n, "\r\n");
-		// HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
-		osDelay(500);
+		char b[400]; int n = 0;
+
+		/* 实时 RGB + 颜色 */
+		Color_DataTypeDef d;
+		if (Color_ReadData(&d) == HAL_OK) {
+			Color_TypeDef c = Color_Judge(&d);
+			n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
+				d.red, d.green, d.blue, Color_ToString(c));
+		} else {
+			n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
+		}
+
+		/* 校准数据摘要 */
+		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
+			g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
+		for (int i = 0; i < COLOR_COUNT; i++)
+			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
+		n += snprintf(b+n, sizeof(b)-n, "\r\n");
+		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
+		osDelay(50);
   }
 #endif
+#endif
+
   /* USER CODE END Color_task */
 }
 
@@ -349,10 +354,11 @@ void BsRt_task(void *argument)
 	BlockBasic_TurntableTo(1);
 	HAL_Delay(1000);
 	for(;;)
-	{
-		xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
+	{osDelay(10);
+
 		if (g_last_cmd.Mode==Event_PickUp)
 		{
+			xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
 				Servo_SetAngle(38);
 			Color_SetLedLevel(0);
 			HAL_Delay(50);
@@ -366,7 +372,7 @@ void BsRt_task(void *argument)
 				int dr = abs((int)d.red   - g_color_ambient.r);
 				int dg = abs((int)d.green - g_color_ambient.g);
 				int db = abs((int)d.blue  - g_color_ambient.b);
-				if (dr < 6 && dg < 20 && db < 20) {
+				if (dr < 30 && dg < 30 && db < 30) {
 					/* 跳变太小 → 环境光/空槽 → 停止 */
 					slot--;
 					continue;

@@ -93,6 +93,7 @@
 #include "banyuntask.h"
 #include "Mecanum_Move.h"
 #include "NavigationMecanum.h"
+#include "block_basic.h"
 
 /* ============================================================
  * 7. 项目全局宏定义
