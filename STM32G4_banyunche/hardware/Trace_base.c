@@ -69,6 +69,7 @@ void Trace_LineFollow(void)
     g_trace_posx   = k230_posx;
     g_trace_target = target_pos;
 
+
     /* ---- 7. 麦轮解算 + 发送 ---- */
     motor = Mecanum_Calc(v, w);
     Send_commandmotor(&motor);
