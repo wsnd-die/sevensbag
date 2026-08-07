@@ -20,15 +20,15 @@ void Circle_Follow(void)
     MecanumResult motor;
 
     /* ---- 1. 获取圆方向 ---- */
-    if (!K230_GetCircleDir(&dir)) {
-        return;  /* 无新数据，保持当前状态 */
-    }
+    K230_GetCircleDir(&dir);
+
     g_circle_dir = dir;  /* 保存方向供外部打印 */
 
     /* ---- 2. 方向 → 速度映射 ---- */
     switch (dir) {
     case 'O':
-        Place('0');
+        g_circle_vx = 0.0f;
+        g_circle_vy = 0.0f;
         break;
 
     case 'N':

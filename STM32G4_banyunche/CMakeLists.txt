@@ -54,6 +54,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/ColorIdentif.c
         app/BollLocator.c
         app/BollLocator.h
+        hardware/angle_ctrl.c
+        hardware/angle_ctrl.c
 )
 
 # Add STM32CubeMX generated sources
@@ -83,7 +85,7 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/oled_data.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/mecanum.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/pid.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/navigation.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/angle_ctrl.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Send_motor.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/QRcode.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/sw_uart.c"

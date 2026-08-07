@@ -61,7 +61,7 @@
 #include "spi_imu660rc.h"
 #include "mecanum.h"
 #include "uart2_tbop10.h"
-#include "navigation.h"
+#include "angle_ctrl.h"
 #include "block_basic.h"
 #include "Trace_base.h"
 #include "Circle_base.h"

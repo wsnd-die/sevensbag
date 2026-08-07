@@ -1,8 +1,8 @@
 /**
  * @file    waypoint.c
- * @brief   路径录制/回放 — NavController 集成实现
+ * @brief   路径录制/回放 — AngleCtrl 集成实现
  *
- * 单位约定：全部 mm（与 TBOP / NavController 一致）
+ * 单位约定：全部 mm（与 TBOP / AngleCtrl 一致）
  */
 
 #include "Common_used.h"
@@ -90,12 +90,12 @@ bool waypoint_get_target(uint16_t target_idx, float *x, float *y, float *yaw)
  * WaypointNav 适配器实现
  * ============================================================ */
 
-void WaypointNav_Init(WaypointNav *wn)
+void WaypointAngle_Init(WaypointNav *wn)
 {
     waypoint_init();
 
-    /* 初始化内部 NavController */
-    Nav_Init(&wn->nav);
+    /* 初始化内部 AngleCtrl */
+    Angle_Init(&wn->ac);
     
     wn->target_idx      = 0;
     wn->total           = 0;
@@ -139,7 +139,7 @@ void WaypointNav_StartPlayback(WaypointNav *wn)
     /* 设置第一个目标 */
     float x, y, yaw;
     waypoint_get(0, &x, &y, &yaw);
-    Nav_SetTarget(&wn->nav, x, y, yaw);
+    Angle_SetTarget(&wn->ac, yaw);
 
     wn->mode = WP_PLAYBACK;
     printf("PLAY START, %d points\r\n", n);
@@ -147,7 +147,7 @@ void WaypointNav_StartPlayback(WaypointNav *wn)
 
 /* ---- 核心更新 ---- */
 
-void WaypointNav_Update(WaypointNav *wn,
+void WaypointAngle_Update(WaypointNav *wn,
                         float cur_x, float cur_y,
                         float cur_yaw, float cur_w)
 {
@@ -160,9 +160,7 @@ void WaypointNav_Update(WaypointNav *wn,
             waypoint_record(cur_x, cur_y, cur_yaw);
         }
         /* 录制模式下不输出电机控制量 */
-        wn->nav.cmd_vx = 0.0f;
-        wn->nav.cmd_vy = 0.0f;
-        wn->nav.cmd_w  = 0.0f;
+        wn->ac.cmd_w  = 0.0f;
         break;
     }
 
@@ -170,46 +168,40 @@ void WaypointNav_Update(WaypointNav *wn,
         if (wn->target_idx >= wn->total) {
             /* 回放完成 */
             wn->mode = WP_IDLE;
-            wn->nav.cmd_vx = 0.0f;
-            wn->nav.cmd_vy = 0.0f;
-            wn->nav.cmd_w  = 0.0f;
+            wn->ac.cmd_w  = 0.0f;
             return;
         }
 
-        /* 喂入 NavController */
-        Nav_Update(&wn->nav, cur_x, cur_y, cur_yaw, cur_w);
+        /* 喂入 AngleCtrl */
+        Angle_Update(&wn->ac, cur_yaw, cur_w);
 
         /* 到达当前点 → 切换到下一个 */
-        if (Nav_Arrived(&wn->nav)) {
+        if (Angle_Arrived(&wn->ac)) {
             wn->target_idx++;
 
             if (wn->target_idx >= wn->total) {
                 /* 全部完成 */
                 wn->mode = WP_IDLE;
-                wn->nav.cmd_vx = 0.0f;
-                wn->nav.cmd_vy = 0.0f;
-                wn->nav.cmd_w  = 0.0f;
+                wn->ac.cmd_w  = 0.0f;
                 return;
             }
 
             /* 设置下一个目标 */
             float x, y, yaw;
             waypoint_get(wn->target_idx, &x, &y, &yaw);
-            Nav_SetTarget(&wn->nav, x, y, yaw);
+            Angle_SetTarget(&wn->ac, yaw);
         }
         break;
     }
 
     case WP_IDLE:
     default:
-        wn->nav.cmd_vx = 0.0f;
-        wn->nav.cmd_vy = 0.0f;
-        wn->nav.cmd_w  = 0.0f;
+        wn->ac.cmd_w  = 0.0f;
         break;
     }
 }
 
-bool WaypointNav_Arrived(const WaypointNav *wn)
+bool WaypointAngle_Arrived(const WaypointNav *wn)
 {
     return (wn->mode == WP_IDLE && wn->total > 0);
 }

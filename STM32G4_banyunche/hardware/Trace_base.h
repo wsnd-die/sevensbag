@@ -15,18 +15,18 @@ extern "C" {
 #include <stdint.h>
 
 /* ======================== 外环: 角度 → 目标位置 ======================== */
-#define ANGLE_KP      0.03f     /* 外环 P */
+#define ANGLE_KP      0.025f     /* 外环 P */
 #define ANGLE_KI      0.0f     /* 外环 I */
-#define ANGLE_KD      0.0f     /* 外环 D */
+#define ANGLE_KD      0.009f     /* 外环 D */
 #define ANGLE_OUT_MAX  80.0f   /* 外环输出限幅 (像素) */
 /* ======================== 内环: 位置 → 角速度 ======================== */
-#define POS_KP        0.024f    /* 内环 P */
+#define POS_KP        0.2f    /* 内环 P */
 #define POS_KI        0.00f   /* 内环 I */
-#define POS_KD        0.009f    /* 内环 D */
+#define POS_KD        0.05f    /* 内环 D */
 #define POS_INTEGRAL_MAX  3.0f /* 内环积分限幅 */
 
 /* ======================== 共用 ======================== */
-#define TRACE_BASE_SPEED   0.95f   /* 基础线速度 (m/s) */
+#define TRACE_BASE_SPEED   0.8f   /* 基础线速度 (m/s) */
 #define TRACE_W_MAX        0.95f    /* 最大角速度 (rad/s) */
 
 /* ======================== 函数声明 ======================== */

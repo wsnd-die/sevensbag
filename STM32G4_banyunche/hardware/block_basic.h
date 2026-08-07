@@ -117,7 +117,7 @@ void Place(char dir);
      *
      *
      */
-    void Servo_SetAngle(float Angle);
+void Servo_SetAngle(float Angle);
 
 #ifdef __cplusplus
 }
