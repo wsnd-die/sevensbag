@@ -23,7 +23,7 @@
 #include <limits.h>
 #include <string.h>
 #include <stdarg.h>
-
+#include "block_basic.h"
 /* ============================================================
  * 2. STM32G4 HAL / CMSIS
  * ============================================================ */

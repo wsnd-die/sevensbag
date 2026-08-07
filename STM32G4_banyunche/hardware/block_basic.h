@@ -106,7 +106,7 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos);
  *         应先调用本函数同步软件状态。
  */
 void servo_angle(float angle_deg);
-
+void Place(char dir);
     /*
      *
      *
