@@ -231,6 +231,11 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
+	SystemMode_t Navafter_mode[4]={Event_QRCode,Event_FindCircle,Event_QRCode,Event_PickUp};
+	uint8_t NavafterNum[4]={1,5,1,3};
+	uint8_t P_Nava=0,P_LineFow=0;
+	SystemMode_t LineFowfter_mode[2]={Event_Navigation,Event_Navigation};
+
 	K230_SetMode(K230_MODE_CIRCLE);
 	K230_ApplyMode();
 
@@ -238,9 +243,34 @@ void NLF_TASK(void *argument)
   /* Infinite loop */
   for(;;)
   {
-  	Circle_Follow();
-  	osDelay(10);
-    osDelay(1);
+  	if (g_last_cmd.Mode==Event_Navigation) {
+
+  		Nav_FeDuanPoint();
+
+		if (NavafterNum[P_Nava]==0) {
+			P_Nava++;
+		}
+  		task_send(Navafter_mode[P_Nava]);
+  		NavafterNum[P_Nava]--;
+
+  	}
+  	else if (g_last_cmd.Mode==Event_LinFolL)
+  	{
+		/*
+		 *加入循线代码
+		 */
+
+  		task_send(Event_Navigation);
+  	}
+  	else if (g_last_cmd.Mode==Event_LinFolR)
+  	{
+		/*
+		 *加入循线代码
+		 */
+  		task_send(Event_Navigation);
+  	}
+  	//Circle_Follow();
+  	osDelay(20);
   }
   /* USER CODE END NLF_TASK */
 }
@@ -349,21 +379,18 @@ void BsRt_task(void *argument)
 {
 	/* USER CODE BEGIN BsRt_task */
 	/*
-	 *舵机转盘任务
+	 *舵机转盘任务,包函循线中物块的拿取
 	 */
 	Servo_SetAngle(38);
 	BlockBasic_TurntableTo(1);
+
 	HAL_Delay(1000);
 	for(;;)
-	{osDelay(10);
-
-		if (g_last_cmd.Mode==Event_PickUp)
+	{
+		osDelay(10);
+		if (g_last_cmd.Mode==Event_LinFolL)//任务颜色物块
 		{
-				Servo_SetAngle(38);
-			Color_SetLedLevel(0);
-			HAL_Delay(50);
-			Color_Init();
-			HAL_Delay(50);
+
 			/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
 			for (uint8_t slot = 1; slot <= 5; slot++) {
 				Color_DataTypeDef d;
@@ -375,6 +402,7 @@ void BsRt_task(void *argument)
 				if (dr < 30 && dg < 30 && db < 30) {
 					/* 跳变太小 → 环境光/空槽 → 停止 */
 					slot--;
+					osDelay(30);
 					continue;
 				}
 				/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
@@ -382,10 +410,18 @@ void BsRt_task(void *argument)
 				TT_SetColor(slot - 1, c);
 				if (slot < 5) {
 					if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
-					HAL_Delay(500);  /* 等待舵机转到位 */
+					 HAL_Delay(500);  /* 等待舵机转到位 */
 				}
 			}
+			task_send(Event_Navigation);
+
 		}
+		else if (g_last_cmd.Mode==Event_LinFolR)//任务奖杯
+		{
+
+			task_send(Event_Navigation);
+		}
+
 		osDelay(10);
 		/* USER CODE END BsRt_task */
 	}
@@ -447,13 +483,13 @@ void FC_TASK(void *argument)
 void QR_TASK(void *argument)
 {
   /* USER CODE BEGIN QR_TASK */
-	uint8_t QR_result=0;
-
+	uint8_t QR_result=0,i=0;
+	SystemMode_t  QR_after[2]={Event_LinFolR,Event_LinFolL};
   /* Infinite loop */
   for(;;)
   {
 
-  	if (g_last_cmd.Mode==Event_QRCode)  {  QR_result=Qr_Get(); }
+  	if (g_last_cmd.Mode==Event_QRCode)  {  QR_result=Qr_Get();task_send(QR_after[i++]); }
 
     osDelay(50);
   }
