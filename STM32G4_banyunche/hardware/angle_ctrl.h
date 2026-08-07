@@ -1,23 +1,23 @@
 /**
- * @file    navigation.h
+ * @file    angle_ctrl.h
  * @brief   纯角度控制: 角度环 → 角速度环 (串级 PID)
- *          仅维持目标角度，不做位置导航
+ *          仅维持目标角度，不做位置角度控制
  */
-#ifndef NAVIGATION_H
-#define NAVIGATION_H
+#ifndef ANGLE_CTRL_H
+#define ANGLE_CTRL_H
 
 #include <stdint.h>
 #include <stdbool.h>
 #include "pid.h"
 
 typedef enum {
-    NAV_IDLE    = 0,
-    NAV_MOVING  = 1,
-    NAV_ARRIVED = 2
-} NavState;
+    ANGLE_IDLE    = 0,
+    ANGLE_MOVING  = 1,
+    ANGLE_ARRIVED = 2
+} AngleState;
 
 typedef struct {
-    NavState state;
+    AngleState state;
 
     /* 目标 */
     float target_yaw;     /* deg, 目标朝向 */
@@ -45,18 +45,18 @@ typedef struct {
 
     /* 诊断 */
     float yaw_err, target_w;
-} NavController;
+} AngleCtrl;
 
 /* 角度环 + 角速度环 */
-void YawLoop_Update(NavController *nav,
+void AngleLoop_Update(AngleCtrl *ac,
                     float cur_yaw, float cur_w);
 
 /* 整体 */
-void  Nav_Init        (NavController *nav);
-void  Nav_SetTarget   (NavController *nav, float yaw);
-void  Nav_UpdateTarget(NavController *nav, float yaw);  /* 仅更新目标，不重置PID */
-void  Nav_Update      (NavController *nav,
+void  Angle_Init        (AngleCtrl *ac);
+void  Angle_SetTarget   (AngleCtrl *ac, float yaw);
+void  Angle_UpdateTarget(AngleCtrl *ac, float yaw);  /* 仅更新目标，不重置PID */
+void  Angle_Update      (AngleCtrl *ac,
                        float cur_yaw, float cur_w);
-bool  Nav_Arrived     (const NavController *nav);
+bool  Angle_Arrived     (const AngleCtrl *ac);
 
 #endif

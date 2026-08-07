@@ -1,9 +1,9 @@
 /**
  * @file    waypoint.h
- * @brief   路径录制/回放系统 — 与 navigation.c 的 NavController 集成
+ * @brief   路径录制/回放系统 — 与 navigation.c 的 AngleCtrl 集成
  *
  * ============================================================
- * 单位约定：全部使用 mm（与 TBOP / NavController 一致）
+ * 单位约定：全部使用 mm（与 TBOP / AngleCtrl 一致）
  * ============================================================
  */
 
@@ -12,7 +12,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "navigation.h"
+#include "angle_ctrl.h"
 
 /* ============================================================
  * 容量
@@ -48,26 +48,26 @@ typedef struct {
 } WaypointBuffer_t;
 
 /* ============================================================
- * 路径导航适配器 —— 桥接 waypoint buffer ↔ NavController
+ * 路径导航适配器 —— 桥接 waypoint buffer ↔ AngleCtrl
  *
  * 用法示例:
  *
  *   WaypointNav wn;
- *   WaypointNav_Init(&wn);
+ *   WaypointAngle_Init(&wn);
  *
  *   // 录制
  *   WaypointNav_StartRecord(&wn);
  *   // 在 IMU_TASK 中:
- *   WaypointNav_Update(&wn, cur_x, cur_y, cur_yaw, cur_w);
+ *   WaypointAngle_Update(&wn, cur_x, cur_y, cur_yaw, cur_w);
  *
  *   // 回放
  *   WaypointNav_StartPlayback(&wn);
  *   // 在 Send_yuyin 中:
- *   WaypointNav_Update(&wn, cur_x, cur_y, cur_yaw, cur_w);
- *   motor = Mecanum_Calc(0.0f, wn.nav.cmd_w);  // 纯旋转
+ *   WaypointAngle_Update(&wn, cur_x, cur_y, cur_yaw, cur_w);
+ *   motor = Mecanum_Calc(0.0f, wn.ac.cmd_w);  // 纯旋转
  * ============================================================ */
 typedef struct {
-    NavController nav;           // 复用现有导航控制器
+    AngleCtrl ac;           // 复用现有导航控制器
     uint16_t      target_idx;    // 当前追踪的 waypoint 索引
     uint16_t      total;         // 回放开始时的总点数 (快照)
     WaypointMode  mode;          // 当前工作模式
@@ -108,8 +108,8 @@ void waypoint_export(void);
  * WaypointNav 适配器 API (推荐)
  * ============================================================ */
 
-/* 初始化适配器 (清空 buffer, 初始化 NavController) */
-void WaypointNav_Init(WaypointNav *wn);
+/* 初始化适配器 (清空 buffer, 初始化 AngleCtrl) */
+void WaypointAngle_Init(WaypointNav *wn);
 
 /* ---- 模式切换 ---- */
 void WaypointNav_StartRecord(WaypointNav *wn);
@@ -117,11 +117,11 @@ void WaypointNav_StopRecord(WaypointNav *wn);
 void WaypointNav_StartPlayback(WaypointNav *wn);
 
 /* ---- 核心更新 (在任务循环中调用) ---- */
-void WaypointNav_Update(WaypointNav *wn,
+void WaypointAngle_Update(WaypointNav *wn,
                         float cur_x, float cur_y,
                         float cur_yaw, float cur_w);
 
 /* ---- 回放完成判断 ---- */
-bool WaypointNav_Arrived(const WaypointNav *wn);
+bool WaypointAngle_Arrived(const WaypointNav *wn);
 
 #endif //STM32G4_TEST_WAYPOINT_H

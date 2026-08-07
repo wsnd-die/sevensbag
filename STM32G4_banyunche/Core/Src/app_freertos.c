@@ -236,7 +236,7 @@ void NLF_TASK(void *argument)
 	uint8_t P_Nava=0,P_LineFow=0;
 	SystemMode_t LineFowfter_mode[2]={Event_Navigation,Event_Navigation};
 
-	K230_SetMode(K230_MODE_CIRCLE);
+	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
 
 
@@ -256,20 +256,15 @@ void NLF_TASK(void *argument)
   	}
   	else if (g_last_cmd.Mode==Event_LinFolL)
   	{
-		/*
-		 *加入循线代码
-		 */
+  		Trace_LineFollow();
 
-  		task_send(Event_Navigation);
+  		// task_send(Event_Navigation);
   	}
   	else if (g_last_cmd.Mode==Event_LinFolR)
   	{
-		/*
-		 *加入循线代码
-		 */
+  		//Circle_Follow();
   		task_send(Event_Navigation);
   	}
-  	//Circle_Follow();
   	osDelay(20);
   }
   /* USER CODE END NLF_TASK */
@@ -431,6 +426,7 @@ void BsRt_task(void *argument)
 		/* USER CODE END BsRt_task */
 	}
 }
+}
 
 
 /* USER CODE BEGIN Header_OLED_TASK */
@@ -522,8 +518,3 @@ void IMU_FUCTION(void *argument)
   }
   /* USER CODE END IMU_FUCTION */
 }
-
-/* Private application code --------------------------------------------------*/
-/* USER CODE BEGIN Application */
-/* USER CODE END Application */
-

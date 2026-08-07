@@ -182,57 +182,6 @@ void Chassis_WorldMoveTest(void)
 }
 
 
-/* ============================================================
- * Yaw_chang — 偏航角位置式 PID 校正
- *   输入: imu_yaw (当前偏航角, 度)
- *   目标: Self_Dir.yaw (世界航向角, rad)
- *   输出: 纯旋转 Mecanum_Calc(0, w) → Send_commandmotor
- *   调用频率: 建议每 10~20ms 调用一次 (放在任务循环中)
- * ============================================================ */
-
-#define YAW_KP       0.04f   /* P: 1°误差 → 0.04 rad/s */
-#define YAW_KI       0.005f  /* I: 消除静差 */
-#define YAW_KD       0.0f    /* D: 暂不使用 */
-#define YAW_MAX_OUT  1.5f    /* 最大角速度 (rad/s) */
-#define YAW_MAX_IOUT 0.3f    /* 积分限幅 (rad/s) */
-#define YAW_TOL_DEG  1.0f    /* 到位判断死区 (度) */
-
-void Yaw_chang(void)
-{
-    static pid_type_def pid_yaw;
-    static uint8_t      inited = 0;
-    MecanumResult       motor;
-    float               target_deg, error_deg, w;
-
-    /* ---- 1. 一次性初始化 ---- */
-    if (!inited) {
-        const fp32 k[3] = { YAW_KP, YAW_KI, YAW_KD };
-        PID_init(&pid_yaw, PID_POSITION, k, YAW_MAX_OUT, YAW_MAX_IOUT);
-        inited = 1;
-    }
-
-    /* ---- 2. 目标角度转换为度，并计算误差 ---- */
-    target_deg = Self_Dir.yaw * (180.0f / MECANUM_PI);
-
-    error_deg = target_deg - imu_yaw;
-    while (error_deg >  180.0f) error_deg -= 360.0f;
-    while (error_deg < -180.0f) error_deg += 360.0f;
-
-    /* ---- 3. 到位死区：停止 ---- */
-    if (fabsf(error_deg) < YAW_TOL_DEG) {
-        PID_clear(&pid_yaw);
-        motor = (MecanumResult){0};
-        Send_commandmotor(&motor);
-        return;
-    }
-
-    /* ---- 4. 位置式 PID: 误差(度) → 角速度 w(rad/s) ---- */
-    w = PID_calc(&pid_yaw, 0.0f, error_deg);
-
-    /* ---- 5. 纯旋转，无平移 ---- */
-    motor = Mecanum_Calc(0.0f, w);
-    Send_commandmotor(&motor);
-}
 
 
 
