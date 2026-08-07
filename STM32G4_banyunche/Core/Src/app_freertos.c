@@ -52,7 +52,7 @@ volatile TaskCommand_t   g_last_cmd;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityHigh,
   .stack_size = 256 * 4
 };
 /* Definitions for NLFKION */
@@ -87,14 +87,14 @@ const osThreadAttr_t OLED_attributes = {
 osThreadId_t FCFUIONHandle;
 const osThreadAttr_t FCFUION_attributes = {
   .name = "FCFUION",
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityAboveNormal6,
   .stack_size = 256 * 4
 };
 /* Definitions for QRFUNION */
 osThreadId_t QRFUNIONHandle;
 const osThreadAttr_t QRFUNION_attributes = {
   .name = "QRFUNION",
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityAboveNormal6,
   .stack_size = 256 * 4
 };
 /* Definitions for IMU_TASK */
@@ -134,12 +134,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  Sem_Act_QR         = xSemaphoreCreateBinary();
-  Sem_Act_Steer       = xSemaphoreCreateBinary();
-  Sem_Act_FollowLineL = xSemaphoreCreateBinary();
-  Sem_Act_FollowLineR = xSemaphoreCreateBinary();
-  Sem_Act_Navigat     = xSemaphoreCreateBinary();
-  Sem_Act_FINDCIRCLE  = xSemaphoreCreateBinary();
+
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -204,18 +199,18 @@ void StartDefaultTask(void *argument)
 			{
 			case Event_LinFolL:
 				if (current_task == Event_Task1) break;
-				current_task = Event_Task1; xSemaphoreGive(Sem_Act_FollowLineL); break;
+				current_task = Event_Task1; break;
 			case Event_LinFolR:
 				if (current_task == Event_Task2) break;
-				current_task = Event_Task2; xSemaphoreGive(Sem_Act_FollowLineR); break;
-			case Event_Navigation:    xSemaphoreGive(Sem_Act_Navigat); break;
+				current_task = Event_Task2;  break;
+			case Event_Navigation:    break;
 			case Event_GoHome:
-				current_task = Event_Task2; xSemaphoreGive(Sem_Act_Navigat); break;
+				current_task = Event_Task2;  break;
 			case Event_PickUp: case Event_PlaceDown: case Event_STEERING_ROTATE:
-				xSemaphoreGive(Sem_Act_Steer); break;
-			case Event_QRCode:      xSemaphoreGive(Sem_Act_QR); break;
-			case Event_FindCircle:  xSemaphoreGive(Sem_Act_FINDCIRCLE); break;
-			case Event_STOP:        current_task = Event_IDLE; break;
+				break;
+			case Event_QRCode: break;
+			case Event_FindCircle:  break;
+			case Event_STOP:  current_task = Event_IDLE; break;
 			default: break;
 			}
 		}
@@ -330,13 +325,13 @@ void Color_task(void *argument)
   }
 #endif
 #endif
-	for (;;)
-	{
-		printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f\r\n",
-		       g_trace_angle, g_trace_posx, g_trace_v, g_trace_w);
-		osDelay(100);
-
-	}
+	// for (;;)
+	// {
+	// 	printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f\r\n",
+	// 	       g_trace_angle, g_trace_posx, g_trace_v, g_trace_w);
+	// 	osDelay(100);
+	//
+	// }
 
   /* USER CODE END Color_task */
 }
@@ -362,7 +357,6 @@ void BsRt_task(void *argument)
 
 		if (g_last_cmd.Mode==Event_PickUp)
 		{
-			xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY);
 				Servo_SetAngle(38);
 			Color_SetLedLevel(0);
 			HAL_Delay(50);
@@ -435,7 +429,7 @@ void FC_TASK(void *argument)
   /* Infinite loop */
   for(;;)
   {
-  	if (g_last_cmd.Mode==Event_FindCircle)  { xSemaphoreTake(Sem_Act_Steer, portMAX_DELAY); Circle_Follow(); }
+  	if (g_last_cmd.Mode==Event_FindCircle)  {  Circle_Follow(); }
 
     osDelay(50);
   }
@@ -458,7 +452,7 @@ void QR_TASK(void *argument)
   for(;;)
   {
 
-  	if (g_last_cmd.Mode==Event_QRCode)  { xSemaphoreTake(Sem_Act_QR, portMAX_DELAY);  QR_result=Qr_Get(); }
+  	if (g_last_cmd.Mode==Event_QRCode)  {  QR_result=Qr_Get(); }
 
     osDelay(50);
   }
