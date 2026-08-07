@@ -73,6 +73,7 @@ bool Nav_FeDuanPoint(void);
  * @return false 中途某点执行失败
  */
 bool Nav_RunWaypoints(void);
+void Yaw_chang(void);
 
 #ifdef __cplusplus
 }

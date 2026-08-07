@@ -16,6 +16,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
+#include "stdlib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -397,6 +398,7 @@ void OLED_TASK(void *argument)
 
   for(;;)
   {
+
 
 		osDelay(500);
   }

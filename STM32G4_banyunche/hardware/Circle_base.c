@@ -26,7 +26,7 @@ void Circle_Follow(void)
     /* ---- 2. 方向 → 速度映射 ---- */
     switch (dir) {
     case 'O':
-        Place();
+        Place('0');
         break;
 
     case 'N':
