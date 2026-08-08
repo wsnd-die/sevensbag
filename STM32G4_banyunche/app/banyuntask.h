@@ -29,16 +29,16 @@ extern "C" {
  * 系统事件（驱动源 → defaultTask 调度器 → Worker 任务）
  * ============================================================ */
 typedef enum {
-     Event_Navigation           = 0,   /* 导航到目标点 */
-     Event_LinFolL              = 1,   /* 循迹左 → 启动 Task1 */
-     Event_LinFolR              = 2,   /* 循迹右 → 启动 Task2 */
-     Event_STOP                 = 3,   /* 停止 → IDLE */
-     Event_STEERING_ROTATE      = 4,   /* 舵机旋转 */
-     Event_QRCode               = 5,   /* 识别二维码 → SetQR(idx) */
-     Event_FindCircle           = 6,   /* 找圆 */
-     Event_PickUp               = 7,   /* 拾取(转盘颜色收集) */
-     Event_PlaceDown            = 8,   /* 放置 */
-     Event_GoHome               = 9,   /* 回家 → 切到 Task2 并导航 */
+     Event_Navigation           = 1,   /* 导航到目标点 */
+     Event_LinFolL              = 2,   /* 循迹左 → 启动 Task1 */
+     Event_LinFolR              = 3,   /* 循迹右 → 启动 Task2 */
+     Event_STOP                 = 4,   /* 停止 → IDLE */
+     Event_STEERING_ROTATE      = 5,   /* 舵机旋转 */
+     Event_QRCode               = 6,   /* 识别二维码 → SetQR(idx) */
+     Event_FindCircle           = 7,   /* 找圆 */
+     Event_PickUp               = 8,   /* 拾取(转盘颜色收集) */
+     Event_PlaceDown            = 9,   /* 放置 */
+     Event_GoHome               = 10,   /* 回家 → 切到 Task2 并导航 */
 } SystemMode_t;
 
 /* ============================================================

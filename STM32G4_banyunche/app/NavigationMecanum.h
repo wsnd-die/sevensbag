@@ -74,6 +74,33 @@ bool Nav_FeDuanPoint(void);
  */
 bool Nav_RunWaypoints(void);
 
+/* ============================================================
+ * 车体坐标运动 (Body-frame)
+ * ============================================================ */
+
+/**
+ * @brief 车体坐标运动 — 前进/左移/旋转，阻塞直到到位或超时
+ *
+ * 坐标系: forward(+) 朝车头, left(+) 朝车体左方, rotate(+) CCW
+ * 内部调用 Mecanum_MoveWithEncoder 执行，并自动更新 Self_Dir。
+ *
+ * @param forward_m  前进距离 (m)，负值=后退
+ * @param left_m     左移距离 (m)，负值=右移
+ * @param rotate_rad 旋转角度 (rad)，正值=CCW
+ * @return true      运动执行成功
+ * @return false     解算或执行失败
+ */
+bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad);
+
+/** @brief 前进/后退 (m)，正=前进，负=后退 */
+bool Nav_MoveForward(float distance_m);
+
+/** @brief 左移/右移 (m)，正=左移，负=右移 */
+bool Nav_MoveLeft(float distance_m);
+
+/** @brief 原地旋转 (rad)，正=CCW */
+bool Nav_Rotate(float angle_rad);
+
 
 #ifdef __cplusplus
 }

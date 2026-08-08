@@ -52,7 +52,8 @@ typedef struct {
 
 } TT_t;  /* Turntable */
 
-extern TT_t g_tt;
+extern TT_t    g_tt;
+extern uint8_t T2[6][3];
 
 /* ============================================================
  * API
@@ -62,6 +63,7 @@ void SetQR(uint8_t idx);                         /* 设置 QR 序号, 解析映�
 void TT_SetColor(uint8_t slot, Color_TypeDef c);  /* 存检测到的颜色到槽位 */
 uint8_t SlotByColor(Color_TypeDef c);            /* 颜色 → 槽位 */
 uint8_t ColorAtSlot(uint8_t slot);               /* 槽位 → 颜色 */
+void    TT_RotateByQR(void);                     /* 按 QR 颜色顺序, 依次旋转到每个颜色所在槽位 */
 void TogetPos(uint8_t slot, float *x, float *y, float *yaw);  /* 取点位坐标 */
 void SetPos(uint8_t slot, float x, float y, float yaw);     /* 标定点位 */
 

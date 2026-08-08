@@ -23,9 +23,9 @@ extern "C" {
 #define QRCODE_RX_BUF_SIZE 8
 
 typedef enum {
-    champion,
-    second_place,
-    third_place,
+    champion=1,
+    second_place=2,
+    third_place=3,
 
 }Jang_type;
 
@@ -41,6 +41,7 @@ void QRcode_Start(void);
 void QRcode_Clear(void);
 const uint8_t *QRcode_GetBuffer(uint16_t *len);
 HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeout);
+uint8_t Slop_dirjang(Jang_type jang);
 
 uint8_t Read_QrFlag(void);
 uint8_t QR_deel(void);
