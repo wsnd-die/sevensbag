@@ -73,11 +73,12 @@ typedef struct {
 
 /**
  * @brief  物块升降统一入口。
- * @param  height_mm  目标升高高度，单位 mm。
+ * @param  dir        升降方向，0=下降，1=上升。
+ * @param  pos        双机械臂型为位置表编号；丝杆型为目标升高高度，单位 mm。
  * @retval >=0        转盘相对后退距离，单位 mm。
  * @retval <0         参数错误或运动失败。
  */
-    float BlockBasic_LiftTo(uint8_t dir,float height_mm);
+    float BlockBasic_LiftTo(uint8_t dir, float pos);
 
 #if BLOCK_USE_DUAL_ARM
 /**

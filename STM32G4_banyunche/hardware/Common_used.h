@@ -60,7 +60,6 @@
 #include "oled.h"
 #include "oled_data.h"
 #include "imu660.h"
-#include "spi_imu660rc.h"
 #include "mecanum.h"
 #include "uart2_tbop10.h"
 #include "angle_ctrl.h"

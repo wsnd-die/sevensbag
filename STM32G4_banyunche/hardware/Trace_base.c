@@ -56,8 +56,8 @@ void Trace_LineFollow(void)
     v = TRACE_BASE_SPEED;
     {
         float abs_err = fabsf(k230_angle);
-        if (abs(abs_err) > 30.0f)       v = TRACE_BASE_SPEED * 0.5f;
-        else if (abs(abs_err) > 15.0f)  v = TRACE_BASE_SPEED * 0.75f;
+        if (fabs(abs_err) > 30.0f)       v = TRACE_BASE_SPEED * 0.5f;
+        else if (fabs(abs_err) > 15.0f)  v = TRACE_BASE_SPEED * 0.75f;
     }
 
     /* ---- 6. 保存供打印 ---- */
