@@ -1,25 +1,28 @@
 /**
  * @file color.c
- * @brief GY-33 颜色传感器 UART 模式 — 精简版
- *   - 帧格式: 5A 5A type qty data[qty] chk
- *   - chk = (5A+5A+type+qty+Σdata) & 0xFF
- *   - 校准数据存 STM32 RTC 备份寄存器 (VBAT 供电掉电不丢)
+ * @brief 颜色传感器 — GY-33 / OpenMV 双驱动
+ *   - USE_OPENMV_COLOR 0: GY-33,  帧: 5A 5A type qty data[qty] chk
+ *   - USE_OPENMV_COLOR 1: OpenMV, 帧: AA CC [color] BB DD  (color=Color_TypeDef枚举)
  */
 #include "Common_used.h"
 #include <stdlib.h>  /* abs() */
 
 /* ---- 内部参数 ---- */
-#define CALIB_TOLERANCE   30U    /* 默认容差 */
-#define WARMUP_COUNT      1U     /* 预热 */
-#define SAMPLE_COUNT      5U     /* 采样次数 */
-#define SKIP_COUNT        1U     /* 跳过 */
-#define ACCEPT_COUNT      2U     /* 票数阈值 */
+#define CALIB_TOLERANCE   30U
+#define WARMUP_COUNT      1U
+#define SAMPLE_COUNT      5U
+#define SKIP_COUNT        1U
+#define ACCEPT_COUNT      2U
 
 /* ---- 校准数据 (全局) ---- */
 Color_Calib_t  g_color_calib[COLOR_COUNT];
 Color_Ambient_t g_color_ambient;
 
-/* ---- 发 GY-33 命令: A5 CMD CS ---- */
+/* ================================================================
+ * 协议层 — GY-33
+ * ================================================================ */
+#if USE_OPENMV_COLOR == 1
+
 static void Color_SendCmd(uint8_t cmd)
 {
     SW_UART_SendByte(0xA5U);
@@ -27,12 +30,9 @@ static void Color_SendCmd(uint8_t cmd)
     SW_UART_SendByte((uint8_t)((0xA5U + cmd) & 0xFFU));
 }
 
-/* ---- 读一帧: 5A 5A type qty data[qty] chk ---- */
 static bool Color_ReadFrame(uint8_t *r, uint8_t *g, uint8_t *b)
 {
     uint8_t buf[10], chk, sum;
-
-    /* 同步双帧头，最多等 500 次避免死循环 */
     uint8_t last = 0, cur = 0;
     int retry = 500;
     while (!(last == 0x5A && cur == 0x5A) && --retry > 0) {
@@ -46,7 +46,6 @@ static bool Color_ReadFrame(uint8_t *r, uint8_t *g, uint8_t *b)
     for (uint8_t i = 0; i < qty && i < 8; i++) buf[i] = SW_UART_ReadByte();
     chk = SW_UART_ReadByte();
 
-    /* checksum */
     sum = 0x5A + 0x5A + dtype + qty;
     for (uint8_t i = 0; i < qty; i++) sum += buf[i];
     if ((sum & 0xFF) != chk) return false;
@@ -58,13 +57,9 @@ static bool Color_ReadFrame(uint8_t *r, uint8_t *g, uint8_t *b)
     return false;
 }
 
-/* ================================================================
- * 公开 API
- * ================================================================ */
-
 HAL_StatusTypeDef Color_Init(void)
 {
-    Color_SendCmd(0x81U);  /* 连续输出处理后 8bit RGB */
+    Color_SendCmd(0x81U);
     HAL_Delay(50U);
     return HAL_OK;
 }
@@ -80,7 +75,6 @@ HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
 {
     uint8_t r = 0, g = 0, b = 0;
     if (data == NULL) return HAL_ERROR;
-
     if (!Color_ReadFrame(&r, &g, &b)) {
         data->online = 0U;
         return HAL_ERROR;
@@ -95,7 +89,6 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
     if (data == NULL || data->online == 0U) return COLOR_UNKNOWN;
     uint8_t r = data->red, g = data->green, b = data->blue;
 
-    /* 先检查是否接近环境光 (空槽) */
     if (g_color_ambient.enabled) {
         int dr = abs((int)r - g_color_ambient.r);
         int dg = abs((int)g - g_color_ambient.g);
@@ -103,10 +96,9 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
         if (dr <= g_color_ambient.tolerance &&
             dg <= g_color_ambient.tolerance &&
             db <= g_color_ambient.tolerance)
-            return COLOR_UNKNOWN;  /* 空槽，无圆柱 */
+            return COLOR_UNKNOWN;
     }
 
-    /* 校准颜色优先匹配 (含 BLACK) */
     for (int i = COLOR_RED; i < COLOR_COUNT; i++) {
         Color_Calib_t *c = &g_color_calib[i];
         if (!c->enabled) continue;
@@ -117,13 +109,70 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
             return (Color_TypeDef)i;
     }
 
-    /* 未校准的默认阈值 */
     if (r >= 150 && g >= 150 && b >= 150) return COLOR_WHITE;
     if (b >= r && b >= g && b >= 50)      return COLOR_BLUE;
     if (r >= g && r >= b && r >= 50)      return COLOR_RED;
     if (g >= r && g >= b && g >= 50)      return COLOR_GREEN;
     return COLOR_BLACK;
 }
+
+/* ================================================================
+ * 协议层 — OpenMV: AA CC [color] BB DD, 直接返回颜色枚举值
+ * ================================================================ */
+#else
+
+static bool Color_ReadFrame(uint8_t *r, uint8_t *g, uint8_t *b)
+{
+    uint8_t last = 0, cur = 0;
+    int retry = 1000;
+    while (!(last == 0xAA && cur == 0xCC) && --retry > 0) {
+        last = cur;
+        cur = SW_UART_ReadByte();
+    }
+    if (retry <= 0) return false;
+
+    *r = SW_UART_ReadByte();  /* 颜色枚举值 */
+    *g = SW_UART_ReadByte();  /* 应为 0xBB */
+    *b = SW_UART_ReadByte();  /* 应为 0xDD */
+    return (*g == 0xBB && *b == 0xDD);
+}
+
+HAL_StatusTypeDef Color_Init(void)
+{
+    return HAL_OK;  /* OpenMV 上电自启 */
+}
+
+HAL_StatusTypeDef Color_SetLedLevel(uint8_t level)
+{
+    (void)level;
+    return HAL_OK;  /* OpenMV 自带补光 */
+}
+
+HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
+{
+    uint8_t r = 0, g = 0, b = 0;
+    if (data == NULL) return HAL_ERROR;
+    if (!Color_ReadFrame(&r, &g, &b)) {
+        data->online = 0U;
+        return HAL_ERROR;
+    }
+    data->sensor_color = r;  /* 直接存颜色枚举 */
+    data->online = 1U;
+    return HAL_OK;
+}
+
+Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
+{
+    if (data == NULL || data->online == 0U) return COLOR_UNKNOWN;
+    Color_TypeDef c = (Color_TypeDef)data->sensor_color;
+    return (c > COLOR_UNKNOWN && c < COLOR_COUNT) ? c : COLOR_UNKNOWN;
+}
+
+#endif /* USE_OPENMV_COLOR */
+
+/* ================================================================
+ * 共用 — 不受宏影响
+ * ================================================================ */
 
 Color_TypeDef Color_DetectDominant(void)
 {
@@ -162,8 +211,9 @@ const char *Color_ToString(Color_TypeDef color)
 }
 
 /* ================================================================
- * 校准
+ * 校准 — 仅 GY-33
  * ================================================================ */
+#if USE_OPENMV_COLOR == 0
 
 void Color_Calibrate(Color_TypeDef color)
 {
@@ -186,30 +236,17 @@ void Color_CalibAmbient(void)
         g_color_ambient.r = d.red;
         g_color_ambient.g = d.green;
         g_color_ambient.b = d.blue;
-        g_color_ambient.tolerance = 20U;  /* 环境光容差放大，减少误判 */
+        g_color_ambient.tolerance = 20U;
         g_color_ambient.enabled = 1U;
     }
 }
 
-/* ================================================================
- * 掉电保存 — Flash 末页模拟 EEPROM
- *
- * STM32G491xC: 512KB Flash, 页大小 2KB
- * 最后一页 (0x0807F800) 用于存储校准数据
- *
- * 存储格式:
- *   [0..3]   magic   = 0x434F4C52 ("COLR")
- *   [4..7]   crc     = (g_color_calib + g_color_ambient) 校验
- *   [8..43]  g_color_calib[6]
- *   [44..49] g_color_ambient
- * ================================================================ */
+/* ---- Flash 存储 ---- */
+#define FLASH_CALIB_PAGE   255U
+#define FLASH_CALIB_ADDR   0x0807F800U
+#define FLASH_CALIB_MAGIC  0x434F4C52U
+#define FLASH_PAGE_SIZE    0x800U
 
-#define FLASH_CALIB_PAGE   255U          /* 最后一页 */
-#define FLASH_CALIB_ADDR   0x0807F800U   /* 页起始地址 */
-#define FLASH_CALIB_MAGIC  0x434F4C52U   /* "COLR" */
-#define FLASH_PAGE_SIZE    0x800U        /* 2KB */
-
-/* 校验: 校准数据 + 环境光 */
 static uint32_t CalibChecksum(void)
 {
     uint32_t sum = 0;
@@ -227,7 +264,6 @@ void Color_CalibSave(void)
     uint32_t addr;
 
     __disable_irq();
-
     HAL_FLASH_Unlock();
 
     FLASH_EraseInitTypeDef erase = {
@@ -239,15 +275,13 @@ void Color_CalibSave(void)
     uint32_t err;
     HAL_FLASHEx_Erase(&erase, &err);
 
-    /* 写 header */
     addr = page_start;
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, *(uint64_t *)header);
     addr += 8;
 
-    /* 写校准数据 + 环境光 (合并为连续 64-bit 写入) */
-    uint32_t blob[12];  /* 6*6 + 6 = 42 bytes → 11 words, round up to 12 */
+    uint32_t blob[12];
     memcpy(&blob[0], g_color_calib, sizeof(g_color_calib));
-    memcpy(&blob[9], &g_color_ambient, sizeof(g_color_ambient));  /* offset 36 bytes = 9 words */
+    memcpy(&blob[9], &g_color_ambient, sizeof(g_color_ambient));
     for (int i = 0; i < 12; i += 2) {
         uint64_t d = (uint64_t)blob[i] | ((uint64_t)blob[i+1] << 32);
         HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, addr, d);
@@ -269,16 +303,22 @@ void Color_CalibLoad(void)
     uint32_t *flash = (uint32_t *)FLASH_CALIB_ADDR;
     if (flash[0] != FLASH_CALIB_MAGIC) return;
 
-    /* 读校准数据 */
     uint32_t blob[12];
     for (int i = 0; i < 12; i++) blob[i] = flash[2 + i];
 
     memcpy(g_color_calib, &blob[0], sizeof(g_color_calib));
     memcpy(&g_color_ambient, &blob[9], sizeof(g_color_ambient));
 
-    /* 验证 */
     if (flash[1] != CalibChecksum()) {
         for (int i = 0; i < COLOR_COUNT; i++) g_color_calib[i].enabled = 0U;
         g_color_ambient.enabled = 0U;
     }
 }
+
+#else
+/* OpenMV 不需要校准 */
+void Color_Calibrate(Color_TypeDef color) { (void)color; }
+void Color_CalibAmbient(void)             {}
+void Color_CalibSave(void)                {}
+void Color_CalibLoad(void)                {}
+#endif /* USE_OPENMV_COLOR */

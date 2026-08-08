@@ -239,3 +239,12 @@ env/
 *.tar.gz
 *.rar
 *.7z
+
+# --- Local Keil/EIDE project files ---
+MDK-ARM/*.uvprojx
+MDK-ARM/*.uvoptx
+MDK-ARM/EIDE/
+**/MDK-ARM/*.uvprojx
+**/MDK-ARM/*.uvoptx
+**/MDK-ARM/EIDE/
+.eide/
