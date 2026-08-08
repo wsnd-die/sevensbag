@@ -15,13 +15,29 @@
  */
 static float angle_servo = BLOCK_TURNTABLE_HOME_DEG;
 
+#if BLOCK_USE_DUAL_ARM
+typedef struct {
+    float front_angle_deg;
+    float rear_angle_deg;
+} BlockDualArmPos;
+
+static const BlockDualArmPos block_dual_arm_pos_table[] = {
+    {170.0f, 90.0f},   /* pos 1: 初始位置 */
+    {72.0f,  79.0f},   /* pos 2: 最低点 */
+    {94.0f,  101.0f},  /* pos 3: 第二位置 */
+};
+
+#define BLOCK_DUAL_ARM_POS_COUNT \
+    ((uint8_t)(sizeof(block_dual_arm_pos_table) / sizeof(block_dual_arm_pos_table[0])))
+#endif
+
 /**
  * @brief   物块舵机角度写入,把角度转换成 TIM3 PWM 比较值。
  * @param   channel         TIM3 通道号，CH1/CH2/CH3。
  * @param   angle_deg       目标角度，单位 deg。
  * @param   full_angle_deg  舵机最大角度，180 或 360
- *          TIM_CHANNEL_1 -> 转盘舵机 CH1
- *          TIM_CHANNEL_2 -> 双舵机前级 CH2
+ *          TIM_CHANNEL_1 -> 双舵机前级 CH1
+ *          TIM_CHANNEL_2 -> 转盘舵机 CH2
  *          TIM_CHANNEL_3 -> 双舵机后级 CH3
  */
 static void block_servo_write(uint32_t channel, float angle_deg)
@@ -73,26 +89,27 @@ static void turntable_write_angle(float angle_deg)
 
 /**
  * @brief   根据编译期选定的车型执行对应升降机构，并统一返回转盘后退距离。
- * @param   height_mm   目标升高的高度，单位 mm。
+ * @param   dir         升降方向，0=下降，1=上升。
+ * @param   pos         双机械臂型为位置表编号；丝杆型为目标升高高度，单位 mm。
  * @return  float       >=0 为转盘相对后退距离，<0 表示参数错误或运动失败。
  */
-float BlockBasic_LiftTo(uint8_t dir,float height_mm)
+float BlockBasic_LiftTo(uint8_t dir, float pos)
 {
 
 #if BLOCK_USE_DUAL_ARM
-    /* 双机械臂型：使用 CH2/CH3 两个舵机升降。 */
-    if (height_mm > BLOCK_ARM_MAX_HEIGHT_MM) {
+    uint8_t arm_pos = (uint8_t)pos;
+
+    /* 双机械臂型：第二个参数作为预设位置表编号使用。 */
+    if (pos < 1.0f || pos > (float)BLOCK_DUAL_ARM_POS_COUNT || pos != (float)arm_pos) {
         return -1.0f;
     }
 
-    BlockArmResult result = BlockBasic_ArmCalc(height_mm);
-    block_servo_write(TIM_CHANNEL_1, result.front_angle_deg);
-    block_servo_write(TIM_CHANNEL_3, result.rear_angle_deg);
-    return result.turntable_retreat_mm;
+    BlockBasic_DualArmSetPos(arm_pos);
+    return 0.0f;
 #else
     /* 丝杆型：使用 5 号步进电机升降。 */
     {//43到达底部
-        uint32_t pulse = (uint32_t)(height_mm * BLOCK_STEPPER_PULSE_PER_MM );
+        uint32_t pulse = (uint32_t)(pos * BLOCK_STEPPER_PULSE_PER_MM );
         if (dir == 0)
         {
             Emm_V5_Pos_Control(5, 0, 300, 50, pulse, 0, 0);
@@ -144,22 +161,21 @@ BlockArmResult BlockBasic_ArmCalc(float height_mm)
  */
 void BlockBasic_DualArmSetPos(uint8_t pos)
 {
-    float angle1, angle2;
+    const BlockDualArmPos *target;
 
-    switch (pos) {
-        case 1:  angle1 = 170.0f; angle2 = 90.0f;  break;  /* 初始位置 */
-        case 2:  angle1 = 72.0f;  angle2 = 79.0f;  break;  /* 最低点 */
-        case 3:  angle1 = 94.0f;  angle2 = 101.0f; break;  /* 第二位置 */
-        default: return;  /* 无效位置，不做任何操作 */
+    if (pos < 1u || pos > BLOCK_DUAL_ARM_POS_COUNT) {
+        return;
     }
 
+    target = &block_dual_arm_pos_table[pos - 1u];
+
     /* 舵机1 前级 → CH1 */
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2,
-                          (uint32_t)(angle1 / 180.0f * 2000.0f + 500.0f + 0.5f));
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,
+                          (uint32_t)(target->front_angle_deg / 180.0f * 2000.0f + 500.0f + 0.5f));
 
     /* 舵机2 后级 → CH3 */
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3,
-                          (uint32_t)(angle2 / 180.0f * 2000.0f + 500.0f + 0.5f));
+                          (uint32_t)(target->rear_angle_deg / 180.0f * 2000.0f + 500.0f + 0.5f));
 }
 #endif
 
