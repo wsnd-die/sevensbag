@@ -6,7 +6,7 @@
  */
 
 #include "Common_used.h"
-
+#include "stdlib.h"
 /* ======================== 内部状态 ======================== */
 
 static pid_type_def g_pid_angle;

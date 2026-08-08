@@ -1,270 +1,529 @@
-/**
- * @file    imu660.c
- * @brief   IMU660RA 驱动实现（STM32G4 适配版）
- *
- * 基于逐飞 TC264 开源库 IMU660RA 驱动，移植适配到 STM32G4 平台。
- * 包含 IMU660RA 传感器初始化、数据读取与 Mahony 互补滤波姿态解算。
- *
- * 原始来源：逐飞科技 zf_device_imu660ra（GPL3.0）
- */
+#include "imu660.h"
+#include "spi.h"
+
+#include <stdio.h>
+#include <math.h>
+
+
+extern SPI_HandleTypeDef hspi2;
 
 #include "Common_used.h"
+/* ============================================================
+ * 原始数据
+ * ============================================================ */
 
-/******************************************************************************
- *                              全局变量定义
- ******************************************************************************/
+int16_t imu660ra_acc_x = 0;
+int16_t imu660ra_acc_y = 0;
+int16_t imu660ra_acc_z = 0;
 
-IMU660RA_ConfigType imu_cfg = {0};
-IMU660RA_DataType   imu_data = {0};
+int16_t imu660ra_gyro_x = 0;
+int16_t imu660ra_gyro_y = 0;
+int16_t imu660ra_gyro_z = 0;
 
-// 逐飞风格全局变量
-int16_t imu660ra_gyro_x = 0, imu660ra_gyro_y = 0, imu660ra_gyro_z = 0;
-int16_t imu660ra_acc_x  = 0, imu660ra_acc_y  = 0, imu660ra_acc_z  = 0;
-float   imu660ra_transition_factor[2] = {4096.0f, 16.384f};  // 默认 ±8G / ±2000dps
 
-/******************************************************************************
- *                          姿态解算静态变量
- ******************************************************************************/
+/*
+ * 默认：
+ *
+ * ACC ±8g
+ * 4096 LSB/g
+ *
+ * GYRO ±2000 dps
+ * 16.384 LSB/(deg/s)
+ */
+float imu660ra_transition_factor[2] =
+{
+    4096.0f,
+    16.384f
+};
 
-#define DEG_TO_RAD      0.017453292519943295f
-#define RAD_TO_DEG      57.29577951308232f
 
-#define MAHONY_KP       1.5f
-#define MAHONY_KI       0.003f
-#define INTEGRAL_LIMIT  0.15f
+/* ============================================================
+ * 姿态
+ * ============================================================ */
 
-static float att_q[4]        = {1.0f, 0.0f, 0.0f, 0.0f};
-static float integral_fb[3]  = {0.0f, 0.0f, 0.0f};
-static float gyro_bias[3]    = {0.0f, 0.0f, 0.0f};
-static float acc_lpf[3]      = {0.0f, 0.0f, 1.0f};
+float imu660ra_roll  = 0.0f;
+float imu660ra_pitch = 0.0f;
+float imu660ra_yaw   = 0.0f;
+
+
+/*
+ * quaternion
+ *
+ * q[0] = w
+ * q[1] = x
+ * q[2] = y
+ * q[3] = z
+ */
+float imu660ra_q[4] =
+{
+    1.0f,
+    0.0f,
+    0.0f,
+    0.0f
+};
+
+
+/* ============================================================
+ * Mahony 参数
+ * ============================================================ */
+
+static float mahony_integral_x = 0.0f;
+static float mahony_integral_y = 0.0f;
+static float mahony_integral_z = 0.0f;
+
+
+/*
+ * Kp 越大：
+ * 加速度修正越强，响应越快
+ *
+ * Ki：
+ * 用于补偿 gyro bias
+ *
+ * 可以后期调参
+ */
+#define MAHONY_KP        2.0f
+#define MAHONY_KI        0.02f
+
+#define DEG_TO_RAD       0.01745329251994329577f
+#define RAD_TO_DEG       57.295779513082320876f
+
+
+/* ============================================================
+ * SPI timeout
+ * ============================================================ */
+
+
+#define IMU660RA_CONFIG_TIMEOUT   100
 
 /******************************************************************************
  *                          SPI 底层通信函数
+ *
+ *  关键：BMI270/IMU660RA 的 SPI 读取需要分步进行（CS 全程拉低）：
+ *    1. 发送地址字节
+ *    2. 发送 dummy 字节，接收 dummy → 丢弃
+ *    3. 发送 dummy 字节，接收 data → 保存
+ *  不能把地址+数据合成一次连续的 16 时钟传输。芯片需要间隙准备数据。
  ******************************************************************************/
 
-/**
- * @brief  读 IMU660RA 单个寄存器
- * @param  reg  寄存器地址（bit7=0 会自动添加读标志）
- * @return 寄存器值
- */
-uint8_t IMU660RA_ReadReg(uint8_t reg)
-{
-    uint8_t tx[2] = {reg | IMU660RA_SPI_R, 0xFF};
-    uint8_t rx[2] = {0, 0};
-
-    IMU660RA_CS_LOW();
-    HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2, 1000);
-    IMU660RA_CS_HIGH();
-
-    return rx[1];
-}
+#define IMU660RA_SPI_TIMEOUT  100U
 
 /**
- * @brief  写 IMU660RA 单个寄存器
- * @param  reg   寄存器地址（bit7 会被清零以确保写操作）
- * @param  data  要写入的数据
+ * @brief  写 IMU660RA 单个寄存器（CS 内分两步：地址→数据）
  */
+/* ============================================================
+ * 写单寄存器
+ * ============================================================ */
+
 void IMU660RA_WriteReg(uint8_t reg, uint8_t data)
 {
-    uint8_t tx[2] = {reg & 0x7F, data};
+    uint8_t tx[2];
+
+    tx[0] = reg | IMU660RA_SPI_W;
+    tx[1] = data;
 
     IMU660RA_CS_LOW();
-    HAL_SPI_Transmit(&hspi2, tx, 2, 1000);
+
+    HAL_SPI_Transmit(
+        &hspi2,
+        tx,
+        2,
+        IMU660RA_SPI_TIMEOUT
+    );
+
     IMU660RA_CS_HIGH();
 }
 
 /**
- * @brief  读 IMU660RA 16 位寄存器对（小端序，reg_low 为低字节地址）
- * @param  reg_low  低字节寄存器地址
- * @return 16 位寄存器值
+ * @brief  写 IMU660RA 多个寄存器（CS 内：地址→data[]）
  */
+static void imu660ra_write_registers(uint8_t reg, const uint8_t *data, uint32_t len)
+{
+    uint8_t addr = reg | IMU660RA_SPI_W;
+
+    IMU660RA_CS_LOW();
+    HAL_SPI_Transmit(&hspi2, &addr, 1, IMU660RA_SPI_TIMEOUT);
+    if (data != NULL && len > 0) {
+        HAL_SPI_Transmit(&hspi2, (uint8_t *)data, (uint16_t)len, IMU660RA_SPI_TIMEOUT);
+    }
+    IMU660RA_CS_HIGH();
+}
+
+/* ============================================================
+ * 读单寄存器
+ *
+ * BMI270 SPI read:
+ *
+ * Address
+ * Dummy
+ * Data
+ *
+ * 第一个返回 byte 必须丢掉
+ * ============================================================ */
+
+uint8_t IMU660RA_ReadReg(uint8_t reg)
+{
+    uint8_t addr;
+
+    uint8_t tx_dummy = 0xFF;
+
+    uint8_t rx_dummy = 0;
+    uint8_t data = 0;
+
+    addr = reg | IMU660RA_SPI_R;
+
+    IMU660RA_CS_LOW();
+
+    /* 发送寄存器地址 */
+    HAL_SPI_Transmit(
+        &hspi2,
+        &addr,
+        1,
+        IMU660RA_SPI_TIMEOUT
+    );
+
+    /* BMI270 dummy byte */
+    HAL_SPI_TransmitReceive(
+        &hspi2,
+        &tx_dummy,
+        &rx_dummy,
+        1,
+        IMU660RA_SPI_TIMEOUT
+    );
+
+    /* 真正的数据 */
+    HAL_SPI_TransmitReceive(
+        &hspi2,
+        &tx_dummy,
+        &data,
+        1,
+        IMU660RA_SPI_TIMEOUT
+    );
+
+    IMU660RA_CS_HIGH();
+
+    return data;
+}
+
+
+/* ============================================================
+ * 读取连续两个寄存器
+ *
+ * BMI270 sensor data:
+ * low byte first
+ * ============================================================ */
+
 uint16_t IMU660RA_ReadReg16b(uint8_t reg_low)
 {
-    uint8_t data_l = IMU660RA_ReadReg(reg_low);
-    uint8_t data_h = IMU660RA_ReadReg(reg_low + 1);
-    return (uint16_t)((data_h << 8) | data_l);
+    uint8_t data[2];
+
+    IMU660RA_ReadMulti(
+        reg_low,
+        data,
+        2
+    );
+
+    return ((uint16_t)data[1] << 8) |
+           ((uint16_t)data[0]);
 }
 
-/**
- * @brief  批量读 IMU660RA 寄存器（自动地址递增）
- * @param  reg   起始寄存器地址
- * @param  buf   接收缓冲区
- * @param  len   要读取的字节数
- */
-void IMU660RA_ReadMulti(uint8_t reg, uint8_t *buf, uint8_t len)
+/* ============================================================
+ * 连续读取寄存器
+ * ============================================================ */
+
+void IMU660RA_ReadMulti(uint8_t reg,
+                        uint8_t *buf,
+                        uint8_t len)
 {
-    uint8_t tx[len + 1];
-    tx[0] = reg | IMU660RA_SPI_R;
-    for (uint8_t i = 0; i < len; i++) {
-        tx[i + 1] = 0xFF;   // dummy 字节
+    uint8_t addr;
+    uint8_t dummy_tx = 0xFF;
+    uint8_t dummy_rx;
+
+    uint8_t i;
+
+    if(buf == NULL || len == 0)
+    {
+        return;
     }
 
-    uint8_t rx[len + 1];
-    IMU660RA_CS_LOW();
-    HAL_SPI_TransmitReceive(&hspi2, tx, rx, len + 1, 1000);
-    IMU660RA_CS_HIGH();
+    addr = reg | IMU660RA_SPI_R;
 
-    memcpy(buf, &rx[1], len);
+    IMU660RA_CS_LOW();
+
+    /* 发送起始地址 */
+    HAL_SPI_Transmit(
+        &hspi2,
+        &addr,
+        1,
+        IMU660RA_SPI_TIMEOUT
+    );
+
+    /*
+     * BMI270 SPI 第一个返回 byte 是 dummy
+     */
+    HAL_SPI_TransmitReceive(
+        &hspi2,
+        &dummy_tx,
+        &dummy_rx,
+        1,
+        IMU660RA_SPI_TIMEOUT
+    );
+
+    /*
+     * 真正数据
+     */
+    for(i = 0; i < len; i++)
+    {
+        HAL_SPI_TransmitReceive(
+            &hspi2,
+            &dummy_tx,
+            &buf[i],
+            1,
+            IMU660RA_SPI_TIMEOUT
+        );
+    }
+
+    IMU660RA_CS_HIGH();
 }
+
 
 /******************************************************************************
  *                       IMU660RA 传感器驱动函数
  ******************************************************************************/
 
-/**
- * @brief  初始化 IMU660RA
- * @return 1 = 成功，0 = 失败
- *
- * 初始化流程：
- *  1. 软件复位
- *  2. 校验芯片 ID（期望 0x69）
- *  3. 配置电源模式
- *  4. 执行内部初始化
- *  5. 配置加速度计量程和输出频率
- *  6. 配置陀螺仪量程和输出频率
- */
+static HAL_StatusTypeDef imu660ra_load_config(void)
+{
+    uint8_t addr;
+    HAL_StatusTypeDef status;
+
+    addr = IMU660RA_INIT_DATA | IMU660RA_SPI_W;
+
+    IMU660RA_CS_LOW();
+
+    /* 地址 */
+    status = HAL_SPI_Transmit(
+        &hspi2,
+        &addr,
+        1,
+        100
+    );
+
+    if(status != HAL_OK)
+    {
+        IMU660RA_CS_HIGH();
+        return status;
+    }
+
+    /* 完整 8KB */
+    status = HAL_SPI_Transmit(
+        &hspi2,
+        (uint8_t *)imu660ra_config_file,
+        sizeof(imu660ra_config_file),
+        500
+    );
+
+    IMU660RA_CS_HIGH();
+
+    return status;
+}
+
+
 uint8_t imu660ra_init(void)
 {
-    uint8_t whoami;
+    uint8_t id;
+    uint8_t int_sta;
+    HAL_StatusTypeDef hal_ret;
 
-    // ---- 1. 软件复位 ----
-    IMU660RA_WriteReg(IMU660RA_PWR_CTRL, 0xB6);
-    HAL_Delay(50);
+    printf("\r\n========== IMU660RA INIT ==========\r\n");
 
-    // ---- 2. 校验芯片 ID ----
-    whoami = IMU660RA_ReadReg(IMU660RA_CHIP_ID);
-    printf("[IMU660RA] WHO_AM_I = 0x%02X\r\n", whoami);
-    if (whoami != IMU660RA_DEV_ADDR)    // 期望 0x69
+    /* -------------------------------------------------
+     * 1. CS 空闲高
+     * ------------------------------------------------- */
+    IMU660RA_CS_HIGH();
+
+    HAL_Delay(20);
+
+    /* -------------------------------------------------
+     * 2. 第一次读，用于 I2C -> SPI 切换
+     * ------------------------------------------------- */
+    (void)IMU660RA_ReadReg(IMU660RA_CHIP_ID);
+
+    HAL_Delay(1);
+
+    /* -------------------------------------------------
+     * 3. 正式检查 CHIP_ID
+     * ------------------------------------------------- */
+    id = IMU660RA_ReadReg(IMU660RA_CHIP_ID);
+
+    printf("CHIP_ID = 0x%02X\r\n", id);
+
+    if(id != 0x24)
     {
-        printf("[IMU660RA] Init failed! Expected 0x%02X\r\n", IMU660RA_DEV_ADDR);
+        printf("ERROR: CHIP_ID\r\n");
         return 0;
     }
 
-    // ---- 3. 电源配置 ----
-    // PWR_CONF: 使能温度传感器，关闭休眠模式
-    IMU660RA_WriteReg(IMU660RA_PWR_CONF, 0x02);
-    HAL_Delay(30);
+    printf("SPI communication OK\r\n");
 
-    // ---- 4. 内部初始化序列 ----
-    // 写入 INIT_CTRL 启动初始化
+    /* -------------------------------------------------
+     * 4. 关闭 advanced power save
+     * ------------------------------------------------- */
+    IMU660RA_WriteReg(IMU660RA_PWR_CONF, 0x00);
+
+    /*
+     * 手册要求 >= 450 us
+     * HAL_Delay(1) = 1ms
+     */
+    HAL_Delay(1);
+
+    /* -------------------------------------------------
+     * 5. 准备加载初始化配置
+     * ------------------------------------------------- */
     IMU660RA_WriteReg(IMU660RA_INIT_CTRL, 0x00);
-    // 写入初始化配置数据（根据芯片手册设置，以下为典型值）
-    IMU660RA_WriteReg(IMU660RA_INIT_DATA, 0x05);
-    HAL_Delay(30);
 
-    // ---- 5. 配置加速度计 ----
+    /* -------------------------------------------------
+     * 6. 写完整 8192 字节 config
+     * ------------------------------------------------- */
+    printf("Loading 8192-byte config...\r\n");
+
+    hal_ret = imu660ra_load_config();
+
+    if(hal_ret != HAL_OK)
     {
-        imu660ra_acc_range_t  acc_range  = IMU660RA_ACC_SAMPLE_DEFAULT;
-        float                 acc_sens   = 4096.0f;   // 默认 ±8G: 4096 LSB/g
+        printf("ERROR: config SPI TX failed = %d\r\n",
+               (int)hal_ret);
 
-        // 根据量程设置灵敏度系数
-        switch (acc_range) {
-            case IMU660RA_ACC_SGN_2G:  acc_sens = 16384.0f; break;
-            case IMU660RA_ACC_SGN_4G:  acc_sens =  8192.0f; break;
-            case IMU660RA_ACC_SGN_8G:  acc_sens =  4096.0f; break;
-            case IMU660RA_ACC_SGN_16G: acc_sens =  2048.0f; break;
-        }
-
-        // ACC_CONF: 加速度计 ODR = 200Hz, 正常模式, 带宽 ~40Hz
-        // 具体位定义需参考芯片手册，以下为典型配置值
-        IMU660RA_WriteReg(IMU660RA_ACC_CONF,  0xA7);     // ODR=200Hz, BW=normal
-        IMU660RA_WriteReg(IMU660RA_ACC_RANGE, (uint8_t)acc_range);
-
-        imu_cfg.acc_range       = acc_range;
-        imu_cfg.acc_sensitivity = acc_sens;
-        imu660ra_transition_factor[0] = acc_sens;
+        return 0;
     }
 
-    // ---- 6. 配置陀螺仪 ----
+    printf("Config SPI TX complete\r\n");
+
+    /* -------------------------------------------------
+     * 7. 完成初始化
+     * ------------------------------------------------- */
+    IMU660RA_WriteReg(IMU660RA_INIT_CTRL, 0x01);
+
+    /* 手册最大约 20ms */
+    HAL_Delay(25);
+
+    /* -------------------------------------------------
+     * 8. 检查 INTERNAL_STATUS
+     * ------------------------------------------------- */
+    int_sta = IMU660RA_ReadReg( IMU660RA_INTERNAL_STATUS );
+
+    printf("INTERNAL_STATUS = 0x%02X\r\n", int_sta);
+
+    if((int_sta & 0x01) == 0)
     {
-        imu660ra_gyro_range_t gyro_range = IMU660RA_GYRO_SAMPLE_DEFAULT;
-        float                 gyro_sens  = 16.384f;  // 默认 ±2000dps: 16.384 LSB/(°/s)
+        printf("ERROR: BMI270 config init failed!\r\n");
 
-        switch (gyro_range) {
-            case IMU660RA_GYRO_SGN_125DPS:  gyro_sens = 262.144f; break;
-            case IMU660RA_GYRO_SGN_250DPS:  gyro_sens = 131.072f; break;
-            case IMU660RA_GYRO_SGN_500DPS:  gyro_sens =  65.536f; break;
-            case IMU660RA_GYRO_SGN_1000DPS: gyro_sens =  32.768f; break;
-            case IMU660RA_GYRO_SGN_2000DPS: gyro_sens =  16.384f; break;
-        }
-
-        // GYR_CONF: 陀螺仪 ODR = 200Hz, 正常模式, 带宽 ~32Hz
-        // 具体位定义需参考芯片手册，以下为典型配置值
-        IMU660RA_WriteReg(IMU660RA_GYR_CONF,  0xA7);    // ODR=200Hz, BW=normal
-        IMU660RA_WriteReg(IMU660RA_GYR_RANGE, (uint8_t)gyro_range);
-
-        imu_cfg.gyro_range       = gyro_range;
-        imu_cfg.gyro_sensitivity = gyro_sens;
-        imu660ra_transition_factor[1] = gyro_sens;
+        return 0;
     }
 
-    printf("[IMU660RA] Init OK (ACC: %d, GYRO: %d)\r\n",
-           (int)imu_cfg.acc_range, (int)imu_cfg.gyro_range);
+    printf("BMI270 config init OK\r\n");
+
+    /* -------------------------------------------------
+     * 9. 开启 ACC + GYRO + TEMP
+     * ------------------------------------------------- */
+    IMU660RA_WriteReg(IMU660RA_PWR_CTRL, 0x0E);
+
+    /* ACC 50Hz */
+    IMU660RA_WriteReg(IMU660RA_ACC_CONF, 0xA7);
+
+    /* GYRO 200Hz */
+    IMU660RA_WriteReg(IMU660RA_GYR_CONF, 0xA9);
+
+    /* ACC ±8g */
+    IMU660RA_WriteReg(IMU660RA_ACC_RANGE, 0x02);
+    imu660ra_transition_factor[0] = 4096.0f;
+
+    /* GYRO ±2000 dps */
+    IMU660RA_WriteReg(IMU660RA_GYR_RANGE, 0x00);
+    imu660ra_transition_factor[1] = 16.384f;
+
+    /*
+     * Gyro 从 suspend 到 normal 启动时间较长，
+     * 给它一点时间
+     */
+    HAL_Delay(50);
+
+    printf("========== IMU660RA INIT OK ==========\r\n");
+
     return 1;
 }
 
-/**
- * @brief  读取加速度计原始数据
- *
- * 从 IMU660RA_ACC_ADDRESS (0x0C) 开始连续读取 6 字节，
- * 依次为 X、Y、Z 三轴的低/高字节（小端序）。
- * 同时更新 imu660ra_acc_x/y/z 和 imu_data 中的原始值与换算值。
- */
+/* ============================================================
+ * 获取加速度计原始值
+ * ============================================================ */
+
 void imu660ra_get_acc(void)
 {
-    uint8_t buf[6];
+    uint8_t dat[6];
 
-    IMU660RA_ReadMulti(IMU660RA_ACC_ADDRESS, buf, 6);
+    IMU660RA_ReadMulti(
+        IMU660RA_ACC_ADDRESS,
+        dat,
+        6
+    );
 
-    // 小端序：buf[0]=低字节, buf[1]=高字节
-    imu660ra_acc_x = (int16_t)((buf[1] << 8) | buf[0]);
-    imu660ra_acc_y = (int16_t)((buf[3] << 8) | buf[2]);
-    imu660ra_acc_z = (int16_t)((buf[5] << 8) | buf[4]);
+    imu660ra_acc_x =
+        (int16_t)(
+            ((uint16_t)dat[1] << 8) |
+             (uint16_t)dat[0]
+        );
 
-    // 同步到 imu_data 结构体
-    imu_data.ax_raw = imu660ra_acc_x;
-    imu_data.ay_raw = imu660ra_acc_y;
-    imu_data.az_raw = imu660ra_acc_z;
+    imu660ra_acc_y =
+        (int16_t)(
+            ((uint16_t)dat[3] << 8) |
+             (uint16_t)dat[2]
+        );
 
-    // 换算为物理单位 (g)
-    float factor = imu660ra_transition_factor[0];
-    imu_data.ax = (float)imu660ra_acc_x / factor;
-    imu_data.ay = (float)imu660ra_acc_y / factor;
-    imu_data.az = (float)imu660ra_acc_z / factor;
+    imu660ra_acc_z =
+        (int16_t)(
+            ((uint16_t)dat[5] << 8) |
+             (uint16_t)dat[4]
+        );
 }
 
-/**
- * @brief  读取陀螺仪原始数据
- *
- * 从 IMU660RA_GYRO_ADDRESS (0x12) 开始连续读取 6 字节，
- * 依次为 X、Y、Z 三轴的低/高字节（小端序）。
- * 同时更新 imu660ra_gyro_x/y/z 和 imu_data 中的原始值与换算值。
- */
+/* ============================================================
+ * 获取陀螺仪原始值
+ * ============================================================ */
+
 void imu660ra_get_gyro(void)
 {
-    uint8_t buf[6];
+    uint8_t dat[6];
 
-    IMU660RA_ReadMulti(IMU660RA_GYRO_ADDRESS, buf, 6);
+    IMU660RA_ReadMulti(
+        IMU660RA_GYRO_ADDRESS,
+        dat,
+        6
+    );
 
-    imu660ra_gyro_x = (int16_t)((buf[1] << 8) | buf[0]);
-    imu660ra_gyro_y = (int16_t)((buf[3] << 8) | buf[2]);
-    imu660ra_gyro_z = (int16_t)((buf[5] << 8) | buf[4]);
+    imu660ra_gyro_x =
+        (int16_t)(
+            ((uint16_t)dat[1] << 8) |
+             (uint16_t)dat[0]
+        );
 
-    // 同步到 imu_data 结构体
-    imu_data.gx_raw = imu660ra_gyro_x;
-    imu_data.gy_raw = imu660ra_gyro_y;
-    imu_data.gz_raw = imu660ra_gyro_z;
+    imu660ra_gyro_y =
+        (int16_t)(
+            ((uint16_t)dat[3] << 8) |
+             (uint16_t)dat[2]
+        );
 
-    // 换算为物理单位 (°/s)
-    float factor = imu660ra_transition_factor[1];
-    imu_data.gx = (float)imu660ra_gyro_x / factor;
-    imu_data.gy = (float)imu660ra_gyro_y / factor;
-    imu_data.gz = (float)imu660ra_gyro_z / factor;
+    imu660ra_gyro_z =
+        (int16_t)(
+            ((uint16_t)dat[5] << 8) |
+             (uint16_t)dat[4]
+        );
 }
 
 /******************************************************************************
  *                         辅助工具函数
  ******************************************************************************/
+static float inv_sqrt(float x)
+{
+    return 1.0f / sqrtf(x);
+}
 
 static float LimitFloat(float value, float min, float max)
 {
@@ -277,27 +536,15 @@ static float AbsFloat(float x)
 {
     return x >= 0.0f ? x : -x;
 }
+static float gyro_z_filtered = 0.0f;
 
-static void NormalizeQuaternion(void)
+float update_gyro_rate(float input)
 {
-    float norm = sqrtf(att_q[0] * att_q[0] +
-                       att_q[1] * att_q[1] +
-                       att_q[2] * att_q[2] +
-                       att_q[3] * att_q[3]);
+    const float alpha = 0.2f;
 
-    if (norm < 0.001f) {
-        att_q[0] = 1.0f;
-        att_q[1] = 0.0f;
-        att_q[2] = 0.0f;
-        att_q[3] = 0.0f;
-        return;
-    }
+    gyro_z_filtered += alpha * (input - gyro_z_filtered);
 
-    norm = 1.0f / norm;
-    att_q[0] *= norm;
-    att_q[1] *= norm;
-    att_q[2] *= norm;
-    att_q[3] *= norm;
+    return gyro_z_filtered;
 }
 
 /**
@@ -334,238 +581,328 @@ void quat_to_euler(float q[4], float *roll, float *pitch, float *yaw)
  *                       Mahony 互补滤波姿态解算
  ******************************************************************************/
 
-/**
- * @brief  Mahony 互补滤波姿态更新
- * @param  dt  距离上次更新的时间（秒），典型值 0.01（10ms 周期）
- *
- * 使用加速度计修正陀螺仪积分的 roll/pitch 漂移。
- * 6 轴 IMU 无磁力计，yaw 方向没有绝对参考，长期使用会有漂移。
- */
 void IMU660RA_AttitudeUpdate(float dt)
 {
-    float gx, gy, gz;
     float ax, ay, az;
-    float acc_norm;
-    float q0, q1, q2, q3;
+    float gx, gy, gz;
+
+    float norm;
+
     float vx, vy, vz;
     float ex, ey, ez;
-    float q_dot0, q_dot1, q_dot2, q_dot3;
-    uint8_t is_static;
 
-    if (dt <= 0.0f || dt > 0.05f) {
-        return;   // dt 异常，跳过本次更新
+    float q0, q1, q2, q3;
+
+    float q_dot0;
+    float q_dot1;
+    float q_dot2;
+    float q_dot3;
+
+
+    if(dt <= 0.0f)
+    {
+        return;
     }
 
-    // ---- 1. 读取陀螺仪数据 ----
-    imu660ra_get_gyro();
-    gx = imu_data.gx - gyro_bias[0];   // °/s
-    gy = imu_data.gy - gyro_bias[1];
-    gz = imu_data.gz - gyro_bias[2];
 
-    // ---- 2. 读取加速度计数据并低通滤波 ----
+    /* ==============================
+     * 读取原始数据
+     * ============================== */
+
     imu660ra_get_acc();
+    imu660ra_get_gyro();
 
-    acc_lpf[0] = 0.90f * acc_lpf[0] + 0.10f * imu_data.ax;
-    acc_lpf[1] = 0.90f * acc_lpf[1] + 0.10f * imu_data.ay;
-    acc_lpf[2] = 0.90f * acc_lpf[2] + 0.10f * imu_data.az;
 
-    ax = acc_lpf[0];
-    ay = acc_lpf[1];
-    az = acc_lpf[2];
+    /* ==============================
+     * 根据实际安装方向重新映射坐标轴
+     *
+     * Body X = Sensor Z
+     * Body Y = Sensor Y
+     * Body Z = -Sensor X
+     * ============================== */
 
-    acc_norm = sqrtf(ax * ax + ay * ay + az * az);
+    ax = imu660ra_acc_transition(
+        imu660ra_acc_z
+    );
 
-    // ---- 3. 静止检测 ----
-    // 条件：加速度模接近 1g 且三轴角速度都很小
-    if ((acc_norm > 0.95f && acc_norm < 1.05f) &&
-        (AbsFloat(gx) < 1.0f) &&
-        (AbsFloat(gy) < 1.0f) &&
-        (AbsFloat(gz) < 1.0f))
-    {
-        is_static = 1;
-    }
-    else
-    {
-        is_static = 0;
-    }
+    ay = imu660ra_acc_transition(
+        imu660ra_acc_y
+    );
 
-    // ---- 4. 静止时在线估计陀螺仪零偏 ----
-    if (is_static)
-    {
-        gyro_bias[0] = 0.9995f * gyro_bias[0] + 0.0005f * imu_data.gx;
-        gyro_bias[1] = 0.9995f * gyro_bias[1] + 0.0005f * imu_data.gy;
-        gyro_bias[2] = 0.9995f * gyro_bias[2] + 0.0005f * imu_data.gz;
+    az = -imu660ra_acc_transition(
+        imu660ra_acc_x
+    );
 
-        gx = imu_data.gx - gyro_bias[0];
-        gy = imu_data.gy - gyro_bias[1];
-        gz = imu_data.gz - gyro_bias[2];
-    }
 
-    // ---- 5. 小角速度死区处理 ----
-    if (AbsFloat(gx) < 0.05f) gx = 0.0f;
-    if (AbsFloat(gy) < 0.05f) gy = 0.0f;
-    if (AbsFloat(gz) < 0.05f) gz = 0.0f;
+    gx = imu660ra_gyro_transition(
+        imu660ra_gyro_z
+    );
 
-    // °/s → rad/s
+    gy = imu660ra_gyro_transition(
+        imu660ra_gyro_y
+    );
+
+    gz = -imu660ra_gyro_transition(
+        imu660ra_gyro_x
+    );
+
+
+    /*
+     * 如果你的 update_gyro_rate()
+     * 是 Z 轴零偏/滤波函数
+     */
+    gz = update_gyro_rate(gz);
+
+
+    /* deg/s -> rad/s */
+
     gx *= DEG_TO_RAD;
     gy *= DEG_TO_RAD;
     gz *= DEG_TO_RAD;
 
-    q0 = att_q[0];
-    q1 = att_q[1];
-    q2 = att_q[2];
-    q3 = att_q[3];
 
-    // ---- 6. 加速度修正（仅当加速度模接近 1g 时） ----
-    if (acc_norm > 0.85f && acc_norm < 1.15f)
+    /* ==============================
+     * quaternion
+     * ============================== */
+
+    q0 = imu660ra_q[0];
+    q1 = imu660ra_q[1];
+    q2 = imu660ra_q[2];
+    q3 = imu660ra_q[3];
+
+
+    /* ==============================
+     * ACC normalization
+     * ============================== */
+
+    norm = ax * ax +
+           ay * ay +
+           az * az;
+
+    if(norm > 0.000001f)
     {
-        // 归一化加速度向量
-        ax /= acc_norm;
-        ay /= acc_norm;
-        az /= acc_norm;
+        norm = 1.0f / sqrtf(norm);
 
-        // 当前四元数姿态下的重力方向估计
-        vx = 2.0f * (q1 * q3 - q0 * q2);
-        vy = 2.0f * (q0 * q1 + q2 * q3);
-        vz = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+        ax *= norm;
+        ay *= norm;
+        az *= norm;
 
-        // 叉积 = 加速度测量值 × 估计重力方向 → 姿态误差
+
+        /* 当前四元数预测的重力方向 */
+
+        vx = 2.0f *
+             (q1 * q3 - q0 * q2);
+
+        vy = 2.0f *
+             (q0 * q1 + q2 * q3);
+
+        vz = q0 * q0
+           - q1 * q1
+           - q2 * q2
+           + q3 * q3;
+
+
+        /* 重力方向误差 */
+
         ex = ay * vz - az * vy;
         ey = az * vx - ax * vz;
         ez = ax * vy - ay * vx;
 
-        // PI 积分项
-        integral_fb[0] += MAHONY_KI * ex * dt;
-        integral_fb[1] += MAHONY_KI * ey * dt;
-        integral_fb[2] += MAHONY_KI * ez * dt;
 
-        // 积分限幅
-        integral_fb[0] = LimitFloat(integral_fb[0], -INTEGRAL_LIMIT, INTEGRAL_LIMIT);
-        integral_fb[1] = LimitFloat(integral_fb[1], -INTEGRAL_LIMIT, INTEGRAL_LIMIT);
-        integral_fb[2] = LimitFloat(integral_fb[2], -INTEGRAL_LIMIT, INTEGRAL_LIMIT);
+        /* 积分补偿 */
 
-        // PI 修正角速度
-        gx += MAHONY_KP * ex + integral_fb[0];
-        gy += MAHONY_KP * ey + integral_fb[1];
-        gz += MAHONY_KP * ez + integral_fb[2];
+        if(MAHONY_KI > 0.0f)
+        {
+            mahony_integral_x +=
+                MAHONY_KI * ex * dt;
+
+            mahony_integral_y +=
+                MAHONY_KI * ey * dt;
+
+            mahony_integral_z +=
+                MAHONY_KI * ez * dt;
+
+
+            gx += mahony_integral_x;
+            gy += mahony_integral_y;
+            gz += mahony_integral_z;
+        }
+        else
+        {
+            mahony_integral_x = 0.0f;
+            mahony_integral_y = 0.0f;
+            mahony_integral_z = 0.0f;
+        }
+
+
+        /* 比例补偿 */
+
+        gx += MAHONY_KP * ex;
+        gy += MAHONY_KP * ey;
+        gz += MAHONY_KP * ez;
     }
 
-    // ---- 7. 四元数更新（一阶龙格-库塔） ----
-    q_dot0 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
-    q_dot1 = 0.5f * ( q0 * gx + q2 * gz - q3 * gy);
-    q_dot2 = 0.5f * ( q0 * gy - q1 * gz + q3 * gx);
-    q_dot3 = 0.5f * ( q0 * gz + q1 * gy - q2 * gx);
 
-    att_q[0] += q_dot0 * dt;
-    att_q[1] += q_dot1 * dt;
-    att_q[2] += q_dot2 * dt;
-    att_q[3] += q_dot3 * dt;
+    /* ==============================
+     * quaternion integration
+     * ============================== */
 
-    // 归一化
-    NormalizeQuaternion();
+    q_dot0 =
+        0.5f *
+        (-q1 * gx
+         -q2 * gy
+         -q3 * gz);
 
-    // ---- 8. 输出到 imu_data ----
-    imu_data.q[0] = att_q[0];
-    imu_data.q[1] = att_q[1];
-    imu_data.q[2] = att_q[2];
-    imu_data.q[3] = att_q[3];
+    q_dot1 =
+        0.5f *
+        ( q0 * gx
+         +q2 * gz
+         -q3 * gy);
 
-    quat_to_euler(att_q, &imu_data.roll, &imu_data.pitch, &imu_data.yaw);
+    q_dot2 =
+        0.5f *
+        ( q0 * gy
+         -q1 * gz
+         +q3 * gx);
+
+    q_dot3 =
+        0.5f *
+        ( q0 * gz
+         +q1 * gy
+         -q2 * gx);
+
+
+    q0 += q_dot0 * dt;
+    q1 += q_dot1 * dt;
+    q2 += q_dot2 * dt;
+    q3 += q_dot3 * dt;
+
+
+    /* ==============================
+     * Quaternion normalization
+     * ============================== */
+
+    norm =
+        q0 * q0 +
+        q1 * q1 +
+        q2 * q2 +
+        q3 * q3;
+
+    if(norm > 0.000001f)
+    {
+        norm = 1.0f / sqrtf(norm);
+
+        q0 *= norm;
+        q1 *= norm;
+        q2 *= norm;
+        q3 *= norm;
+    }
+
+
+    imu660ra_q[0] = q0;
+    imu660ra_q[1] = q1;
+    imu660ra_q[2] = q2;
+    imu660ra_q[3] = q3;
+
+
+    quat_to_euler(
+        imu660ra_q,
+        &imu660ra_roll,
+        &imu660ra_pitch,
+        &imu660ra_yaw
+    );
 }
 
-/**
- * @brief  姿态解算初始化
+/* ============================================================
+ * 姿态初始化
  *
- * 采集陀螺仪零偏（800 次平均）和加速度初始姿态，
- * 以确定初始四元数和 roll/pitch 初值。
- * 调用此函数前请保持 IMU 静止。
- */
+ * 建议：
+ * 调用时 IMU 保持静止
+ * ============================================================ */
 void IMU660RA_AttitudeInit(void)
 {
-    int i;
-    float gx_sum = 0.0f, gy_sum = 0.0f, gz_sum = 0.0f;
-    float ax_sum = 0.0f, ay_sum = 0.0f, az_sum = 0.0f;
-    float ax, ay, az, norm;
-    float roll, pitch, yaw;
-    float cy, sy, cp, sp, cr, sr;
+    float ax;
+    float ay;
+    float az;
 
-    HAL_Delay(200);   // 等待 IMU 稳定
+    float roll;
+    float pitch;
 
-    // ---- 1. 采集陀螺仪零偏（800 次） ----
-    for (i = 0; i < 800; i++)
-    {
-        imu660ra_get_gyro();
-        gx_sum += imu_data.gx;
-        gy_sum += imu_data.gy;
-        gz_sum += imu_data.gz;
-        HAL_Delay(2);
-    }
+    float cr;
+    float sr;
+    float cp;
+    float sp;
 
-    gyro_bias[0] = gx_sum / 800.0f;
-    gyro_bias[1] = gy_sum / 800.0f;
-    gyro_bias[2] = gz_sum / 800.0f;
 
-    // ---- 2. 加速度计初始化 Roll / Pitch（200 次） ----
-    for (i = 0; i < 200; i++)
-    {
-        imu660ra_get_acc();
-        ax_sum += imu_data.ax;
-        ay_sum += imu_data.ay;
-        az_sum += imu_data.az;
-        HAL_Delay(2);
-    }
+    mahony_integral_x = 0.0f;
+    mahony_integral_y = 0.0f;
+    mahony_integral_z = 0.0f;
 
-    ax = ax_sum / 200.0f;
-    ay = ay_sum / 200.0f;
-    az = az_sum / 200.0f;
 
-    norm = sqrtf(ax * ax + ay * ay + az * az);
-    if (norm < 0.01f) {
-        ax = 0.0f; ay = 0.0f; az = 1.0f;
-    } else {
-        ax /= norm; ay /= norm; az /= norm;
-    }
+    imu660ra_get_acc();
 
-    // 初始化加速度低通滤波器状态
-    acc_lpf[0] = ax;
-    acc_lpf[1] = ay;
-    acc_lpf[2] = az;
 
-    // ---- 3. 计算初始欧拉角 ----
-    roll  = atan2f(ay, az);
-    pitch = atan2f(-ax, sqrtf(ay * ay + az * az));
-    yaw   = 0.0f;   // 6 轴 IMU 无磁力计，yaw 初始化为 0
+    /* 安装方向变换 */
 
-    // ---- 4. 欧拉角转四元数 ----
-    cy = cosf(yaw   * 0.5f);
-    sy = sinf(yaw   * 0.5f);
+    ax = imu660ra_acc_transition(
+        imu660ra_acc_z
+    );
+
+    ay = imu660ra_acc_transition(
+        imu660ra_acc_y
+    );
+
+    az = -imu660ra_acc_transition(
+        imu660ra_acc_x
+    );
+
+
+    /*
+     * 用重力初始化 Roll/Pitch
+     */
+
+    roll = atan2f(
+        ay,
+        az
+    );
+
+    pitch = atan2f(
+        -ax,
+        sqrtf(
+            ay * ay +
+            az * az
+        )
+    );
+
+
+    /*
+     * yaw 初值 = 0
+     */
+
+    cr = cosf(roll * 0.5f);
+    sr = sinf(roll * 0.5f);
+
     cp = cosf(pitch * 0.5f);
     sp = sinf(pitch * 0.5f);
-    cr = cosf(roll  * 0.5f);
-    sr = sinf(roll  * 0.5f);
 
-    att_q[0] = cr * cp * cy + sr * sp * sy;
-    att_q[1] = sr * cp * cy - cr * sp * sy;
-    att_q[2] = cr * sp * cy + sr * cp * sy;
-    att_q[3] = cr * cp * sy - sr * sp * cy;
 
-    NormalizeQuaternion();
+    imu660ra_q[0] =
+        cr * cp;
 
-    // ---- 5. 清积分项并输出初始状态 ----
-    integral_fb[0] = 0.0f;
-    integral_fb[1] = 0.0f;
-    integral_fb[2] = 0.0f;
+    imu660ra_q[1] =
+        sr * cp;
 
-    imu_data.q[0] = att_q[0];
-    imu_data.q[1] = att_q[1];
-    imu_data.q[2] = att_q[2];
-    imu_data.q[3] = att_q[3];
+    imu660ra_q[2] =
+        cr * sp;
 
-    imu_data.roll  = roll  * RAD_TO_DEG;
-    imu_data.pitch = pitch * RAD_TO_DEG;
-    imu_data.yaw   = 0.0f;
+    imu660ra_q[3] =
+        -sr * sp;
 
-    printf("[IMU660RA] AttitudeInit OK: roll=%.2f, pitch=%.2f, gyro_bias=(%.3f,%.3f,%.3f)\r\n",
-           imu_data.roll, imu_data.pitch,
-           gyro_bias[0], gyro_bias[1], gyro_bias[2]);
+
+    quat_to_euler(
+        imu660ra_q,
+        &imu660ra_roll,
+        &imu660ra_pitch,
+        &imu660ra_yaw
+    );
 }

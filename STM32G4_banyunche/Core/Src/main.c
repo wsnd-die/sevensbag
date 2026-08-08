@@ -131,6 +131,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+    uint8_t Data[15];
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -169,8 +170,13 @@ int main(void)
 //	IMU660RC_AttitudeInit();
 	Hal_starte();
 	HAL_Delay(1000);
-	
-	
+	while (imu660ra_init()==0) {
+
+	    HAL_Delay(500);
+	}
+    IMU660RA_AttitudeInit();
+    uint8_t len=sprintf((char *)Data,"init ok");
+    HAL_UART_Transmit_IT(&huart1, (uint8_t *)Data,len);
  //  Emm_V5_Vel_Control(1,1,10,10,0);
 	// Emm_V5_Vel_Control(2,1,10,10,0);
  //  // osDelay(10);

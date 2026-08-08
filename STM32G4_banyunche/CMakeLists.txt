@@ -56,6 +56,7 @@ add_executable(${CMAKE_PROJECT_NAME}
         app/BollLocator.h
         hardware/angle_ctrl.c
         hardware/angle_ctrl.c
+        hardware/imu660ra_config.c
 )
 
 # Add STM32CubeMX generated sources
@@ -122,4 +123,15 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${CMAKE_PROJECT_NAME}.hex
     COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${CMAKE_PROJECT_NAME}.bin
     COMMENT "Generating hex and bin files"
+)
+
+# Flash target: 一键编译+烧录到 STM32G4
+# 在 CLion 中切换到此 target 然后点 ▶ Run 即可烧录
+add_custom_target(flash
+    COMMAND E:/Tools/xpack-openocd/xpack-openocd-0.12.0-7/bin/openocd.exe
+        -f E:/Tools/xpack-openocd/xpack-openocd-0.12.0-7/openocd/scripts/interface/cmsis-dap.cfg
+        -f E:/Tools/xpack-openocd/xpack-openocd-0.12.0-7/openocd/scripts/target/stm32g4x.cfg
+        -c "adapter speed 500; program $<TARGET_FILE:STM32G4_TEST> verify reset exit"
+    DEPENDS ${CMAKE_PROJECT_NAME}
+    COMMENT "Flashing STM32G4 via DAPLink..."
 )

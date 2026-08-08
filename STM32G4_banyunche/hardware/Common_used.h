@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include "block_basic.h"
 #include "QRcode.h"
+
 /* ============================================================
  * 2. STM32G4 HAL / CMSIS
  * ============================================================ */
@@ -60,7 +61,7 @@
 #include "oled.h"
 #include "oled_data.h"
 #include "imu660.h"
-#include "spi_imu660rc.h"
+// #include "spi_imu660rc.h"  // 已切换为 IMU660RA 版本，旧版不再使用
 #include "mecanum.h"
 #include "uart2_tbop10.h"
 #include "angle_ctrl.h"

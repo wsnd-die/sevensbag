@@ -245,7 +245,7 @@ void NLF_TASK(void *argument)
 
 	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_GoHome);
+	//task_send(Event_GoHome);
 
   /* Infinite loop */
   for(;;)
@@ -446,29 +446,29 @@ void Color_task(void *argument)
   for(;;) { osDelay(1000); }
 
 #else
-  for(;;)
-  {
-		char b[400]; int n = 0;
-
-		/* 实时 RGB + 颜色 */
-		Color_DataTypeDef d;
-		if (Color_ReadData(&d) == HAL_OK) {
-			Color_TypeDef c = Color_Judge(&d);
-			n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
-				d.red, d.green, d.blue, Color_ToString(c));
-		} else {
-			n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
-		}
-
-		/* 校准数据摘要 */
-		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
-			g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
-		for (int i = 0; i < COLOR_COUNT; i++)
-			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
-		n += snprintf(b+n, sizeof(b)-n, "\r\n");
-		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
-		osDelay(100);
-  }
+  // for(;;)
+  // {
+		// char b[400]; int n = 0;
+  //
+		// /* 实时 RGB + 颜色 */
+		// Color_DataTypeDef d;
+		// if (Color_ReadData(&d) == HAL_OK) {
+		// 	Color_TypeDef c = Color_Judge(&d);
+		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
+		// 		d.red, d.green, d.blue, Color_ToString(c));
+		// } else {
+		// 	n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
+		// }
+  //
+		// /* 校准数据摘要 */
+		// n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
+		// 	g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
+		// for (int i = 0; i < COLOR_COUNT; i++)
+		// 	n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
+		// n += snprintf(b+n, sizeof(b)-n, "\r\n");
+		// HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
+		// osDelay(100);
+  // }
 #endif
 #endif
 	for (;;)
@@ -676,8 +676,16 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
+	uint8_t data;
   for(;;)
   {
+  	//imu660ra_get_gyro();
+  	IMU660RA_AttitudeUpdate(0.01);
+
+  	HAL_UART_Transmit_IT(&huart1,"imu660ra_gyro_x",);
+  	//printf("gz:%.1f,yaw:%.1f\n",imu660ra_gyro_x,imu660ra_roll);
+  	osDelay(10);
+
     // if (Flag_TBOFdata) {
     //   Flag_TBOFdata = 0;
     //   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
