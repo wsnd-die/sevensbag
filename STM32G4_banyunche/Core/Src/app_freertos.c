@@ -303,7 +303,7 @@ void NLF_TASK(void *argument)
   			    printf("[TASK] FindCircle done\r\n");
   				flag_finish=false;
   			}
-       task_send(Event_Navigation);
+       task_send(Event_GoHome);
   	}
   	else if (g_last_cmd.Mode==Event_PlaceDown)
   	{
@@ -375,9 +375,10 @@ void NLF_TASK(void *argument)
   				}
   			}
   			task_send(Event_Navigation);
+
   		}
 
-
+  	osDelay(10);
 
   		// Circle_Follow();
   		// if (g_circle_dir=='O')
@@ -467,7 +468,7 @@ void Color_task(void *argument)
 			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
 		n += snprintf(b+n, sizeof(b)-n, "\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
-		osDelay(100);
+		osDelay(50);
   }
 #endif
 #endif
@@ -514,6 +515,7 @@ void BsRt_task(void *argument)
 			HAL_Delay(50);
 			Color_Init();
 			HAL_Delay(50);
+			#if USE_OPENMV_COLOR == 1  /* ---- GY-33 ---- */
 			if (K==0) {
 				/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
 				for (uint8_t slot = 1; slot <= 5; slot++) {
@@ -575,6 +577,38 @@ void BsRt_task(void *argument)
 				K=0;
 				g_trophy_done = 1;
 			}
+			#else  /* ---- OpenMV ---- */
+			if (K==0) {
+				for (uint8_t slot = 1; slot <= 5; slot++) {
+					Color_DataTypeDef d;
+					if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
+					Color_TypeDef c = Color_Judge(&d);
+					if (c == COLOR_UNKNOWN) { slot--; osDelay(10); continue; }
+					TT_SetColor(slot - 1, c);
+					if (slot < 5) {
+						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
+						HAL_Delay(500);
+					}
+				}
+				K=1;
+				g_color_collect_done = 1;
+			}
+			else {
+				for (uint8_t slot = 1; slot <= 3; slot++) {
+					Color_DataTypeDef d;
+					if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
+					Color_TypeDef c = Color_Judge(&d);
+					if (c == COLOR_UNKNOWN) { slot--; osDelay(10); continue; }
+					if (slot < 3) {
+						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
+						HAL_Delay(500);
+					}
+				}
+				K=0;
+				g_trophy_done = 1;
+			}
+			#endif /* USE_OPENMV_COLOR */
+
 		}
 
 		osDelay(10);

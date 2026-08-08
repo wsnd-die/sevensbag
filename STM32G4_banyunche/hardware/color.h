@@ -18,6 +18,11 @@ extern "C" {
 #include "main.h"
 #include <stdint.h>
 
+/* 颜色传感器选择: 0=GY-33, 1=OpenMV */
+#ifndef USE_OPENMV_COLOR
+#define USE_OPENMV_COLOR  0
+#endif
+
 /* 颜色枚举 */
 typedef enum {
     COLOR_UNKNOWN = 0,
