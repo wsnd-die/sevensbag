@@ -111,7 +111,7 @@ static void UART2_SendCmd(uint8_t cmd)
     tx_buf[idx++] = cmd;
     tx_buf[idx++] = TB_Tail1;
     tx_buf[idx++] = TB_Tail2;
-    UART2_Send(tx_buf, idx);
+    HAL_UART_Transmit(&huart2, tx_buf, idx, HAL_MAX_DELAY);
 }
 
 /* ����������������ֵ��̣�����������ƽ�ƣ����ȴ�������� */
@@ -125,9 +125,8 @@ static void Mecanum_MoveBlocking(float body_dx_m, float body_dy_m)
     }
 }
 
-static void UART2_Send(uint8_t *DATA, uint8_t len)
+void UART2_calibrate(void)
 {
-    HAL_UART_Transmit(&huart2, DATA, len, HAL_MAX_DELAY);
 
     UART2_SendCmd('x');                       /* AA CC x BB DD */
     osDelay(1000U);                           /* �ȴ� 1 �� */

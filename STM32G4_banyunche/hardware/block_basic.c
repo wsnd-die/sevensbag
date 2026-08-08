@@ -213,10 +213,10 @@ void Place(char dir)
         }
 
         /* 后退 0.05 m（车体坐标：-X 为后退） */
-        if (Mecanum_CalculateMove(&g_mecanum_config, -0.1f, 0.0f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&g_mecanum_config, -0.11f, 0.0f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&g_mecanum_config, &move);
-            osDelay((uint32_t)(move.duration_s * 1000.0f) + 50U);
+            osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
         }
     }
 }

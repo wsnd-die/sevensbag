@@ -61,7 +61,6 @@ extern uint8_t dma_rx_buf[DMA_RX_BUF_SIZE];
 void UART2_FSM_Parse_Byte(uint8_t byte);
 #endif
 
-static void UART2_Send(uint8_t *DATA, uint8_t len);
 void UART2_StartDMAReceive(void);
 void UART2_calibrate(void);
 

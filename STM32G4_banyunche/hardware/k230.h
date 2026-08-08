@@ -19,6 +19,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+/* ---- 跨文件共享的 USART3 接收缓冲（在 k230.c 中定义） ---- */
+extern uint8_t rx3;
+
 /* ---- K230 模式常量 ---- */
 #define K230_MODE_LINE      'f'   /* 循迹模式 */
 #define K230_MODE_CIRCLE    'c'   /* 绕圈模式 */

@@ -42,6 +42,8 @@ SemaphoreHandle_t Sem_Act_Navigat;
 
 volatile Current_Task_t current_task = Event_IDLE;
 volatile TaskCommand_t   g_last_cmd;
+volatile uint8_t         g_color_collect_done = 0;  /* 0=未完成, 1=5个槽已收集完 */
+volatile uint8_t         g_trophy_done = 0;         /* 0=未完成, 1=3个奖杯槽已收集完 */
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -192,28 +194,29 @@ void StartDefaultTask(void *argument)
   for(;;)
   {
    cmd= task_recive();
-		if(cmd.k==1)
-		{
-			g_last_cmd = cmd;
-			switch(cmd.Mode)
-			{
-			case Event_LinFolL:
-				if (current_task == Event_Task1) break;
-				current_task = Event_Task1; break;
-			case Event_LinFolR:
-				if (current_task == Event_Task2) break;
-				current_task = Event_Task2;  break;
-			case Event_Navigation:    break;
-			case Event_GoHome:
-				current_task = Event_Task2;  break;
-			case Event_PickUp: case Event_PlaceDown: case Event_STEERING_ROTATE:
-				break;
-			case Event_QRCode: break;
-			case Event_FindCircle:  break;
-			case Event_STOP:  current_task = Event_IDLE; break;
-			default: break;
-			}
-		}
+
+		// if(cmd.k==1)
+		// {
+		 	g_last_cmd = cmd;
+		// 	switch(cmd.Mode)
+		// 	{
+		// 	case Event_LinFolL:
+		// 		if (current_task == Event_Task1) break;
+		// 		current_task = Event_Task1; break;
+		// 	case Event_LinFolR:
+		// 		if (current_task == Event_Task2) break;
+		// 		current_task = Event_Task2;  break;
+		// 	case Event_Navigation:    break;
+		// 	case Event_GoHome:
+		// 		current_task = Event_Task2;  break;
+		// 	case Event_PickUp: case Event_PlaceDown: case Event_STEERING_ROTATE:
+		// 		break;
+		// 	case Event_QRCode: break;
+		// 	case Event_FindCircle:  break;
+		// 	case Event_STOP:  current_task = Event_IDLE; break;
+		// 	default: break;
+		// 	}
+		// }
 		osDelay(30);
   }
   /* USER CODE END StartDefaultTask */
@@ -232,44 +235,162 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
-	SystemMode_t Navafter_mode[4]={Event_QRCode,Event_FindCircle,Event_QRCode,Event_PickUp};
-	uint8_t NavafterNum[4]={1,5,1,3};
+	SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
+	uint8_t NavafterNum[6]={1,3,1,1,1,5};
+	uint8_t i=0;
+	bool flag_finish=false;
 	uint8_t P_Nava=0;
+	uint8_t rank[3]={second_place,champion,third_place};
 
 
 	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
-
+	task_send(Event_GoHome);
 
   /* Infinite loop */
   for(;;)
   {
-  	if (g_last_cmd.Mode==Event_Navigation) {
-
+  	if (g_last_cmd.Mode==Event_Navigation)
+  	{
   		Nav_FeDuanPoint();
+  		printf("[TASK] Navigation done, P_Nava=%d\r\n", P_Nava);
+  		//Nav_MoveForward(0.5);
+  		//Nav_MoveLeft(-0.5);
+  		if (P_Nava<6)
+  		{
+  			task_send(Navafter_mode[P_Nava]);
+  			NavafterNum[P_Nava]--;
 
-		if (NavafterNum[P_Nava]==0) {
-			P_Nava++;
-		}
-  		task_send(Navafter_mode[P_Nava]);
-  		NavafterNum[P_Nava]--;
+  			if (NavafterNum[P_Nava]==0) {
+  				P_Nava++;
+  			}
+  		}
+
+
 
   	}
   	else if (g_last_cmd.Mode==Event_LinFolL)
   	{
   		Trace_LineFollow();
-
-  		// task_send(Event_Navigation);
+  		if (g_color_collect_done==1)
+  		{
+  			task_send(Event_Navigation);
+  			printf("[TASK] LinFolL done\r\n");
+  		}
   	}
   	else if (g_last_cmd.Mode==Event_LinFolR)
   	{
+  		Trace_LineFollow();
 
-
+        if (g_trophy_done==1)
+        {
+	        task_send(Event_Navigation);
+        	printf("[TASK] LinFolR done\r\n");
+        }
   	}
-  	osDelay(20);
-  }
-  /* USER CODE END NLF_TASK */
+  	else if (g_last_cmd.Mode==Event_FindCircle)
+  	{
+  		//加入物料放置转盘逻辑
+  		if (flag_finish==false)
+  		{
+  			TT_RotateByQR();
+  			flag_finish=true;
+  		}
+  			Circle_Follow();
+  			if (g_circle_dir=='O')
+  			{
+  				Place('O');
+  			    printf("[TASK] FindCircle done\r\n");
+  				flag_finish=false;
+  			}
+       task_send(Event_Navigation);
+  	}
+  	else if (g_last_cmd.Mode==Event_PlaceDown)
+  	{
+  			switch (rank[i])
+  			{
+  			case champion:
+  				{
+  					//加入奖杯转盘放置逻辑
+  					if (flag_finish==false)
+  					{
+  						BlockBasic_LiftTo(UP,20);
+  						BlockBasic_TurntableTo(Slop_dirjang(champion));
+  						HAL_Delay(500);
+  						flag_finish=true;
+  					}
+  					Circle_Follow();
+  					if (g_circle_dir=='O')
+  					{
+  						Place('O');
+  						printf("[TASK] PlaceDown champion done\r\n");
+  						flag_finish=false;
+  					}
+  					i++;
+  					break;
+  				}
+
+  			case  second_place:
+  				{
+  					//丝干在走进亚军时要先升起，在寻线完进行了升起
+
+  					//加入奖杯转盘放置逻辑
+  					if (flag_finish==false)
+  					{
+  						BlockBasic_LiftTo(UP,20);
+  						BlockBasic_TurntableTo(Slop_dirjang(champion));
+  						HAL_Delay(500);
+  						flag_finish=true;
+  					}
+  					Circle_Follow();
+  					if (g_circle_dir=='O')
+  					{
+  						Place('O');
+  						printf("[TASK] PlaceDown second done\r\n");
+  						flag_finish=false;
+  					}
+  					//在走到冠军前要先升起来
+
+  					i++;
+  					break;
+  				}
+  			case third_place:
+  				{
+  					if (flag_finish==false)
+  					{
+  						BlockBasic_LiftTo(DOWN,40);
+  						BlockBasic_TurntableTo(Slop_dirjang(champion));
+  						HAL_Delay(500);
+  						//加入奖杯转盘放置逻辑（已加）
+  						flag_finish=true;
+  					}
+
+  					Circle_Follow();
+  					if (g_circle_dir=='O')
+  					{
+  						Place('O');
+  						printf("[TASK] PlaceDown third done\r\n");
+  					}
+  					break;
+  				}
+  			}
+  			task_send(Event_Navigation);
+  		}
+
+
+
+  		// Circle_Follow();
+  		// if (g_circle_dir=='O')
+  		// {
+  		// 	Place('O');
+  		// 	flag_finish=false;
+  		// }
+  		// task_send(Event_Navigation);
+  	}
+
+  	osDelay(10);
 }
+  /* USER CODE END NLF_TASK */
 
 /* USER CODE BEGIN Header_Color_task */
 /**
@@ -281,7 +402,7 @@ void NLF_TASK(void *argument)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
-#define COLOR_CALIB 0
+#define COLOR_CALIB 1
 #if COLOR_CALIB
 #define COLOR_CALIB_MODE 0
     Color_SetLedLevel(0);
@@ -296,7 +417,7 @@ void Color_task(void *argument)
 	char msg[64];
 
 	HAL_UART_Transmit(&huart1, (uint8_t *)"=== EMPTY slot ===\r\n", 20, 100);
-	osDelay(3000);
+	osDelay(1000);
 	Color_CalibAmbient();
 	HAL_UART_Transmit(&huart1, (uint8_t *)"Ambient OK\r\n", 13, 100);
 
@@ -305,7 +426,7 @@ void Color_task(void *argument)
 		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
 
 		if (BlockBasic_TurntableTo(i+1) == BLOCK_OK) {
-			osDelay(2000);
+			// osDelay(2000);
 			Color_DataTypeDef d;
 			if (Color_ReadData(&d) == HAL_OK) {
 				n = snprintf(msg, sizeof(msg), "  R=%d G=%d B=%d\r\n", d.red, d.green, d.blue);
@@ -346,15 +467,15 @@ void Color_task(void *argument)
 			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
 		n += snprintf(b+n, sizeof(b)-n, "\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
-		osDelay(50);
+		osDelay(100);
   }
 #endif
 #endif
 	for (;;)
 	{
-		printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f | CIRCLE: dir=%c vx=%.2f vy=%.2f\r\n",
-		       g_trace_angle, g_trace_posx, g_trace_v, g_trace_w,
-		       g_circle_dir, g_circle_vx, g_circle_vy);
+		// printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f | CIRCLE: dir=%c vx=%.2f vy=%.2f\r\n",
+		//        imu_yaw, g_trace_posx, g_trace_v, g_trace_w,
+		//        g_circle_dir, g_circle_vx, g_circle_vy);
 
 
 		osDelay(100);
@@ -377,7 +498,7 @@ void BsRt_task(void *argument)
 	/*
 	 *舵机转盘任务
 	 */
-	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
+	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
 	Servo_SetAngle(38);
 	BlockBasic_TurntableTo(1);
 	HAL_Delay(1000);
@@ -386,7 +507,7 @@ void BsRt_task(void *argument)
 		osDelay(10);
 
 
-		if (g_last_cmd.Mode==Event_PickUp)
+		if (g_last_cmd.Mode==Event_LinFolR||g_last_cmd.Mode==Event_LinFolL)
 		{
 			Servo_SetAngle(38);
 			Color_SetLedLevel(0);
@@ -397,7 +518,11 @@ void BsRt_task(void *argument)
 				/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
 				for (uint8_t slot = 1; slot <= 5; slot++) {
 					Color_DataTypeDef d;
-					if (Color_ReadData(&d) != HAL_OK) {slot--;continue;}
+					if (Color_ReadData(&d) != HAL_OK) {
+						slot--;
+						osDelay(5);   /* 等下一帧到达再重试 */
+						continue;
+					}
 					/* 计算和环境光基线的 RGB 差值（绝对值之和） */
 					int dr = abs((int)d.red   - g_color_ambient.r);
 					int dg = abs((int)d.green - g_color_ambient.g);
@@ -405,6 +530,7 @@ void BsRt_task(void *argument)
 					if (dr < 30 && dg < 30 && db < 30) {
 						/* 跳变太小 → 环境光/空槽 → 停止 */
 						slot--;
+						osDelay(50);
 						continue;
 					}
 					/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
@@ -413,15 +539,21 @@ void BsRt_task(void *argument)
 					if (slot < 5) {
 						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
 						HAL_Delay(500);  /* 等待舵机转到位 */
+
 					}
 				}
-
+				K=1;
+				g_color_collect_done = 1;
 			}
 			else {
 				/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
 				for (uint8_t slot = 1; slot <= 3; slot++) {
 					Color_DataTypeDef d;
-					if (Color_ReadData(&d) != HAL_OK) {slot--;continue;}
+					if (Color_ReadData(&d) != HAL_OK) {
+						slot--;
+						osDelay(5);   /* 等下一帧到达再重试 */
+						continue;
+					}
 					/* 计算和环境光基线的 RGB 差值（绝对值之和） */
 					int dr = abs((int)d.red   - g_color_ambient.r);
 					int dg = abs((int)d.green - g_color_ambient.g);
@@ -429,6 +561,7 @@ void BsRt_task(void *argument)
 					if (dr < 30 && dg < 30 && db < 30) {
 						/* 跳变太小 → 环境光/空槽 → 停止 */
 						slot--;
+						osDelay(50);
 						continue;
 					}
 					/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
@@ -440,15 +573,15 @@ void BsRt_task(void *argument)
 					}
 				}
 				K=0;
+				g_trophy_done = 1;
 			}
-			task_send(Event_Navigation);
 		}
 
 		osDelay(10);
 		/* USER CODE END BsRt_task */
 	}
 }
-}
+
 
 
 /* USER CODE BEGIN Header_OLED_TASK */
@@ -489,7 +622,7 @@ void FC_TASK(void *argument)
   /* Infinite loop */
   for(;;)
   {
-  	if (g_last_cmd.Mode==Event_FindCircle)  {  Circle_Follow(); }
+  	// if (g_last_cmd.Mode==Event_FindCircle)  {  Circle_Follow(); }
 
     osDelay(50);
   }
@@ -507,14 +640,28 @@ void QR_TASK(void *argument)
 {
   /* USER CODE BEGIN QR_TASK */
 	uint8_t QR_result=0,i=0;
-	SystemMode_t  QR_after[2]={Event_LinFolR,Event_LinFolL};
+	bool clr_rank_flag=false;
+	// SystemMode_t  QR_after[2]={Event_LinFolR,Event_Navigation};
   /* Infinite loop */
   for(;;)
   {
 
-  	if (g_last_cmd.Mode==Event_QRCode)  {  QR_result=Qr_Get();task_send(QR_after[i++]); }
+  	if (g_last_cmd.Mode==Event_QRCode)
+  	{
+  		if (clr_rank_flag==false)
+  		{
+  			QR_result=Qr_Get();
+  			clr_rank_flag=true;
+  		}
+  		else
+  		{
+  			QR_result=Qr_Get();
+  			SetQR(QR_result);
+  		}
+  		task_send(Event_Navigation);
+  	}
 
-    osDelay(50);
+    osDelay(10);
   }
   /* USER CODE END QR_TASK */
 }

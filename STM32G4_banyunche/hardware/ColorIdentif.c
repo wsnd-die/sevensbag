@@ -51,7 +51,7 @@ static const uint8_t T1[16][5] = {
  * 下表: T2[pattern][slot], slot: 0=A 1=B 2=C
  *   1=金奖(first)  2=银奖(second)  3=铜奖(third)
  * ============================================================ */
-static const uint8_t T2[6][3] = {
+uint8_t T2[6][3] = {
     {1, 2, 3},  /* A=金 B=银 C=铜 */
     {1, 3, 2},  /* A=金 B=铜 C=银 */
     {2, 1, 3},  /* A=银 B=金 C=铜 */
@@ -136,6 +136,23 @@ uint8_t ColorAtSlot(uint8_t slot)
 {
     if (!g_tt.ok || slot >= 5) return COLOR_UNKNOWN;
     return g_tt.color[slot];
+}
+
+/* ============================================================
+ * TT_RotateByQR — 按 QR 颜色顺序, 旋转到每个颜色所在物理槽位
+ * ============================================================ */
+void TT_RotateByQR(void)
+{
+    if (!g_tt.ok || g_tt.idx >= 16) return;
+
+    /* 按 T1[idx] 顺序: slot 0=A → 4=E */
+    for (uint8_t s = 0; s < g_tt.cnt; s++) {
+        uint8_t target_color = T1[g_tt.idx][s];       /* QR 指定的颜色顺序 */
+        uint8_t actual_slot  = SlotByColor(target_color); /* 该颜色实际在哪个槽位 */
+        if (actual_slot == SLOT_NONE) continue;
+        BlockBasic_TurntableTo(actual_slot + 1);       /* 1-based → 旋转 */
+        HAL_Delay(500);  /* 等舵机转到位 */
+    }
 }
 
 /* ============================================================
