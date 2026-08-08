@@ -63,6 +63,7 @@ void Hal_starte()
 		//HAL_UART_Receive_IT(&huart1, &rx1, 1);
 		/* DMA ѭ������ + IDLE ֡ͬ�� */
 		K230_Init();
+
       
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//?????????
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
@@ -169,14 +170,16 @@ int main(void)
 //	IMU660RC_Init();
 //	IMU660RC_AttitudeInit();
 	Hal_starte();
-	HAL_Delay(1000);
+    imu660ra_init();
+    HAL_Delay(1000);
 	while (imu660ra_init()==0) {
 
 	    HAL_Delay(500);
 	}
     IMU660RA_AttitudeInit();
     uint8_t len=sprintf((char *)Data,"init ok");
-    HAL_UART_Transmit_IT(&huart1, (uint8_t *)Data,len);
+    HAL_UART_Transmit(&huart1, (uint8_t *)Data,len, 100);
+    HAL_Delay(10);
  //  Emm_V5_Vel_Control(1,1,10,10,0);
 	// Emm_V5_Vel_Control(2,1,10,10,0);
  //  // osDelay(10);

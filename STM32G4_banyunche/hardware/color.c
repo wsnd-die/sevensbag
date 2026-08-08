@@ -1,8 +1,8 @@
 /**
  * @file color.c
  * @brief 颜色传感器 — GY-33 / OpenMV 双驱动
- *   - USE_OPENMV_COLOR 0: GY-33,  帧: 5A 5A type qty data[qty] chk
- *   - USE_OPENMV_COLOR 1: OpenMV, 帧: AA CC [color] BB DD  (color=Color_TypeDef枚举)
+ *   - USE_OPENMV_COLOR 1: GY-33,  帧: 5A 5A type qty data[qty] chk
+ *   - USE_OPENMV_COLOR 0: OpenMV, 帧: AA CC L A B BB DD (Lab 值, OpenMV 端采集)
  */
 #include "Common_used.h"
 #include <stdlib.h>  /* abs() */
@@ -13,6 +13,60 @@
 #define SAMPLE_COUNT      5U
 #define SKIP_COUNT        1U
 #define ACCEPT_COUNT      2U
+
+/* ================================================================
+ * 手动校准常量 (OpenMV Lab 模式)
+ * 校准流程: COLOR_CALIB_MODE 1 → 看串口 Lab 值 → 填入下方 → 重新编译
+ * ================================================================ */
+#if USE_OPENMV_COLOR == 0
+/* 环境光 (空槽) */
+#define LAB_AMB_L   77
+#define LAB_AMB_A   125
+#define LAB_AMB_B   125
+#define LAB_AMB_TOL 15
+
+/* 各颜色参考 Lab 值 + 通道权重 + 欧几里得距离容差 */
+/* 权重: 黑白只看 L, 红绿蓝只看 A/B */
+#define LAB_RED_L    41
+#define LAB_RED_A    168
+#define LAB_RED_B    141
+#define LAB_RED_WL   0
+#define LAB_RED_WA   3
+#define LAB_RED_WB   1
+#define LAB_RED_TOL  30
+
+#define LAB_GREEN_L  82
+#define LAB_GREEN_A  99
+#define LAB_GREEN_B  142
+#define LAB_GREEN_WL 0
+#define LAB_GREEN_WA 3
+#define LAB_GREEN_WB 1
+#define LAB_GREEN_TOL 30
+
+#define LAB_BLUE_L   70
+#define LAB_BLUE_A   133
+#define LAB_BLUE_B   86
+#define LAB_BLUE_WL  0
+#define LAB_BLUE_WA  1
+#define LAB_BLUE_WB  3
+#define LAB_BLUE_TOL 30
+
+#define LAB_WHITE_L  99
+#define LAB_WHITE_A  125
+#define LAB_WHITE_B  128
+#define LAB_WHITE_WL 3
+#define LAB_WHITE_WA 0
+#define LAB_WHITE_WB 0
+#define LAB_WHITE_TOL 30
+
+#define LAB_BLACK_L  35
+#define LAB_BLACK_A  122
+#define LAB_BLACK_B  125
+#define LAB_BLACK_WL 3
+#define LAB_BLACK_WA 0
+#define LAB_BLACK_WB 0
+#define LAB_BLACK_TOL 30
+#endif /* USE_OPENMV_COLOR */
 
 /* ---- 校准数据 (全局) ---- */
 Color_Calib_t  g_color_calib[COLOR_COUNT];
@@ -117,24 +171,26 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
 }
 
 /* ================================================================
- * 协议层 — OpenMV: AA CC [color] BB DD, 直接返回颜色枚举值
+ * 协议层 — OpenMV: AA CC L A B BB DD (7字节 Lab 帧)
+ *   L: 0~100 (明度), A/B: 原始值+128 偏移为 0~255
+  * 判断层 — Lab 欧几里得距离校准
  * ================================================================ */
 #else
 
-static bool Color_ReadFrame(uint8_t *r, uint8_t *g, uint8_t *b)
+/* ---- 帧解析: AA L A B DD (5字节), UART2 DMA 接收 ---- */
+static bool Color_ReadFrame(uint8_t *l, uint8_t *a, uint8_t *b)
 {
-    uint8_t last = 0, cur = 0;
-    int retry = 1000;
-    while (!(last == 0xAA && cur == 0xCC) && --retry > 0) {
-        last = cur;
-        cur = SW_UART_ReadByte();
+    int retry = 500;
+    while (!g_uart2_color_ready && --retry > 0) {
+        osDelay(2);
     }
     if (retry <= 0) return false;
 
-    *r = SW_UART_ReadByte();  /* 颜色枚举值 */
-    *g = SW_UART_ReadByte();  /* 应为 0xBB */
-    *b = SW_UART_ReadByte();  /* 应为 0xDD */
-    return (*g == 0xBB && *b == 0xDD);
+    *l = g_uart2_color_l;
+    *a = g_uart2_color_a;
+    *b = g_uart2_color_b;
+    g_uart2_color_ready = 0;
+    return true;
 }
 
 HAL_StatusTypeDef Color_Init(void)
@@ -150,13 +206,13 @@ HAL_StatusTypeDef Color_SetLedLevel(uint8_t level)
 
 HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
 {
-    uint8_t r = 0, g = 0, b = 0;
+    uint8_t l = 0, a = 0, b = 0;
     if (data == NULL) return HAL_ERROR;
-    if (!Color_ReadFrame(&r, &g, &b)) {
+    if (!Color_ReadFrame(&l, &a, &b)) {
         data->online = 0U;
         return HAL_ERROR;
     }
-    data->sensor_color = r;  /* 直接存颜色枚举 */
+    data->l = l; data->a = a; data->b = b;
     data->online = 1U;
     return HAL_OK;
 }
@@ -164,8 +220,49 @@ HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
 Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
 {
     if (data == NULL || data->online == 0U) return COLOR_UNKNOWN;
-    Color_TypeDef c = (Color_TypeDef)data->sensor_color;
-    return (c > COLOR_UNKNOWN && c < COLOR_COUNT) ? c : COLOR_UNKNOWN;
+
+    uint8_t l = data->l, a = data->a, b = data->b;
+
+    /* 1. 先判空槽 (环境光匹配) */
+    {
+        int dl = (int)l - LAB_AMB_L;
+        int da = (int)a - LAB_AMB_A;
+        int db = (int)b - LAB_AMB_B;
+        uint32_t dist_sq = (uint32_t)(dl * dl + da * da + db * db);
+        uint32_t tol_sq = (uint32_t)LAB_AMB_TOL * LAB_AMB_TOL;
+        if (dist_sq <= tol_sq)
+            return COLOR_UNKNOWN;
+    }
+
+    /* 2. 匹配已校准颜色 (加权最近邻 + 容差) */
+    struct { uint8_t l, a, b; uint8_t wl, wa, wb; uint8_t tol; Color_TypeDef color; }
+    static const ref[] = {
+        { LAB_RED_L,   LAB_RED_A,   LAB_RED_B,   LAB_RED_WL,   LAB_RED_WA,   LAB_RED_WB,   LAB_RED_TOL,   COLOR_RED   },
+        { LAB_GREEN_L, LAB_GREEN_A, LAB_GREEN_B, LAB_GREEN_WL, LAB_GREEN_WA, LAB_GREEN_WB, LAB_GREEN_TOL, COLOR_GREEN },
+        { LAB_BLUE_L,  LAB_BLUE_A,  LAB_BLUE_B,  LAB_BLUE_WL,  LAB_BLUE_WA,  LAB_BLUE_WB,  LAB_BLUE_TOL,  COLOR_BLUE  },
+        { LAB_WHITE_L, LAB_WHITE_A, LAB_WHITE_B, LAB_WHITE_WL, LAB_WHITE_WA, LAB_WHITE_WB, LAB_WHITE_TOL, COLOR_WHITE },
+        { LAB_BLACK_L, LAB_BLACK_A, LAB_BLACK_B, LAB_BLACK_WL, LAB_BLACK_WA, LAB_BLACK_WB, LAB_BLACK_TOL, COLOR_BLACK },
+    };
+    uint32_t best_dist_sq = 0xFFFFFFFFUL;
+    Color_TypeDef best = COLOR_UNKNOWN;
+
+    for (size_t i = 0; i < sizeof(ref)/sizeof(ref[0]); i++) {
+        int dl = (int)l - ref[i].l;
+        int da = (int)a - ref[i].a;
+        int db = (int)b - ref[i].b;
+        uint32_t dist_sq = (uint32_t)(
+            (int)ref[i].wl * dl * dl +
+            (int)ref[i].wa * da * da +
+            (int)ref[i].wb * db * db);
+        uint32_t tol_sq = (uint32_t)ref[i].tol * ref[i].tol;
+        if (dist_sq <= tol_sq && dist_sq < best_dist_sq) {
+            best_dist_sq = dist_sq;
+            best = ref[i].color;
+        }
+    }
+
+    if (best != COLOR_UNKNOWN) return best;
+    return COLOR_UNKNOWN;
 }
 
 #endif /* USE_OPENMV_COLOR */
@@ -210,10 +307,15 @@ const char *Color_ToString(Color_TypeDef color)
     }
 }
 
+/* ---- Flash 存储 ---- */
+#define FLASH_CALIB_PAGE   255U
+#define FLASH_CALIB_ADDR   0x0807F800U
+#define FLASH_PAGE_SIZE    0x800U
+
 /* ================================================================
  * 校准 — 仅 GY-33
  * ================================================================ */
-#if USE_OPENMV_COLOR == 0
+#if USE_OPENMV_COLOR == 1
 
 void Color_Calibrate(Color_TypeDef color)
 {
@@ -241,11 +343,8 @@ void Color_CalibAmbient(void)
     }
 }
 
-/* ---- Flash 存储 ---- */
-#define FLASH_CALIB_PAGE   255U
-#define FLASH_CALIB_ADDR   0x0807F800U
+/* ---- Flash magic ---- */
 #define FLASH_CALIB_MAGIC  0x434F4C52U
-#define FLASH_PAGE_SIZE    0x800U
 
 static uint32_t CalibChecksum(void)
 {
@@ -316,9 +415,23 @@ void Color_CalibLoad(void)
 }
 
 #else
-/* OpenMV 不需要校准 */
-void Color_Calibrate(Color_TypeDef color) { (void)color; }
-void Color_CalibAmbient(void)             {}
-void Color_CalibSave(void)                {}
-void Color_CalibLoad(void)                {}
+
+/* 手动校准模式: 校准时打印 Lab 值, 用户填入 color.c 顶部 #define 常量 */
+void Color_CalibSave(void)   { printf("[CALIB] Manual mode: copy Lab values above\r\n"); }
+void Color_CalibLoad(void)   {}
+void Color_Calibrate(Color_TypeDef color)
+{
+    Color_DataTypeDef d;
+    if (Color_ReadData(&d) == HAL_OK) {
+        printf("[CALIB] %s: L=%d A=%d B=%d  ← copy to #define\r\n",
+               Color_ToString(color), d.l, d.a, d.b);
+    }
+}
+void Color_CalibAmbient(void)
+{
+    Color_DataTypeDef d;
+    if (Color_ReadData(&d) == HAL_OK) {
+        printf("[CALIB] AMBIENT: L=%d A=%d B=%d  ← copy to LAB_AMB_*\r\n", d.l, d.a, d.b);
+    }
+}
 #endif /* USE_OPENMV_COLOR */

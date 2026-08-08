@@ -104,7 +104,7 @@ osThreadId_t IMU_TASKHandle;
 const osThreadAttr_t IMU_TASK_attributes = {
   .name = "IMU_TASK",
   .priority = (osPriority_t) osPriorityHigh,
-  .stack_size = 256 * 4
+  .stack_size = 256 * 8
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -245,7 +245,7 @@ void NLF_TASK(void *argument)
 
 	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_GoHome);
+	task_send(Event_LinFolL);
 
   /* Infinite loop */
   for(;;)
@@ -271,10 +271,10 @@ void NLF_TASK(void *argument)
   	}
   	else if (g_last_cmd.Mode==Event_LinFolL)
   	{
-  		Trace_LineFollow();
+  		// Trace_LineFollow();
   		if (g_color_collect_done==1)
   		{
-  			task_send(Event_Navigation);
+  			task_send(Event_GoHome);
   			printf("[TASK] LinFolL done\r\n");
   		}
   	}
@@ -303,7 +303,7 @@ void NLF_TASK(void *argument)
   			    printf("[TASK] FindCircle done\r\n");
   				flag_finish=false;
   			}
-       task_send(Event_GoHome);
+       task_send(Event_Navigation);
   	}
   	else if (g_last_cmd.Mode==Event_PlaceDown)
   	{
@@ -403,6 +403,7 @@ void NLF_TASK(void *argument)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
+	Color_Init();
 #define COLOR_CALIB 1
 #if COLOR_CALIB
 #define COLOR_CALIB_MODE 0
@@ -430,7 +431,7 @@ void Color_task(void *argument)
 			// osDelay(2000);
 			Color_DataTypeDef d;
 			if (Color_ReadData(&d) == HAL_OK) {
-				n = snprintf(msg, sizeof(msg), "  R=%d G=%d B=%d\r\n", d.red, d.green, d.blue);
+				n = snprintf(msg, sizeof(msg), "  L=%d A=%d B=%d\r\n", d.l, d.a, d.b);
 				HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
 			}
 			Color_Calibrate(colors[i]);
@@ -451,21 +452,16 @@ void Color_task(void *argument)
   {
 		char b[400]; int n = 0;
 
-		/* 实时 RGB + 颜色 */
+		/* 实时 Lab + 颜色 */
 		Color_DataTypeDef d;
 		if (Color_ReadData(&d) == HAL_OK) {
 			Color_TypeDef c = Color_Judge(&d);
-			n += snprintf(b+n, sizeof(b)-n, "RGB=%d,%d,%d -> %s | ",
-				d.red, d.green, d.blue, Color_ToString(c));
+			n += snprintf(b+n, sizeof(b)-n, "Lab=%d,%d,%d -> %s | ",
+				d.l, d.a, d.b, Color_ToString(c));
 		} else {
-			n += snprintf(b+n, sizeof(b)-n, "RGB=? | ");
+			n += snprintf(b+n, sizeof(b)-n, "Lab=? | ");
 		}
 
-		/* 校准数据摘要 */
-		n += snprintf(b+n, sizeof(b)-n, "Amb(%d,%d,%d,%d) ",
-			g_color_ambient.r,g_color_ambient.g,g_color_ambient.b,g_color_ambient.enabled);
-		for (int i = 0; i < COLOR_COUNT; i++)
-			n += snprintf(b+n, sizeof(b)-n, "%c:%d ", "URGWB"[i], g_color_calib[i].enabled);
 		n += snprintf(b+n, sizeof(b)-n, "\r\n");
 		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
 		osDelay(50);
@@ -477,6 +473,15 @@ void Color_task(void *argument)
 		// printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f | CIRCLE: dir=%c vx=%.2f vy=%.2f\r\n",
 		//        imu_yaw, g_trace_posx, g_trace_v, g_trace_w,
 		//        g_circle_dir, g_circle_vx, g_circle_vy);
+		{
+			Color_DataTypeDef data;
+			Color_TypeDef c;
+			// if (Color_ReadData(&data) == HAL_OK) {
+			// 	c = Color_Judge(&data);
+			// 	printf("[OpenMV] raw=%d | color=%d (%s)\r\n",
+			// 	       data.sensor_color, (int)c, Color_ToString(c));
+			// }
+		}
 
 
 		osDelay(100);
@@ -499,7 +504,7 @@ void BsRt_task(void *argument)
 	/*
 	 *舵机转盘任务
 	 */
-	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
+	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
 	Servo_SetAngle(38);
 	BlockBasic_TurntableTo(1);
 	HAL_Delay(1000);
@@ -508,7 +513,7 @@ void BsRt_task(void *argument)
 		osDelay(10);
 
 
-		if (g_last_cmd.Mode==Event_LinFolR||g_last_cmd.Mode==Event_LinFolL)
+		if (g_last_cmd.Mode==Event_LinFolL||g_last_cmd.Mode==Event_LinFolR)
 		{
 			Servo_SetAngle(38);
 			Color_SetLedLevel(0);
@@ -578,36 +583,61 @@ void BsRt_task(void *argument)
 				g_trophy_done = 1;
 			}
 			#else  /* ---- OpenMV ---- */
-			if (K==0) {
-				for (uint8_t slot = 1; slot <= 5; slot++) {
-					Color_DataTypeDef d;
-					if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
-					Color_TypeDef c = Color_Judge(&d);
-					if (c == COLOR_UNKNOWN) { slot--; osDelay(10); continue; }
-					TT_SetColor(slot - 1, c);
-					if (slot < 5) {
-						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
-						HAL_Delay(500);
+				{
+					#define JUMP_AB  15
+					#define JUMP_L   15
+					static uint8_t p_l, p_a, p_b, p_init;
+					if (!p_init) { Color_DataTypeDef init_d; if (Color_ReadData(&init_d) == HAL_OK) { p_l = init_d.l; p_a = init_d.a; p_b = init_d.b; p_init = 1; } }
+					if (K==0 && !g_color_collect_done&&g_last_cmd.Mode==Event_LinFolL) {
+						for (uint8_t slot = 1; slot <= 5; slot++) {
+							for (;;) {
+								Color_DataTypeDef d;
+								if (Color_ReadData(&d) != HAL_OK) { osDelay(5); continue; }
+								int da = abs((int)d.a - p_a);
+								int db = abs((int)d.b - p_b);
+								int dl = abs((int)d.l - p_l);
+								p_l = d.l; p_a = d.a; p_b = d.b;
+								int has_jump = ((da + db) >= JUMP_AB || dl >= JUMP_L);
+								Color_TypeDef c = Color_Judge(&d);
+								if (has_jump && c != COLOR_UNKNOWN) {
+									TT_SetColor(slot - 1, c);
+									break;
+								}
+								osDelay(5);
+							}
+							if (slot < 5) {
+								if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
+								osDelay(800);
+							}
+						}
+						Servo_Angle(313.0f);
+						K=1;
+						g_color_collect_done = 1;
+					}
+					else if (!g_trophy_done && g_last_cmd.Mode==Event_LinFolR) {
+						for (uint8_t slot = 1; slot <= 3; slot++) {
+							for (;;) {
+								Color_DataTypeDef d;
+								if (Color_ReadData(&d) != HAL_OK) { osDelay(5); continue; }
+								int da = abs((int)d.a - p_a);
+								int db = abs((int)d.b - p_b);
+								int dl = abs((int)d.l - p_l);
+								p_l = d.l; p_a = d.a; p_b = d.b;
+								int has_jump = ((da + db) >= JUMP_AB || dl >= JUMP_L);
+								Color_TypeDef c = Color_Judge(&d);
+								if (has_jump && c != COLOR_UNKNOWN) { break; }
+								osDelay(5);
+							}
+							if (slot < 3) {
+								if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
+								osDelay(100);
+							}
+						}
+						K=0;
+						g_trophy_done = 1;
 					}
 				}
-				K=1;
-				g_color_collect_done = 1;
-			}
-			else {
-				for (uint8_t slot = 1; slot <= 3; slot++) {
-					Color_DataTypeDef d;
-					if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
-					Color_TypeDef c = Color_Judge(&d);
-					if (c == COLOR_UNKNOWN) { slot--; osDelay(10); continue; }
-					if (slot < 3) {
-						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
-						HAL_Delay(500);
-					}
-				}
-				K=0;
-				g_trophy_done = 1;
-			}
-			#endif /* USE_OPENMV_COLOR */
+				#endif /* USE_OPENMV_COLOR */
 
 		}
 
@@ -656,8 +686,12 @@ void FC_TASK(void *argument)
   /* Infinite loop */
   for(;;)
   {
-  	// if (g_last_cmd.Mode==Event_FindCircle)  {  Circle_Follow(); }
 
+  	if (g_last_cmd.Mode==Event_FindCircle)  {  Circle_Follow(); }
+  	// printf("yaw=%.2f pitch=%.2f roll=%.2f\r\n",
+			//  siyuan_yaw * RAD_TO_DEG,
+			//  siyuan_pitch * RAD_TO_DEG,
+			//  siyuan_roll * RAD_TO_DEG);
     osDelay(50);
   }
   /* USER CODE END FC_TASK */
@@ -710,6 +744,10 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
+	EulerAngle e ;
+	// calibrate_gyro();
+	siyuan_ahrs_init();    /* 内部用重力初始化 roll/pitch, yaw=0 */
+	siyuan_gyro_calibrate();
   for(;;)
   {
     // if (Flag_TBOFdata) {
@@ -717,7 +755,10 @@ void IMU_FUCTION(void *argument)
     //   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
     //     TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
     // }
-    osDelay(10);
+  	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
+  	siyuan_imu_task();
+  	// e = MahonyAHRS_GetEuler_deg();
+    osDelay(5);
   }
   /* USER CODE END IMU_FUCTION */
 }

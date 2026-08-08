@@ -39,6 +39,7 @@ typedef struct {
     uint16_t raw_red, raw_green, raw_blue, raw_clear;
     uint16_t lux, color_temperature;
     uint8_t  red, green, blue;
+    uint8_t  l, a, b;         /* OpenMV Lab 原始值 (A/B 已偏移+128) */
     uint8_t  sensor_color;
     uint8_t  online;
 } Color_DataTypeDef;

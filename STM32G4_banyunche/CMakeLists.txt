@@ -57,6 +57,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/angle_ctrl.c
         hardware/angle_ctrl.c
         hardware/imu660ra_config.c
+        hardware/ahrs_mahony.c
+        hardware/siyuan_imu.c
 )
 
 # Add STM32CubeMX generated sources
@@ -91,6 +93,8 @@ set(USER_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/QRcode.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/sw_uart.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/wit_protocol.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hardware/ahrs_mahony.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hardware/siyuan_imu.c"
 )
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${USER_SOURCES}
@@ -128,9 +132,10 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
 # Flash target: 一键编译+烧录到 STM32G4
 # 在 CLion 中切换到此 target 然后点 ▶ Run 即可烧录
 add_custom_target(flash
-    COMMAND E:/Tools/xpack-openocd/xpack-openocd-0.12.0-7/bin/openocd.exe
-        -f E:/Tools/xpack-openocd/xpack-openocd-0.12.0-7/openocd/scripts/interface/cmsis-dap.cfg
-        -f E:/Tools/xpack-openocd/xpack-openocd-0.12.0-7/openocd/scripts/target/stm32g4x.cfg
+    COMMAND D:/OpenOCD/xpack-openocd-0.12.0-7/bin/openocd.exe
+        -s D:/OpenOCD/xpack-openocd-0.12.0-7/openocd/scripts
+        -f interface/cmsis-dap.cfg
+        -f target/stm32g4x.cfg
         -c "adapter speed 500; program $<TARGET_FILE:STM32G4_TEST> verify reset exit"
     DEPENDS ${CMAKE_PROJECT_NAME}
     COMMENT "Flashing STM32G4 via DAPLink..."
