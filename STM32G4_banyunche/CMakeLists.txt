@@ -58,7 +58,9 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/angle_ctrl.c
         hardware/imu660ra_config.c
         hardware/ahrs_mahony.c
+        hardware/ahrs_mahony.h
         hardware/siyuan_imu.c
+        hardware/siyuan_imu.h
 )
 
 # Add STM32CubeMX generated sources

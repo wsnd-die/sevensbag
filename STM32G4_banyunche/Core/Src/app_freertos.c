@@ -256,15 +256,15 @@ void NLF_TASK(void *argument)
   		printf("[TASK] Navigation done, P_Nava=%d\r\n", P_Nava);
   		//Nav_MoveForward(0.5);
   		//Nav_MoveLeft(-0.5);
-  		// if (P_Nava<6)
-  		// {
-  		// 	task_send(Navafter_mode[P_Nava]);
-  		// 	NavafterNum[P_Nava]--;
-		  //
-  		// 	if (NavafterNum[P_Nava]==0) {
-  		// 		P_Nava++;
-  		// 	}
-  		// }
+  		if (P_Nava<6)
+  		{
+  			task_send(Navafter_mode[P_Nava]);
+  			NavafterNum[P_Nava]--;
+
+  			if (NavafterNum[P_Nava]==0) {
+  				P_Nava++;
+  			}
+  		}
   		task_send(Event_STOP);
 
 
