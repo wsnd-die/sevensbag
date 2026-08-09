@@ -423,7 +423,7 @@ void Color_task(void *argument)
 	HAL_Delay(50);
 	Color_Init();
 	HAL_Delay(50);
-	Servo_SetAngle(38);
+	Servo_SetAngle(81.0f);
 
 #if COLOR_CALIB_MODE
 	const char *steps[] = {"EMPTY","RED","GREEN","BLUE","WHITE","BLACK"};
@@ -517,7 +517,7 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
-	Servo_SetAngle(38);
+	Servo_SetAngle(81.0f);
 	// BlockBasic_TurntableTo(1);
 	// BlockBasic_LiftTo(UP,20);
 	// HAL_Delay(1000);

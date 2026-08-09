@@ -22,7 +22,7 @@ typedef struct {
 } BlockDualArmPos;
 
 static const BlockDualArmPos block_dual_arm_pos_table[] = {
-    {170.0f, 90.0f},   /* pos 1: 初始位置 */
+    {81.0f,  89.5f},   /* pos 1: 初始位置 */
     {72.0f,  79.0f},   /* pos 2: 最低点 */
     {94.0f,  101.0f},  /* pos 3: 第二位置 */
 };
@@ -168,7 +168,7 @@ BlockArmResult BlockBasic_ArmCalc(float height_mm)
 
 /**
  * @brief   双机械臂预设位置控制。
- * @param   pos  位置编号：1=初始(170°,30°)  2=最低(72°,79°)  3=第二位置(94°,101°)
+ * @param   pos  位置编号：1=初始(81°,89.5°)  2=最低(72°,79°)  3=第二位置(94°,101°)
  * @note    CH1 → 前级舵机（舵机1），CH3 → 后级舵机（舵机2），均为 180° 舵机。
  *          驱动公式：角度/180° * 2000 + 500 us
  */

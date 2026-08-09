@@ -91,7 +91,7 @@ BlockArmResult BlockBasic_ArmCalc(float height_mm);
 
 /**
  * @brief  双机械臂预设位置控制（CH1 前级 + CH3 后级）。
- * @param  pos  1=初始(170°,30°)  2=最低(72°,79°)  3=第二位置(94°,101°)
+ * @param  pos  1=初始(81°,89.5°)  2=最低(72°,79°)  3=第二位置(94°,101°)
  */
 void BlockBasic_DualArmSetPos(uint8_t pos);
 #endif
