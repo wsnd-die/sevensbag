@@ -15,12 +15,12 @@ extern "C" {
 #include <stdint.h>
 
 /* ======================== 外环: 位置 → 目标角度 ======================== */
-#define ANGLE_KP      0.035f     /* 外环 P (作用于位置环) */
+#define ANGLE_KP      0.03f     /* 外环 P (作用于位置环) */
 #define ANGLE_KI      0.0f     /* 外环 I (作用于位置环) */
 #define ANGLE_KD      0.0f     /* 外环 D (作用于位置环) */
 #define ANGLE_OUT_MAX  100.0f   /* 外环输出限幅 (目标角度, deg) */
 /* ======================== 内环: 角度 → 角速度 ======================== */
-#define POS_KP        0.21f    /* 内环 P (作用于角度环) */
+#define POS_KP        0.13f    /* 内环 P (作用于角度环) */
 #define POS_KI        0.0f   /* 内环 I (作用于角度环) */
 #define POS_KD        0.0f    /* 内环 D (作用于角度环) */
 #define POS_INTEGRAL_MAX  10.0f /* 内环积分限幅 */
