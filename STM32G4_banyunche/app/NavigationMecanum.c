@@ -26,9 +26,9 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     {0.308f,    0.656f,  90.0  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
 
-      {    0.10f,     0.10f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
-      {    0.0f,    0.15f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
-      {    0.0f,    0.15f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
+      {    0.0f,     0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+      {    0.0f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
+      {    0.0f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
       {   0.10f,    0.10f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
@@ -214,7 +214,6 @@ bool Nav_Rotate(float angle_rad)
 
 bool Nav_FeDuanPoint() {
     static uint8_t PontIntex=7;
-
 
     if (!Nav_MoveBody(g_waypoints[PontIntex].x,
                           g_waypoints[PontIntex].y,
