@@ -51,21 +51,9 @@
 #define LAB_BLUE_WB  3
 #define LAB_BLUE_TOL 30
 
-#define LAB_WHITE_L  99
-#define LAB_WHITE_A  125
-#define LAB_WHITE_B  128
-#define LAB_WHITE_WL 3
-#define LAB_WHITE_WA 0
-#define LAB_WHITE_WB 0
-#define LAB_WHITE_TOL 30
-
-#define LAB_BLACK_L  35
-#define LAB_BLACK_A  122
-#define LAB_BLACK_B  125
-#define LAB_BLACK_WL 3
-#define LAB_BLACK_WA 0
-#define LAB_BLACK_WB 0
-#define LAB_BLACK_TOL 30
+/* 黑/白: 黑用 L(像素占比×255), 白用 RGB 和 */
+#define RGB_WHITE_MIN   350   /* R+G+B >= 此值 → 白色 */
+#define BLACK_RATIO_MIN 120   /* L >= 此值 → 黑色 (>50%黑色像素) */
 #endif /* USE_OPENMV_COLOR */
 
 /* ---- 校准数据 (全局) ---- */
@@ -177,8 +165,9 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
  * ================================================================ */
 #else
 
-/* ---- 帧解析: AA L A B DD (5字节), UART2 DMA 接收 ---- */
-static bool Color_ReadFrame(uint8_t *l, uint8_t *a, uint8_t *b)
+/* ---- 帧解析: AA L A B R G B DD (8字节), UART2 DMA 接收 ---- */
+static bool Color_ReadFrame(uint8_t *l, uint8_t *a, uint8_t *b,
+                            uint8_t *r, uint8_t *g, uint8_t *b_rgb)
 {
     int retry = 500;
     while (!g_uart2_color_ready && --retry > 0) {
@@ -189,6 +178,9 @@ static bool Color_ReadFrame(uint8_t *l, uint8_t *a, uint8_t *b)
     *l = g_uart2_color_l;
     *a = g_uart2_color_a;
     *b = g_uart2_color_b;
+    *r = g_uart2_color_r;
+    *g = g_uart2_color_g;
+    *b_rgb = g_uart2_color_b_rgb;
     g_uart2_color_ready = 0;
     return true;
 }
@@ -206,13 +198,14 @@ HAL_StatusTypeDef Color_SetLedLevel(uint8_t level)
 
 HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
 {
-    uint8_t l = 0, a = 0, b = 0;
+    uint8_t l = 0, a = 0, b = 0, r = 0, g = 0, b_rgb = 0;
     if (data == NULL) return HAL_ERROR;
-    if (!Color_ReadFrame(&l, &a, &b)) {
+    if (!Color_ReadFrame(&l, &a, &b, &r, &g, &b_rgb)) {
         data->online = 0U;
         return HAL_ERROR;
     }
     data->l = l; data->a = a; data->b = b;
+    data->red = r; data->green = g; data->blue = b_rgb;
     data->online = 1U;
     return HAL_OK;
 }
@@ -234,34 +227,40 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
             return COLOR_UNKNOWN;
     }
 
-    /* 2. 匹配已校准颜色 (加权最近邻 + 容差) */
-    struct { uint8_t l, a, b; uint8_t wl, wa, wb; uint8_t tol; Color_TypeDef color; }
-    static const ref[] = {
-        { LAB_RED_L,   LAB_RED_A,   LAB_RED_B,   LAB_RED_WL,   LAB_RED_WA,   LAB_RED_WB,   LAB_RED_TOL,   COLOR_RED   },
-        { LAB_GREEN_L, LAB_GREEN_A, LAB_GREEN_B, LAB_GREEN_WL, LAB_GREEN_WA, LAB_GREEN_WB, LAB_GREEN_TOL, COLOR_GREEN },
-        { LAB_BLUE_L,  LAB_BLUE_A,  LAB_BLUE_B,  LAB_BLUE_WL,  LAB_BLUE_WA,  LAB_BLUE_WB,  LAB_BLUE_TOL,  COLOR_BLUE  },
-        { LAB_WHITE_L, LAB_WHITE_A, LAB_WHITE_B, LAB_WHITE_WL, LAB_WHITE_WA, LAB_WHITE_WB, LAB_WHITE_TOL, COLOR_WHITE },
-        { LAB_BLACK_L, LAB_BLACK_A, LAB_BLACK_B, LAB_BLACK_WL, LAB_BLACK_WA, LAB_BLACK_WB, LAB_BLACK_TOL, COLOR_BLACK },
-    };
-    uint32_t best_dist_sq = 0xFFFFFFFFUL;
-    Color_TypeDef best = COLOR_UNKNOWN;
-
-    for (size_t i = 0; i < sizeof(ref)/sizeof(ref[0]); i++) {
-        int dl = (int)l - ref[i].l;
-        int da = (int)a - ref[i].a;
-        int db = (int)b - ref[i].b;
-        uint32_t dist_sq = (uint32_t)(
-            (int)ref[i].wl * dl * dl +
-            (int)ref[i].wa * da * da +
-            (int)ref[i].wb * db * db);
-        uint32_t tol_sq = (uint32_t)ref[i].tol * ref[i].tol;
-        if (dist_sq <= tol_sq && dist_sq < best_dist_sq) {
-            best_dist_sq = dist_sq;
-            best = ref[i].color;
+    /* 2. 红/绿/蓝: Lab 加权距离 (只看 A+B, 忽略 L) */
+    {
+        struct { uint8_t l, a, b; uint8_t wl, wa, wb; uint8_t tol; Color_TypeDef color; }
+        static const ref[] = {
+            { LAB_RED_L,   LAB_RED_A,   LAB_RED_B,   LAB_RED_WL,   LAB_RED_WA,   LAB_RED_WB,   LAB_RED_TOL,   COLOR_RED   },
+            { LAB_GREEN_L, LAB_GREEN_A, LAB_GREEN_B, LAB_GREEN_WL, LAB_GREEN_WA, LAB_GREEN_WB, LAB_GREEN_TOL, COLOR_GREEN },
+            { LAB_BLUE_L,  LAB_BLUE_A,  LAB_BLUE_B,  LAB_BLUE_WL,  LAB_BLUE_WA,  LAB_BLUE_WB,  LAB_BLUE_TOL,  COLOR_BLUE  },
+        };
+        uint32_t best_dist_sq = 0xFFFFFFFFUL;
+        Color_TypeDef best = COLOR_UNKNOWN;
+        for (size_t i = 0; i < sizeof(ref)/sizeof(ref[0]); i++) {
+            int dl = (int)l - ref[i].l;
+            int da = (int)a - ref[i].a;
+            int db = (int)b - ref[i].b;
+            uint32_t dist_sq = (uint32_t)(
+                (int)ref[i].wl * dl * dl +
+                (int)ref[i].wa * da * da +
+                (int)ref[i].wb * db * db);
+            uint32_t tol_sq = (uint32_t)ref[i].tol * ref[i].tol;
+            if (dist_sq <= tol_sq && dist_sq < best_dist_sq) {
+                best_dist_sq = dist_sq;
+                best = ref[i].color;
+            }
         }
+        if (best != COLOR_UNKNOWN) return best;
     }
 
-    if (best != COLOR_UNKNOWN) return best;
+    /* 3. 黑/白: 黑用 L(黑色像素占比), 白用 RGB 和 */
+    {
+        uint16_t rgb_sum = (uint16_t)data->red + data->green + data->blue;
+        if (rgb_sum >= RGB_WHITE_MIN) return COLOR_WHITE;
+        if (data->l >= BLACK_RATIO_MIN) return COLOR_BLACK;
+    }
+
     return COLOR_UNKNOWN;
 }
 

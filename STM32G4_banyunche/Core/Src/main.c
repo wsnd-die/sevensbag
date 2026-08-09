@@ -64,7 +64,13 @@ void Hal_starte()
 		/* DMA ѭ������ + IDLE ֡ͬ�� */
 		K230_Init();
 
-      
+    while (imu660ra_init()==0) {
+
+       HAL_Delay(500);
+        }
+
+        siyuan_ahrs_init();    /* 内部用重力初始化 roll/pitch, yaw=0 */
+        siyuan_gyro_calibrate();
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//?????????
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
@@ -169,13 +175,10 @@ int main(void)
  //    Color_Init();
 //	IMU660RC_Init();
 //	IMU660RC_AttitudeInit();
-	Hal_starte();
-    imu660ra_init();
+    HAL_Delay(200);
+	  Hal_starte();
     HAL_Delay(1000);
-	while (imu660ra_init()==0) {
 
-	    HAL_Delay(500);
-	}
     IMU660RA_AttitudeInit();
     uint8_t len=sprintf((char *)Data,"init ok");
     HAL_UART_Transmit(&huart1, (uint8_t *)Data,len, 100);

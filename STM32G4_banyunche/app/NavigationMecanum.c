@@ -23,7 +23,7 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-		{0.308f,    -0.656f,  90.0  * MECANUM_DEG_TO_RAD	},//奖杯二维码点
+		{0.0f,    0.0f,  90.0  * MECANUM_DEG_TO_RAD	},//奖杯二维码点
 
 
     {    0.10f,     0.10f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
@@ -166,23 +166,24 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
 
     /* ---- 3. 旋转段: rotate_rad 为世界绝对角度(rad), AngleCtrl 闭环 ---- */
     if (fabsf(rotate_rad) >= 0.01f) {
-        float target_deg = -rotate_rad * (180.0f / MECANUM_PI);
-        float error_deg   = target_deg - imu_yaw;
+        float target_deg = rotate_rad*(180.0f/M_PI) ;
+        float error_deg   = target_deg - siyuan_yaw*RAD_TO_DEG;
         while (error_deg >  180.0f) error_deg -= 360.0f;
         while (error_deg < -180.0f) error_deg += 360.0f;
 
         /* 已经到位则跳过 */
-        if (fabsf(error_deg) >= 1.0f) {
+        if (fabsf(error_deg) >= 5.0f) {
             AngleCtrl ac;
             Angle_Init(&ac);
             Angle_SetTarget(&ac, target_deg);
 
             while (!Angle_Arrived(&ac)) {
-                Angle_Update(&ac, imu_yaw, imu_gz);
-                MecanumResult motor = Mecanum_Calc(0.0f, ac.cmd_w);
+                Angle_Update(&ac,siyuan_yaw*RAD_TO_DEG ,  -imu660ra_gyro_transition(imu660ra_gyro_x));
+                MecanumResult motor = Mecanum_Calc(0.0f, -ac.cmd_w);
                 Send_commandmotor(&motor);
                 osDelay(30);
             }
+            Mecanum_StopAll();
         }
 
         Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);

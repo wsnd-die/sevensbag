@@ -245,7 +245,7 @@ void NLF_TASK(void *argument)
 
 	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_LinFolL);
+	task_send(Event_Navigation);
 
   /* Infinite loop */
   for(;;)
@@ -584,10 +584,10 @@ void BsRt_task(void *argument)
 			}
 			#else  /* ---- OpenMV ---- */
 				{
-					#define JUMP_AB  15
-					#define JUMP_L   15
-					static uint8_t p_l, p_a, p_b, p_init;
-					if (!p_init) { Color_DataTypeDef init_d; if (Color_ReadData(&init_d) == HAL_OK) { p_l = init_d.l; p_a = init_d.a; p_b = init_d.b; p_init = 1; } }
+					#define JUMP_AB   15
+					#define JUMP_RGB  40
+					static uint8_t p_l, p_a, p_b, p_r, p_g, p_brgb, p_init;
+					if (!p_init) { Color_DataTypeDef init_d; if (Color_ReadData(&init_d) == HAL_OK) { p_l = init_d.l; p_a = init_d.a; p_b = init_d.b; p_r = init_d.red; p_g = init_d.green; p_brgb = init_d.blue; p_init = 1; } }
 					if (K==0 && !g_color_collect_done&&g_last_cmd.Mode==Event_LinFolL) {
 						for (uint8_t slot = 1; slot <= 5; slot++) {
 							for (;;) {
@@ -595,19 +595,20 @@ void BsRt_task(void *argument)
 								if (Color_ReadData(&d) != HAL_OK) { osDelay(5); continue; }
 								int da = abs((int)d.a - p_a);
 								int db = abs((int)d.b - p_b);
-								int dl = abs((int)d.l - p_l);
-								p_l = d.l; p_a = d.a; p_b = d.b;
-								int has_jump = ((da + db) >= JUMP_AB || dl >= JUMP_L);
-								Color_TypeDef c = Color_Judge(&d);
-								if (has_jump && c != COLOR_UNKNOWN) {
-									TT_SetColor(slot - 1, c);
-									break;
+								int dr = abs((int)d.red - p_r);
+								int dg = abs((int)d.green - p_g);
+								int dbrgb = abs((int)d.blue - p_brgb);
+								p_l = d.l; p_a = d.a; p_b = d.b; p_r = d.red; p_g = d.green; p_brgb = d.blue;
+								int has_jump = ((da + db) >= JUMP_AB) ? 1 : ((dr + dg + dbrgb) >= JUMP_RGB);
+								if (has_jump) {
+									Color_TypeDef c = Color_Judge(&d);
+									if (c != COLOR_UNKNOWN) { TT_SetColor(slot - 1, c); break; }
 								}
 								osDelay(5);
 							}
 							if (slot < 5) {
 								if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
-								osDelay(800);
+								osDelay(100);
 							}
 						}
 						Servo_Angle(313.0f);
@@ -621,11 +622,15 @@ void BsRt_task(void *argument)
 								if (Color_ReadData(&d) != HAL_OK) { osDelay(5); continue; }
 								int da = abs((int)d.a - p_a);
 								int db = abs((int)d.b - p_b);
-								int dl = abs((int)d.l - p_l);
-								p_l = d.l; p_a = d.a; p_b = d.b;
-								int has_jump = ((da + db) >= JUMP_AB || dl >= JUMP_L);
-								Color_TypeDef c = Color_Judge(&d);
-								if (has_jump && c != COLOR_UNKNOWN) { break; }
+								int dr = abs((int)d.red - p_r);
+								int dg = abs((int)d.green - p_g);
+								int dbrgb = abs((int)d.blue - p_brgb);
+								p_l = d.l; p_a = d.a; p_b = d.b; p_r = d.red; p_g = d.green; p_brgb = d.blue;
+								int has_jump = ((da + db) >= JUMP_AB) ? 1 : ((dr + dg + dbrgb) >= JUMP_RGB);
+								if (has_jump) {
+									Color_TypeDef c = Color_Judge(&d);
+									if (c != COLOR_UNKNOWN) break;
+								}
 								osDelay(5);
 							}
 							if (slot < 3) {
@@ -661,6 +666,7 @@ void OLED_TASK(void *argument)
 
   for(;;)
   {
+  	printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 
 		osDelay(500);
   }
@@ -746,8 +752,7 @@ void IMU_FUCTION(void *argument)
   /* USER CODE BEGIN IMU_FUCTION */
 	EulerAngle e ;
 	// calibrate_gyro();
-	siyuan_ahrs_init();    /* 内部用重力初始化 roll/pitch, yaw=0 */
-	siyuan_gyro_calibrate();
+
   for(;;)
   {
     // if (Flag_TBOFdata) {
