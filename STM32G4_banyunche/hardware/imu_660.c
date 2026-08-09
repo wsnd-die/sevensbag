@@ -499,7 +499,7 @@ void imu660ra_get_gyro(void)
     );
 
     imu660ra_gyro_x =
-        (int16_t)(
+        -(int16_t)(
             ((uint16_t)dat[1] << 8) |
              (uint16_t)dat[0]
         );

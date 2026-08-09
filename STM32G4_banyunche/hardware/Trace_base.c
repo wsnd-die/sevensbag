@@ -43,7 +43,7 @@ void Trace_LineFollow(void)
     }
 
     /* ---- 3. 外环: 位置 → 目标角度 ---- */
-    float target_angle = PID_calc(&g_pid_pos, k230_posx, 0.0f);
+    float target_angle = PID_calc(&g_pid_pos, k230_posx, -40.0f);
     if (target_angle >  ANGLE_OUT_MAX) target_angle =  ANGLE_OUT_MAX;
     if (target_angle < -ANGLE_OUT_MAX) target_angle = -ANGLE_OUT_MAX;
 

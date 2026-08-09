@@ -6,6 +6,27 @@ float imu_gz = 0;
 float imu_yaw = 0;
 uint8_t Flag_TBOFdata = 0;
 
+/* ---- OpenMV 颜色帧接收 (UART2, AA L A B R G B_rgb DD 8字节) ---- */
+volatile uint8_t g_uart2_color_ready = 0;
+uint8_t g_uart2_color_l, g_uart2_color_a, g_uart2_color_b;
+uint8_t g_uart2_color_r, g_uart2_color_g, g_uart2_color_b_rgb;
+
+static void UART2_ScanColorFrame(const uint8_t *data, uint16_t len)
+{
+    /* 扫描 AA L A B R G B DD 模式 */
+    for (uint16_t i = 0; i + 7 < len; i++) {
+        if (data[i] == 0xAA && data[i + 7] == 0xDD) {
+            g_uart2_color_l = data[i + 1];      /* 黑色像素占比 ×255 */
+            g_uart2_color_a = data[i + 2];      /* Lab A */
+            g_uart2_color_b = data[i + 3];      /* Lab B */
+            g_uart2_color_r = data[i + 4];      /* RGB R */
+            g_uart2_color_g = data[i + 5];      /* RGB G */
+            g_uart2_color_b_rgb = data[i + 6];  /* RGB B */
+            g_uart2_color_ready = 1;
+        }
+    }
+}
+
 #if LEGACY_USART2_ODOM_ENABLE
 UART_STATE fsm_state = WAIT_HEADER1;
 uint8_t frame_buf[FRAME_TOTAL_LEN];
@@ -73,6 +94,9 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
     dbg_rx_cb++;
     if (huart->Instance == USART2) {
+        /* 扫描 OpenMV 颜色帧 AA L A B DD */
+        UART2_ScanColorFrame(dma_rx_buf, Size);
+        /* 扫描里程计帧 AA CC ... BB DD */
         for (uint16_t i = 0; i < Size; i++) {
             UART2_FSM_Parse_Byte(dma_rx_buf[i]);
         }
