@@ -710,8 +710,12 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
+	uint8_t Data[20];
   for(;;)
   {
+  	IMU660RA_AttitudeUpdate(0.01);
+  	uint8_t len=sprintf(Data,"yaw:%.1f\n",imu660ra_yaw);
+  	HAL_UART_Transmit_IT(&huart1, (uint8_t *)Data, len);
     // if (Flag_TBOFdata) {
     //   Flag_TBOFdata = 0;
     //   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
