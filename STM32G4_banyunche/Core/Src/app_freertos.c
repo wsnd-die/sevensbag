@@ -254,18 +254,24 @@ void NLF_TASK(void *argument)
   	{
   		Nav_FeDuanPoint();
   		printf("[TASK] Navigation done, P_Nava=%d\r\n", P_Nava);
+  		P_Nava++;
   		//Nav_MoveForward(0.5);
   		//Nav_MoveLeft(-0.5);
-  		if (P_Nava<6)
-  		{
-  			task_send(Navafter_mode[P_Nava]);
-  			NavafterNum[P_Nava]--;
+  		//
+  		// if (P_Nava<6)
+  		// {
+  		// 	task_send(Navafter_mode[P_Nava]);
+  		// 	NavafterNum[P_Nava]--;
+		  //
+  		// 	if (NavafterNum[P_Nava]==0) {
+  		// 		P_Nava++;
+  		// 	}
+  		// }
+  		if (P_Nava>=5) {
+  			task_send(Event_STOP);
 
-  			if (NavafterNum[P_Nava]==0) {
-  				P_Nava++;
-  			}
   		}
-  		task_send(Event_STOP);
+
 
 
   	}
