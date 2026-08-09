@@ -256,6 +256,7 @@ void NLF_TASK(void *argument)
   {
   	if (g_last_cmd.Mode==Event_Navigation)
   	{
+
   		Nav_FeDuanPoint();
   		printf("[TASK] Navigation done, P_Nava=%d\r\n", P_Nava);
   		//Nav_MoveForward(0.5);
@@ -276,10 +277,11 @@ void NLF_TASK(void *argument)
   	}
   	else if (g_last_cmd.Mode==Event_LinFolL)
   	{
-  		// Trace_LineFollow();
+  		Trace_LineFollow();
   		if (g_color_collect_done==1)
   		{
-  			task_send(Event_GoHome);
+  			task_send(Event_Navigation);
+  			Mecanum_StopAll();
   			printf("[TASK] LinFolL done\r\n");
   		}
   	}
@@ -290,6 +292,7 @@ void NLF_TASK(void *argument)
         if (g_trophy_done==1)
         {
 	        task_send(Event_Navigation);
+        	Mecanum_StopAll();
         	printf("[TASK] LinFolR done\r\n");
         }
   	}
@@ -297,11 +300,11 @@ void NLF_TASK(void *argument)
 		{
 			//加入物料放置转盘逻辑
 			if (flag_finish==false)
-			{
-				if (!TT_RotateByQR()) { flag_finish=true; }  /* 没槽位了直接结束 */
-				else { flag_finish=false; }                   /* 转了一个槽, 需要放置 */
-			}
-			Circle_Follow();
+				{
+					flag_finish = true;   /* 先锁住, 防止 osDelay 期间重复进入 */
+					TT_RotateByQR();
+				}
+				Circle_Follow();
 			if (g_circle_dir=='O')
 			{
 				Place('O');
@@ -319,9 +322,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					//加入奖杯转盘放置逻辑
   					if (flag_finish==false)
   					{
-  						BlockBasic_LiftTo(UP,20);
   						BlockBasic_TurntableTo(Slop_dirjang(champion));
-  						HAL_Delay(500);
+  						// osDelay(500);
   						flag_finish=true;
   					}
   					Circle_Follow();
@@ -329,10 +331,13 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					{
   						Place('O');
   						printf("[TASK] PlaceDown champion done\r\n");
+  						i++;
+  						BlockBasic_LiftTo(UP,20);
   						flag_finish=false;
+  						task_send(Event_Navigation);
+  						break;
   					}
-  					i++;
-  					break;
+
   				}
 
   			case  second_place:
@@ -342,9 +347,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					//加入奖杯转盘放置逻辑
   					if (flag_finish==false)
   					{
-  						BlockBasic_LiftTo(UP,20);
-  						BlockBasic_TurntableTo(Slop_dirjang(champion));
-  						HAL_Delay(500);
+  						BlockBasic_TurntableTo(Slop_dirjang(second_place));
+  						// osDelay(500);
   						flag_finish=true;
   					}
   					Circle_Follow();
@@ -352,34 +356,33 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					{
   						Place('O');
   						printf("[TASK] PlaceDown second done\r\n");
+  						i++;
   						flag_finish=false;
+  						task_send(Event_Navigation);
+  						break;
   					}
   					//在走到冠军前要先升起来
-
-  					i++;
-  					break;
   				}
   			case third_place:
   				{
   					if (flag_finish==false)
   					{
-  						BlockBasic_LiftTo(DOWN,40);
-  						BlockBasic_TurntableTo(Slop_dirjang(champion));
-  						HAL_Delay(500);
+  						BlockBasic_LiftTo(DOWN,20);
+  						BlockBasic_TurntableTo(Slop_dirjang(third_place));
+  						osDelay(500);
   						//加入奖杯转盘放置逻辑（已加）
   						flag_finish=true;
   					}
-
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
   						Place('O');
   						printf("[TASK] PlaceDown third done\r\n");
+  						task_send(Event_Navigation);
+  						break;
   					}
-  					break;
   				}
   			}
-  			task_send(Event_Navigation);
 
   		}
 
@@ -509,7 +512,7 @@ void BsRt_task(void *argument)
 	/*
 	 *舵机转盘任务
 	 */
-	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
+	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
 	Servo_SetAngle(38);
 	// BlockBasic_TurntableTo(1);
 	// BlockBasic_LiftTo(UP,20);
