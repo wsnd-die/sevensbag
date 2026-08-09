@@ -8,8 +8,8 @@
  *          TX:  阻塞模式（写操作为短帧，DMA 无优势）
  *
  *          ====== 传输模式选择 ======
- *          #define HWT101_USE_I2C     → I2C 模式（默认，DMA 读）
- *          #define HWT101_USE_SERIAL  → 串口模式（UART4）
+ *          #define HWT101_USE_I2C     → I2C 模式（DMA 读）
+ *          #define HWT101_USE_SERIAL  → 串口模式（USART1，PA9/PA10）
  *          两者互斥，同时定义时 I2C 优先生效。
  *
  *          ====== 使用示例 ======
@@ -39,8 +39,8 @@ extern "C" {
    传输模式选择（二选一）
    ======================================================================== */
 
-#define HWT101_USE_I2C          /* 使用 I2C 模式（默认） */
-/* #define HWT101_USE_SERIAL */ /* 使用串口模式           */
+/* #define HWT101_USE_I2C */    /* 使用 I2C 模式 */
+#define HWT101_USE_SERIAL       /* 使用 USART1（PA9/PA10）串口模式 */
 
 #if !defined(HWT101_USE_I2C) && !defined(HWT101_USE_SERIAL)
 #error "Must define HWT101_USE_I2C or HWT101_USE_SERIAL"
@@ -69,6 +69,7 @@ extern DMA_HandleTypeDef  hdma_i2c1_rx;
 extern volatile float    g_hwt101_roll;
 extern volatile float    g_hwt101_pitch;
 extern volatile float    g_hwt101_yaw;
+extern volatile float    g_hwt101_gyro_z;
 extern volatile uint8_t  g_hwt101_data_ready;
 
 /* ========================================================================
@@ -124,9 +125,11 @@ int32_t HWT101_PollAngles(void);
 /**
  * @brief  将接收到的 1 字节送入协议栈解析。
  * @param  data  1 字节数据
- * @note   在 UART4 RX ISR 中调用（仅 HWT101_USE_SERIAL 模式）。
+ * @note   在 USART1 RX ISR 中调用（仅 HWT101_USE_SERIAL 模式）。
  */
 void    HWT101_FeedSerialByte(uint8_t data);
+void    HWT101_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+void    HWT101_UART_ErrorCallback(UART_HandleTypeDef *huart);
 
 /**
  * @brief  批量解析一帧 11 字节 0x55 数据包。

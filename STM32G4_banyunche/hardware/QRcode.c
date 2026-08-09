@@ -1,6 +1,6 @@
 #include "Common_used.h"
+#include "HWT101_iic.h"
 
-static uint8_t qrcode_rx_byte;
 static uint8_t qrcode_rx_buf[QRCODE_RX_BUF_SIZE];
 static volatile uint16_t qrcode_rx_len=0;
 uint8_t QR_Flag;
@@ -8,8 +8,7 @@ uint8_t Jang_Num,Yan_Num;
 
 void QRcode_Start(void)
 {
-    __HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
-    HAL_UART_Receive_IT(&huart1, &qrcode_rx_byte, 1);
+    /* USART1 已改为 HWT101 专用。 */
 }
 
 void QRcode_Clear(void)
@@ -30,7 +29,10 @@ const uint8_t *QRcode_GetBuffer(uint16_t *len)
 
 HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeout)
 {
-    return HAL_UART_Transmit(&huart1, (uint8_t *)data, len, timeout);
+    (void)data;
+    (void)len;
+    (void)timeout;
+    return HAL_ERROR;
 }
 
 
@@ -68,7 +70,6 @@ uint8_t  QR_deel(void)
         Yan_Num=result-1;
     }
 
-    HAL_UART_Transmit_IT(&huart1, &result, 1);
     uint8_t ret = result;
     result = 0;
     return ret;
@@ -100,18 +101,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 
     if (huart->Instance == USART1) {
-        if (qrcode_rx_len >= QRCODE_RX_BUF_SIZE) {
-            qrcode_rx_len = 0;
-        }
-
-        qrcode_rx_buf[qrcode_rx_len++] = qrcode_rx_byte;
-        if(qrcode_rx_byte==0x0d)
-        {
-            QR_Flag=1;
-            qrcode_rx_len=0;
-        }
-
-        HAL_UART_Receive_IT(&huart1, &qrcode_rx_byte, 1);
+        HWT101_UART_RxCpltCallback(huart);
     }
     else if (huart->Instance == USART3) {
         K230_RxProcessByte();
@@ -128,6 +118,5 @@ void QRcode_UART_ErrorCallback(UART_HandleTypeDef *huart)
         return;
     }
 
-    __HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
-    HAL_UART_Receive_IT(&huart1, &qrcode_rx_byte, 1);
+    HWT101_UART_ErrorCallback(huart);
 }

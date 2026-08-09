@@ -115,13 +115,21 @@ virtualFolder:
         - path: ../../hardware/Send_yuyin.h
         - path: ../../hardware/QRcode.c
         - path: ../../hardware/QRcode.h
+        - path: ../../hardware/block_basic.c
+        - path: ../../hardware/Trace_base.c
+        - path: ../../hardware/Circle_base.c
+        - path: ../../hardware/color.c
+        - path: ../../hardware/ColorIdentif.c
+        - path: ../../hardware/sw_uart.c
+        - path: ../../hardware/angle_ctrl.c
         - path: ../../hardware/Uart1_motor.c
         - path: ../../hardware/Uart2_tbop10.c
         - path: ../../hardware/Uart3_yuyin.c
         - path: ../../hardware/imu_660.c
+        - path: ../../hardware/imu660ra_config.c
+        - path: ../../hardware/siyuan_imu.c
         - path: ../../hardware/imu660.h
         - path: ../../hardware/ackermann1.h
-        - path: ../../hardware/navigation.c
         - path: ../../hardware/mecanum.c
         - path: ../../hardware/waypoint.c
         - path: ../../hardware/pid.c
@@ -132,6 +140,7 @@ virtualFolder:
         - path: ../../app/Mecanum_Move.h
         - path: ../../app/NavigationMecanum.c
         - path: ../../app/NavigationMecanum.h
+        - path: ../../app/banyuntask.c
       folders: []
     - name: ::CMSIS
       files: []

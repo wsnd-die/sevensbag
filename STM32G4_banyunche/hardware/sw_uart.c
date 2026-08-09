@@ -241,7 +241,7 @@ void SW_UART_SendBytes(const uint8_t *data, uint16_t len)
 void SW_UART_SendString(const char *str)
 {
     if (str == NULL) return;
-    HAL_UART_Transmit(&huart1, (uint8_t *)str, (uint16_t)strlen(str), 100U);
+    SW_UART_SendBytes((const uint8_t *)str, (uint16_t)strlen(str));
 }
 
 void SW_UART_Printf(const char *format, ...)
@@ -252,7 +252,9 @@ void SW_UART_Printf(const char *format, ...)
     int len = vsnprintf(buf, sizeof(buf), format, args);
     va_end(args);
     if (len > 0) {
-        HAL_UART_Transmit(&huart1, (uint8_t *)buf, (uint16_t)len, 100U);
+        uint16_t tx_len = (len < (int)sizeof(buf)) ? (uint16_t)len
+                                                   : (uint16_t)(sizeof(buf) - 1U);
+        SW_UART_SendBytes((const uint8_t *)buf, tx_len);
     }
 }
 

@@ -30,6 +30,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
+#include "HWT101_iic.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,19 +59,22 @@ void Hal_starte()
 		__HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
         __HAL_UART_CLEAR_FLAG(&huart3, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
 	
-		QRcode_Start();
+		if (HWT101_HAL_Init() != WIT_HAL_OK) {
+			Error_Handler();
+		}
+		uint32_t hwt101_start_tick = HAL_GetTick();
+		while (!g_hwt101_data_ready &&
+		       (HAL_GetTick() - hwt101_start_tick < 1500U)) {
+			HAL_Delay(10U);
+		}
+		if (!g_hwt101_data_ready) {
+			Error_Handler();
+		}
 		HAL_UART_Receive_IT(&huart3, &rx3, 1);
 		//HAL_UART_Receive_IT(&huart1, &rx1, 1);
 		/* DMA ѭ������ + IDLE ֡ͬ�� */
 		K230_Init();
 
-    while (imu660ra_init()==0) {
-
-       HAL_Delay(500);
-        }
-
-        siyuan_ahrs_init();    /* 内部用重力初始化 roll/pitch, yaw=0 */
-        siyuan_gyro_calibrate();
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//?????????
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
@@ -102,19 +106,20 @@ FILE __stdin;
 
 int fputc(int ch, FILE *f)
 {
-    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
+    (void)f;
+    HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1U, 0xFFFFU);
     return ch;
 }
 
 int __io_putchar(int ch)
 {
-    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
+    HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1U, 0xFFFFU);
     return ch;
 }
 
 void _ttywrch(int ch)
 {
-    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
+    HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1U, 0xFFFFU);
 }
 
 void _sys_exit(int x)
@@ -138,7 +143,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-    uint8_t Data[15];
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -171,18 +175,15 @@ int main(void)
   MX_USART3_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  UART2_StartDMAReceive();
+  /* UART2_StartDMAReceive(); */ /* USART2 现用于调试输出 */
  //    Color_Init();
 //	IMU660RC_Init();
 //	IMU660RC_AttitudeInit();
     HAL_Delay(200);
 	  Hal_starte();
     HAL_Delay(1000);
+    printf("init ok\r\n");
 
-    IMU660RA_AttitudeInit();
-    uint8_t len=sprintf((char *)Data,"init ok");
-    HAL_UART_Transmit(&huart1, (uint8_t *)Data,len, 100);
-    HAL_Delay(10);
  //  Emm_V5_Vel_Control(1,1,10,10,0);
 	// Emm_V5_Vel_Control(2,1,10,10,0);
  //  // osDelay(10);

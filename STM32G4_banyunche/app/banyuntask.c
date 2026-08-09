@@ -16,6 +16,10 @@ void task_init()
      Event_STEERING_ROTATE
 cmd
 */
+/**
+ * @brief 发送任务命令
+ * @param mode 任务模式
+ */
 void task_send(SystemMode_t mode)
 {
     TaskCommand_t cmd;
@@ -28,6 +32,10 @@ void task_send(SystemMode_t mode)
     );
 }
 
+/**
+ * @brief 接收任务命令
+ * @return 接收到的任务命令
+ */
 TaskCommand_t task_recive()
 {
     TaskCommand_t receivedCmd;

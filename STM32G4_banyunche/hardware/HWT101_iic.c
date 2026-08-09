@@ -39,6 +39,7 @@
 volatile float    g_hwt101_roll       = 0.0f;
 volatile float    g_hwt101_pitch      = 0.0f;
 volatile float    g_hwt101_yaw        = 0.0f;
+volatile float    g_hwt101_gyro_z     = 0.0f;
 volatile uint8_t  g_hwt101_data_ready = 0U;
 
 /* ========================================================================
@@ -58,6 +59,7 @@ static volatile HAL_StatusTypeDef s_I2cDmaResult; /* DMA 传输结果           
    ======================================================================== */
 
 #define HWT101_CONVERT_SCALE  (180.0f / 32768.0f)   /* ±32768 → ±180°         */
+#define HWT101_GYRO_SCALE     (2000.0f / 32768.0f)  /* raw → °/s               */
 
 /* ========================================================================
    1. 传输回调实现
@@ -94,8 +96,7 @@ static int32_t HWT101_I2cWrite(uint8_t ucAddr, uint8_t ucReg,
 /* ---- 串口发送回调 ---- */
 static void HWT101_SerialWrite(uint8_t *p_ucData, uint32_t uiLen)
 {
-    extern UART_HandleTypeDef huart4;
-    HAL_UART_Transmit(&huart4, p_ucData, (uint16_t)uiLen, 100U);
+    HAL_UART_Transmit(&huart1, p_ucData, (uint16_t)uiLen, 100U);
 }
 
 /* ---- 串口帧校验和 ---- */
@@ -117,7 +118,10 @@ static void HWT101_DelayMs(uint16_t ucMs)
 /* ---- 寄存器更新回调（解析角度） ---- */
 static void HWT101_RegUpdate(uint32_t uiReg, uint32_t uiRegNum)
 {
-    (void)uiRegNum;
+    if (uiReg == GX && uiRegNum >= 3U)
+    {
+        g_hwt101_gyro_z = (float)sReg[GZ] * HWT101_GYRO_SCALE;
+    }
 
     /* 角度寄存器 (Roll / Pitch / Yaw) 连续 3 字更新 */
     if (uiReg == Roll && uiRegNum >= 3U)
@@ -274,7 +278,6 @@ int32_t HWT101_HAL_Init(void)
 
 #elif defined(HWT101_USE_SERIAL)
     /* ---- 串口模式 ---- */
-    extern UART_HandleTypeDef huart4;
 
     /* 2a. 注册串口发送回调 */
     ret = WitSerialWriteRegister(HWT101_SerialWrite);
@@ -284,17 +287,16 @@ int32_t HWT101_HAL_Init(void)
     ret = WitInit(WIT_PROTOCOL_NORMAL, HWT101_SERIAL_ADDR);
     if (ret != WIT_HAL_OK) return ret;
 
-    /* 2c. 输出内容：加速度 + 角速度 + 角度 */
-    ret = WitSetContent(RSW_ACC | RSW_GYRO | RSW_ANGLE);
+    /* 先启动接收，避免配置期间丢失主动上报数据。 */
+    HWT101_UART_ErrorCallback(&huart1);
+
+    /* HWT101 只输出 Z 轴角速度和角度。 */
+    ret = WitSetContent(RSW_GYRO | RSW_ANGLE);
     if (ret != WIT_HAL_OK) return ret;
 
-    /* 2d. 回传速率：10Hz */
-    ret = WitSetOutputRate(RRATE_10HZ);
+    /* USART1=115200，使用 50Hz 主动上报。 */
+    ret = WitSetOutputRate(RRATE_50HZ);
     if (ret != WIT_HAL_OK) return ret;
-
-    /* 2e. 使能 UART4 接收中断 */
-    __HAL_UART_CLEAR_OREFLAG(&huart4);
-    __HAL_UART_ENABLE_IT(&huart4, UART_IT_RXNE);
 
     return WIT_HAL_OK;
 #endif
@@ -327,7 +329,10 @@ int16_t HWT101_ReadReg(uint32_t reg)
 /* ---- 相对偏航角 ---- */
 float HWT101_GetZeroYaw(void)
 {
-    return g_hwt101_yaw - s_fYawZero;
+    float yaw = g_hwt101_yaw - s_fYawZero;
+    if (yaw > 180.0f) yaw -= 360.0f;
+    if (yaw < -180.0f) yaw += 360.0f;
+    return yaw;
 }
 
 /* ---- 主动轮询角度（I2C 模式） ---- */
@@ -379,6 +384,25 @@ void HWT101_ParsePacket(uint8_t *data)
 void HWT101_FeedSerialByte(uint8_t data)
 {
     WitSerialDataIn(data);
+}
+
+static uint8_t s_hwt101_rx_byte;
+
+void HWT101_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance != USART1) return;
+
+    HWT101_FeedSerialByte(s_hwt101_rx_byte);
+    HAL_UART_Receive_IT(&huart1, &s_hwt101_rx_byte, 1U);
+}
+
+void HWT101_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance != USART1) return;
+
+    __HAL_UART_CLEAR_FLAG(&huart1,
+                          UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
+    HAL_UART_Receive_IT(&huart1, &s_hwt101_rx_byte, 1U);
 }
 
 #else

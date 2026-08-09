@@ -423,32 +423,32 @@ void Color_task(void *argument)
 	const Color_TypeDef colors[] = {COLOR_RED,COLOR_GREEN,COLOR_BLUE,COLOR_WHITE,COLOR_BLACK};
 	char msg[64];
 
-	HAL_UART_Transmit(&huart1, (uint8_t *)"=== EMPTY slot ===\r\n", 20, 100);
+	HAL_UART_Transmit(&huart2, (uint8_t *)"=== EMPTY slot ===\r\n", 20, 100);
 	osDelay(1000);
 	Color_CalibAmbient();
-	HAL_UART_Transmit(&huart1, (uint8_t *)"Ambient OK\r\n", 13, 100);
+	HAL_UART_Transmit(&huart2, (uint8_t *)"Ambient OK\r\n", 13, 100);
 
 	for (int i = 0; i < 5; i++) {
 		int n = snprintf(msg, sizeof(msg), "=== Slot %d: %s ===\r\n", i+1, steps[i+1]);
-		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
+		HAL_UART_Transmit(&huart2, (uint8_t *)msg, n, 100);
 
 		if (BlockBasic_TurntableTo(i+1) == BLOCK_OK) {
 			// osDelay(2000);
 			Color_DataTypeDef d;
 			if (Color_ReadData(&d) == HAL_OK) {
 				n = snprintf(msg, sizeof(msg), "  L=%d A=%d B=%d\r\n", d.l, d.a, d.b);
-				HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
+				HAL_UART_Transmit(&huart2, (uint8_t *)msg, n, 100);
 			}
 			Color_Calibrate(colors[i]);
 			n = snprintf(msg, sizeof(msg), "Slot %d OK\r\n", i+1);
 		} else {
 			n = snprintf(msg, sizeof(msg), "Slot %d FAIL\r\n", i+1);
 		}
-		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
+		HAL_UART_Transmit(&huart2, (uint8_t *)msg, n, 100);
 		osDelay(500);
 	}
 	Color_CalibSave();
-	HAL_UART_Transmit(&huart1, (uint8_t *)"=== SAVED ===\r\n", 14, 100);
+	HAL_UART_Transmit(&huart2, (uint8_t *)"=== SAVED ===\r\n", 14, 100);
 
   for(;;) { osDelay(1000); }
 
@@ -468,7 +468,7 @@ void Color_task(void *argument)
 		}
 
 		n += snprintf(b+n, sizeof(b)-n, "\r\n");
-		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
+		HAL_UART_Transmit(&huart2, (uint8_t *)b, n, 100);
 		osDelay(50);
   }
 #endif
@@ -756,20 +756,10 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
-	EulerAngle e ;
-	// calibrate_gyro();
-
   for(;;)
   {
-    // if (Flag_TBOFdata) {
-    //   Flag_TBOFdata = 0;
-    //   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
-    //     TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
-    // }
-  	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
-  	siyuan_imu_task();
-  	// e = MahonyAHRS_GetEuler_deg();
-    osDelay(10);
+    /* HWT101 数据由 USART1 接收中断持续更新。 */
+    osDelay(100);
   }
   /* USER CODE END IMU_FUCTION */
 }

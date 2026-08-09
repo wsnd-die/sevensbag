@@ -1,4 +1,5 @@
 #include "Common_used.h"
+#include "HWT101_iic.h"
 
 TBData_t TB_position = {0};
 TBData_t TB_speed = {0};
@@ -10,6 +11,7 @@ uint8_t Flag_TBOFdata = 0;
 volatile uint8_t g_uart2_color_ready = 0;
 uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
 
+#if LEGACY_USART2_ODOM_ENABLE
 static void UART2_ScanColorFrame(const uint8_t *data, uint16_t len)
 {
     /* 扫描 AA l_black l_mean A B DD */
@@ -26,7 +28,6 @@ static void UART2_ScanColorFrame(const uint8_t *data, uint16_t len)
     }
 }
 
-#if LEGACY_USART2_ODOM_ENABLE
 UART_STATE fsm_state = WAIT_HEADER1;
 uint8_t frame_buf[FRAME_TOTAL_LEN];
 uint8_t frame_index = 0;
@@ -104,17 +105,17 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     }
 }
 
+#endif
+
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-    if (huart->Instance == USART2) {
-        __HAL_UART_CLEAR_FLAG(&huart2, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
-        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, dma_rx_buf, DMA_RX_BUF_SIZE);
+    if (huart->Instance == USART1) {
+        HWT101_UART_ErrorCallback(huart);
     }
     else if (huart->Instance == USART3) {
         K230_RxRestart();
     }
 }
-#endif
 
 void UART2_StartDMAReceive(void)
 {
@@ -150,6 +151,9 @@ static void Mecanum_MoveBlocking(float body_dx_m, float body_dy_m)
 
 void UART2_calibrate(void)
 {
+#if !LEGACY_USART2_ODOM_ENABLE
+    return;
+#endif
 
     UART2_SendCmd('x');                       /* AA CC x BB DD */
     osDelay(1000U);                           /* �ȴ� 1 �� */

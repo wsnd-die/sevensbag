@@ -1,4 +1,5 @@
 #include "Common_used.h"
+#include "HWT101_iic.h"
 
 /* ============================================================
  * 全局变量
@@ -166,8 +167,8 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
 
     /* ---- 3. 旋转段: rotate_rad 为世界绝对角度(rad), AngleCtrl 闭环 ---- */
     if (fabsf(rotate_rad) >= 0.01f) {
-        float target_deg = rotate_rad*(180.0f/M_PI) ;
-        float error_deg   = target_deg - siyuan_yaw*RAD_TO_DEG;
+        float target_deg = rotate_rad*(180.0f/3.1415926535f) ;
+        float error_deg   = target_deg - HWT101_GetZeroYaw();
         while (error_deg >  180.0f) error_deg -= 360.0f;
         while (error_deg < -180.0f) error_deg += 360.0f;
 
@@ -178,7 +179,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
             Angle_SetTarget(&ac, target_deg);
 
             while (!Angle_Arrived(&ac)) {
-                Angle_Update(&ac,siyuan_yaw*RAD_TO_DEG ,  -imu660ra_gyro_transition(imu660ra_gyro_x));
+                Angle_Update(&ac, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
                 MecanumResult motor = Mecanum_Calc(0.0f, -ac.cmd_w);
                 Send_commandmotor(&motor);
                 osDelay(30);
