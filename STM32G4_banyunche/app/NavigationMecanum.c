@@ -23,24 +23,25 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {0.308f,    0.656f,  90.0  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {0.656f,    0.308f,  90.0  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
+    {0.10f,      0.0f,      90* MECANUM_DEG_TO_RAD },//奖杯循线点
 
-      {    0.0f,     0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+      {    0.47f,     1.2f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
       {    0.0f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
       {    0.0f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
       {   0.10f,    0.10f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
-      {  0.0f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
+      {  0.41f,    0.03f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
 
-      {    0.0f,     0.77f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+      {    0.7f,     0.0f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    -0.29f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
       {    0.25f,     -0.61f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.26f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
       {    0.074f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-          {-0.60,0.80,0},//回家点
+          {-0.60,0.81,0},//回家点
 
 };
 
@@ -145,26 +146,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         return true;
     }
 
-    /* ---- 2. 平移段: 车体坐标 → 麦轮 (dtheta=0, 不旋转) ---- */
-    if (dist >= 0.005f) {
-        float est_s = dist / 0.05f;
-        if (est_s < 3.0f) est_s = 3.0f;
-        uint32_t timeout_ms = (uint32_t)(est_s * 1000.0f);
-
-        success = Mecanum_MoveWithEncoder(
-            &g_mecanum_config,
-            forward_m, left_m, 0.0f,  /* dtheta=0, 纯平移 */
-            1.0f, 80U, timeout_ms
-        );
-        if (!success) return false;
-
-        /* 更新世界位姿 (仅平移) */
-        float cos_y = cosf(Self_Dir.yaw), sin_y = sinf(Self_Dir.yaw);
-        Self_Dir.x += forward_m * cos_y - left_m * sin_y;
-        Self_Dir.y += forward_m * sin_y + left_m * cos_y;
-    }
-
-    /* ---- 3. 旋转段: rotate_rad 为世界绝对角度(rad), AngleCtrl 闭环 ---- */
+    /* ---- 2. 旋转段: rotate_rad 为世界绝对角度(rad), AngleCtrl 闭环 ---- */
     if (fabsf(rotate_rad) >= 0.01f) {
         float target_deg = rotate_rad*(180.0f/M_PI) ;
         float error_deg   = target_deg - siyuan_yaw*RAD_TO_DEG;
@@ -187,6 +169,25 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         }
 
         Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
+    }
+
+    /* ---- 3. 平移段: 车体坐标 → 麦轮 (dtheta=0, 不旋转) ---- */
+    if (dist >= 0.005f) {
+        float est_s = dist / 0.05f;
+        if (est_s < 3.0f) est_s = 3.0f;
+        uint32_t timeout_ms = (uint32_t)(est_s * 1000.0f);
+
+        success = Mecanum_MoveWithEncoder(
+            &g_mecanum_config,
+            forward_m, left_m, 0.0f,  /* dtheta=0, 纯平移 */
+            1.0f, 80U, timeout_ms
+        );
+        if (!success) return false;
+
+        /* 更新世界位姿 (仅平移) */
+        float cos_y = cosf(Self_Dir.yaw), sin_y = sinf(Self_Dir.yaw);
+        Self_Dir.x += forward_m * cos_y - left_m * sin_y;
+        Self_Dir.y += forward_m * sin_y + left_m * cos_y;
     }
 
     return true;
