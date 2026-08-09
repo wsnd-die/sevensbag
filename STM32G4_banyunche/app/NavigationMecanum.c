@@ -23,24 +23,24 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-		{0.308f,    0.656f,  90.0  * MECANUM_DEG_TO_RAD	},//奖杯二维码点
+    {0.308f,    0.656f,  90.0  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
 
-    {    0.10f,     0.10f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
-    {    0.0f,    0.15f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
-    {    0.0f,    0.15f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
+      {    0.10f,     0.10f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+      {    0.0f,    0.15f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
+      {    0.0f,    0.15f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
-    {   0.10f,    0.10f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
+      {   0.10f,    0.10f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
-    {  0.0f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
+      {  0.0f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
 
-    {    0.0f,     0.77f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
-		{    -0.29f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
-    {    0.25f,     -0.61f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
-		{    -0.26f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
-    {    0.074f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
+      {    0.0f,     0.77f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+    {    -0.29f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
+      {    0.25f,     -0.61f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
+    {    -0.26f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
+      {    0.074f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-        {-0.60,0.80,0},//回家点
+          {-0.60,0.80,0},//回家点
 
 };
 

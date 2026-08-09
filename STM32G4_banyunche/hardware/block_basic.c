@@ -107,16 +107,29 @@ float BlockBasic_LiftTo(uint8_t dir, float pos)
     BlockBasic_DualArmSetPos(arm_pos);
     return 0.0f;
 #else
-    /* 丝杆型：使用 5 号步进电机升降。 */
-    {//43到达底部
-        uint32_t pulse = (uint32_t)(pos * BLOCK_STEPPER_PULSE_PER_MM );
+    /* 丝杆型：位置模式, 每次走 pos 距离。lift_current 记账防超限 */
+    {
+        static float lift_current = 0.0f;  /* 已累计的绝对位置 (mm) */
+        float next;
+
+        if (dir == UP)
+            next = lift_current + pos;
+        else
+            next = lift_current - pos;
+
+        /* 超量程: 不执行, 返回 0, 只能往反方向走 */
+        if (next < 0.0f || next > BLOCK_LIFT_MAX_MM)
+            return 0.0f;
+
+        lift_current = next;
+        uint32_t pulse = (uint32_t)(pos * BLOCK_STEPPER_PULSE_PER_MM);
         if (dir == 0)
         {
-            Emm_V5_Pos_Control(5, 0, 300, 50, pulse, 0, 0);
+            Emm_V5_Pos_Control(5, 0, 800, 255, pulse, 0, 0);
         }
         else
         {
-            Emm_V5_Pos_Control(5, 1, 300, 50, pulse, 0, 0);
+            Emm_V5_Pos_Control(5, 1, 800, 255, pulse, 0, 0);
         }
         return 0.0f;
     }
@@ -198,6 +211,24 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos)
     return BLOCK_OK;
 }
 
+MecanumConfig_t Place_config = {
+    .wheel_radius_m = 0.0375f,
+    .half_length_m = 0.088f,
+    .half_width_m = 0.0782f,
+    .gear_ratio = 1.0f,
+    .pulse_per_rev =3200 ,
+    .max_motor_rpm = 80,
+    .min_move_time_s = 0.1f,
+
+    /* 驱动器逻辑方向: 1=正向, 0=反向 */
+    .forward_dir[MECANUM_ADDR_FR] = 0U,
+    .forward_dir[MECANUM_ADDR_RL] = 1U,
+    .forward_dir[MECANUM_ADDR_FL] = 0U,
+    .forward_dir[MECANUM_ADDR_RR] = 1U,
+
+    /* 驱动器加速度: 脉冲/秒^2 */
+    .acceleration = 40U
+};
 /**
  * @brief  重置软件记录的转盘当前角度，并立即输出该角度 PWM。
  * @param  angle_deg  当前机械角度，单位 deg；会归一化到 0~360。
@@ -222,16 +253,16 @@ void Place(char dir)
     if (dir == 'O')
     {
         /* 前进 0.05 m（车体坐标：+X 为前进） */
-        if (Mecanum_CalculateMove(&g_mecanum_config, 0.11f, 0.0f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, 0.11f, 0.0f, 0.0f, &move))
         {
-            Mecanum_ExecuteMove(&g_mecanum_config, &move);
+            Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
         }
 
         /* 后退 0.05 m（车体坐标：-X 为后退） */
-        if (Mecanum_CalculateMove(&g_mecanum_config, -0.11f, 0.0f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, -0.14f, 0.0f, 0.0f, &move))
         {
-            Mecanum_ExecuteMove(&g_mecanum_config, &move);
+            Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
         }
     }

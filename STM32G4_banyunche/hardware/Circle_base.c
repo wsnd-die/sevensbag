@@ -33,13 +33,13 @@ void Circle_Follow(void)
 
     case 'N':
         /* 圆心偏上: 前进 */
-        g_circle_vx =  CIRCLE_SPEED_V;
+        g_circle_vx =  -CIRCLE_SPEED_V;
         g_circle_vy =  0.0f;
         break;
 
     case 'S':
         /* 圆心偏下: 后退 */
-        g_circle_vx = -CIRCLE_SPEED_V;
+        g_circle_vx = CIRCLE_SPEED_V;
         g_circle_vy =  0.0f;
         break;
 

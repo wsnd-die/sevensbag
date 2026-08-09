@@ -235,17 +235,21 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
-	SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
-	uint8_t NavafterNum[6]={1,3,1,1,1,5};
+	// SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
+	// uint8_t NavafterNum[6]={1,3,1,1,1,5};
+	SystemMode_t Navafter_mode[1]={Event_FindCircle};
+	uint8_t NavafterNum[1]={5};
 	uint8_t i=0;
 	bool flag_finish=false;
 	uint8_t P_Nava=0;
 	uint8_t rank[3]={second_place,champion,third_place};
 
 
-	K230_SetMode(K230_MODE_LINE);
+	K230_SetMode(K230_MODE_CIRCLE);
 	K230_ApplyMode();
-	task_send(Event_Navigation);
+	task_send(Event_FindCircle);
+	Servo_Angle(313.0f);
+	osDelay(500);
 
   /* Infinite loop */
   for(;;)
@@ -254,22 +258,17 @@ void NLF_TASK(void *argument)
   	{
   		Nav_FeDuanPoint();
   		printf("[TASK] Navigation done, P_Nava=%d\r\n", P_Nava);
-  		P_Nava++;
   		//Nav_MoveForward(0.5);
   		//Nav_MoveLeft(-0.5);
-  		//
-  		// if (P_Nava<6)
-  		// {
-  		// 	task_send(Navafter_mode[P_Nava]);
-  		// 	NavafterNum[P_Nava]--;
-		  //
-  		// 	if (NavafterNum[P_Nava]==0) {
-  		// 		P_Nava++;
-  		// 	}
-  		// }
-  		if (P_Nava>=5) {
-  			task_send(Event_STOP);
+  		if (P_Nava<1)
+  		{
+  			task_send(Navafter_mode[P_Nava]);
+  			NavafterNum[P_Nava]--;
 
+  			if (NavafterNum[P_Nava]==0) {
+  				P_Nava++;
+  				Mecanum_StopAll();
+  			}
   		}
 
 
@@ -294,24 +293,24 @@ void NLF_TASK(void *argument)
         	printf("[TASK] LinFolR done\r\n");
         }
   	}
-  	else if (g_last_cmd.Mode==Event_FindCircle)
-  	{
-  		//加入物料放置转盘逻辑
-  		if (flag_finish==false)
-  		{
-  			TT_RotateByQR();
-  			flag_finish=true;
-  		}
-  			Circle_Follow();
-  			if (g_circle_dir=='O')
-  			{
-  				Place('O');
-  			    printf("[TASK] FindCircle done\r\n");
-  				flag_finish=false;
-  			}
-       task_send(Event_Navigation);
-  	}
-  	else if (g_last_cmd.Mode==Event_PlaceDown)
+	else if (g_last_cmd.Mode==Event_FindCircle)
+		{
+			//加入物料放置转盘逻辑
+			if (flag_finish==false)
+			{
+				if (!TT_RotateByQR()) { flag_finish=true; }  /* 没槽位了直接结束 */
+				else { flag_finish=false; }                   /* 转了一个槽, 需要放置 */
+			}
+			Circle_Follow();
+			if (g_circle_dir=='O')
+			{
+				Place('O');
+				printf("[TASK] FindCircle done");
+				flag_finish=false;
+				task_send(Event_Navigation);
+			}
+		}
+else if (g_last_cmd.Mode==Event_PlaceDown)
   	{
   			switch (rank[i])
   			{
@@ -410,7 +409,7 @@ void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
 	Color_Init();
-#define COLOR_CALIB 1
+#define COLOR_CALIB 0
 #if COLOR_CALIB
 #define COLOR_CALIB_MODE 0
     Color_SetLedLevel(0);
@@ -512,8 +511,10 @@ void BsRt_task(void *argument)
 	 */
 	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
 	Servo_SetAngle(38);
-	BlockBasic_TurntableTo(1);
-	HAL_Delay(1000);
+	// BlockBasic_TurntableTo(1);
+	// BlockBasic_LiftTo(UP,20);
+	// HAL_Delay(1000);
+	// BlockBasic_LiftTo(UP,40);
 	for(;;)
 	{
 		osDelay(10);
@@ -590,10 +591,11 @@ void BsRt_task(void *argument)
 			}
 			#else  /* ---- OpenMV ---- */
 				{
-					#define JUMP_AB   15
-					#define JUMP_RGB  40
-					static uint8_t p_l, p_a, p_b, p_r, p_g, p_brgb, p_init;
-					if (!p_init) { Color_DataTypeDef init_d; if (Color_ReadData(&init_d) == HAL_OK) { p_l = init_d.l; p_a = init_d.a; p_b = init_d.b; p_r = init_d.red; p_g = init_d.green; p_brgb = init_d.blue; p_init = 1; } }
+					#define JUMP_AB    15   /* A+B 跳变 → 红绿蓝 */
+					#define JUMP_LBLK  40   /* l_black 跳变 → 黑 */
+					#define JUMP_LMEAN 20   /* l_mean 跳变 → 白 */
+					static uint8_t p_lblk, p_lmean, p_a, p_b, p_init;
+					if (!p_init) { Color_DataTypeDef id; if (Color_ReadData(&id) == HAL_OK) { p_lblk = id.l; p_lmean = id.red; p_a = id.a; p_b = id.b; p_init = 1; } }
 					if (K==0 && !g_color_collect_done&&g_last_cmd.Mode==Event_LinFolL) {
 						for (uint8_t slot = 1; slot <= 5; slot++) {
 							for (;;) {
@@ -601,11 +603,10 @@ void BsRt_task(void *argument)
 								if (Color_ReadData(&d) != HAL_OK) { osDelay(5); continue; }
 								int da = abs((int)d.a - p_a);
 								int db = abs((int)d.b - p_b);
-								int dr = abs((int)d.red - p_r);
-								int dg = abs((int)d.green - p_g);
-								int dbrgb = abs((int)d.blue - p_brgb);
-								p_l = d.l; p_a = d.a; p_b = d.b; p_r = d.red; p_g = d.green; p_brgb = d.blue;
-								int has_jump = ((da + db) >= JUMP_AB) ? 1 : ((dr + dg + dbrgb) >= JUMP_RGB);
+								int dlblk = abs((int)d.l - p_lblk);
+								int dlmean = abs((int)d.red - p_lmean);
+								p_lblk = d.l; p_lmean = d.red; p_a = d.a; p_b = d.b;
+								int has_jump = (da+db >= JUMP_AB) || (dlblk >= JUMP_LBLK) || (dlmean >= JUMP_LMEAN);
 								if (has_jump) {
 									Color_TypeDef c = Color_Judge(&d);
 									if (c != COLOR_UNKNOWN) { TT_SetColor(slot - 1, c); break; }
@@ -628,11 +629,10 @@ void BsRt_task(void *argument)
 								if (Color_ReadData(&d) != HAL_OK) { osDelay(5); continue; }
 								int da = abs((int)d.a - p_a);
 								int db = abs((int)d.b - p_b);
-								int dr = abs((int)d.red - p_r);
-								int dg = abs((int)d.green - p_g);
-								int dbrgb = abs((int)d.blue - p_brgb);
-								p_l = d.l; p_a = d.a; p_b = d.b; p_r = d.red; p_g = d.green; p_brgb = d.blue;
-								int has_jump = ((da + db) >= JUMP_AB) ? 1 : ((dr + dg + dbrgb) >= JUMP_RGB);
+								int dlblk = abs((int)d.l - p_lblk);
+								int dlmean = abs((int)d.red - p_lmean);
+								p_lblk = d.l; p_lmean = d.red; p_a = d.a; p_b = d.b;
+								int has_jump = (da+db >= JUMP_AB) || (dlblk >= JUMP_LBLK) || (dlmean >= JUMP_LMEAN);
 								if (has_jump) {
 									Color_TypeDef c = Color_Judge(&d);
 									if (c != COLOR_UNKNOWN) break;
@@ -672,7 +672,7 @@ void OLED_TASK(void *argument)
 
   for(;;)
   {
-  	printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
+  	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 
 		osDelay(500);
   }
@@ -699,7 +699,7 @@ void FC_TASK(void *argument)
   for(;;)
   {
 
-  	if (g_last_cmd.Mode==Event_FindCircle)  {  Circle_Follow(); }
+  	// if (g_last_cmd.Mode==Event_FindCircle)  {  Circle_Follow(); }
   	// printf("yaw=%.2f pitch=%.2f roll=%.2f\r\n",
 			//  siyuan_yaw * RAD_TO_DEG,
 			//  siyuan_pitch * RAD_TO_DEG,
@@ -769,7 +769,7 @@ void IMU_FUCTION(void *argument)
   	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
   	siyuan_imu_task();
   	// e = MahonyAHRS_GetEuler_deg();
-    osDelay(5);
+    osDelay(10);
   }
   /* USER CODE END IMU_FUCTION */
 }

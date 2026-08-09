@@ -13,6 +13,13 @@
  * ============================================================ */
 TT_t g_tt;
 
+/* 默认颜色顺序 (按颜色查找槽位), 可直接改 */
+static const uint8_t g_tt_default_color[5] = {
+    COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_WHITE, COLOR_BLACK
+};
+static uint8_t g_tt_rotate_idx = 0;  /* 当前旋转进度 */
+
+
 /* ============================================================
  * Task1 QR 映射表 (16 种 × 5 槽位)
  *
@@ -124,7 +131,7 @@ void TT_SetColor(uint8_t slot, Color_TypeDef c)
  * ============================================================ */
 uint8_t SlotByColor(Color_TypeDef c)
 {
-    if (!g_tt.ok || c == COLOR_UNKNOWN || c >= COLOR_COUNT)
+    if (c == COLOR_UNKNOWN || c >= COLOR_COUNT)
         return SLOT_NONE;
     return g_tt.rev[c];
 }
@@ -141,23 +148,41 @@ uint8_t ColorAtSlot(uint8_t slot)
 /* ============================================================
  * TT_RotateByQR — 按 QR 颜色顺序, 旋转到每个颜色所在物理槽位
  * ============================================================ */
-void TT_RotateByQR(void)
+bool TT_RotateByQR(void)
 {
-    if (!g_tt.ok || g_tt.idx >= 16) return;
-
-    /* 按 T1[idx] 顺序: slot 0=A → 4=E */
-    for (uint8_t s = 0; s < g_tt.cnt; s++) {
-        uint8_t target_color = T1[g_tt.idx][s];       /* QR 指定的颜色顺序 */
-        uint8_t actual_slot  = SlotByColor(target_color); /* 该颜色实际在哪个槽位 */
-        if (actual_slot == SLOT_NONE) continue;
-        BlockBasic_TurntableTo(actual_slot + 1);       /* 1-based → 旋转 */
-        HAL_Delay(500);  /* 等舵机转到位 */
+    if (g_tt.ok && g_tt.idx < 16) {
+        /* QR 模式: 按颜色查找槽位, 每次转一个 */
+        if (g_tt_rotate_idx >= g_tt.cnt) return false;
+        while (g_tt_rotate_idx < g_tt.cnt) {
+            uint8_t slot = SlotByColor(T1[g_tt.idx][g_tt_rotate_idx]);
+            g_tt_rotate_idx++;
+            if (slot != SLOT_NONE) {
+                BlockBasic_TurntableTo(slot + 1);
+                osDelay(500);
+                return true;
+            }
+        }
+        return false;
+    } else {
+        /* 默认固定顺序: 直接按槽位号 1→2→3→4→5 */
+        if (g_tt_rotate_idx >= 5) return false;
+        BlockBasic_TurntableTo(g_tt_rotate_idx + 1);  /* 槽位号=索引+1 */
+        g_tt_rotate_idx++;
+        osDelay(500);
+        return true;
     }
+}
+
+void TT_RotateReset(void)
+{
+    g_tt_rotate_idx = 0;
 }
 
 /* ============================================================
  * TogetPos — 取点位坐标
  * ============================================================ */
+
+
 void TogetPos(uint8_t slot, float *x, float *y, float *yaw)
 {
     if (slot >= 5) {

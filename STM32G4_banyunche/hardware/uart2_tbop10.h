@@ -61,10 +61,9 @@ extern uint8_t dma_rx_buf[DMA_RX_BUF_SIZE];
 void UART2_FSM_Parse_Byte(uint8_t byte);
 #endif
 
-/* ---- OpenMV 颜色帧 (UART2, AA L A B R G B DD 8字节) ---- */
+/* ---- OpenMV 颜色帧 (UART2, AA l_black l_mean A B DD 6字节) ---- */
 extern volatile uint8_t g_uart2_color_ready;
-extern uint8_t g_uart2_color_l, g_uart2_color_a, g_uart2_color_b;
-extern uint8_t g_uart2_color_r, g_uart2_color_g, g_uart2_color_b_rgb;
+extern uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
 
 void UART2_StartDMAReceive(void);
 void UART2_calibrate(void);

@@ -281,7 +281,7 @@ void siyuan_degree_update(float *yaw, float *pitch, float *roll)
     siyuan_ahrs_update(&siyuan_ahrs,
                        gx_rad, gy_rad, gz_rad,
                        ax, ay, az,
-                       0.005f);
+                       0.01f);
 
     /* 7. 四元数 → 欧拉角 */
     siyuan_quat_to_euler(siyuan_ahrs.q0, siyuan_ahrs.q1,
