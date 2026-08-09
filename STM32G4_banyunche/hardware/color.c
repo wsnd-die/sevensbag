@@ -20,41 +20,41 @@
  * ================================================================ */
 #if USE_OPENMV_COLOR == 0
 /* 环境光 (空槽) */
-#define LAB_AMB_L   77
+#define LAB_AMB_L   34
 #define LAB_AMB_A   125
-#define LAB_AMB_B   125
+#define LAB_AMB_B   129
 #define LAB_AMB_TOL 15
 
 /* 各颜色参考 Lab 值 + 通道权重 + 欧几里得距离容差 */
 /* 权重: 黑白只看 L, 红绿蓝只看 A/B */
-#define LAB_RED_L    41
+#define LAB_RED_L    89
 #define LAB_RED_A    168
-#define LAB_RED_B    141
+#define LAB_RED_B    140
 #define LAB_RED_WL   0
 #define LAB_RED_WA   3
 #define LAB_RED_WB   1
 #define LAB_RED_TOL  30
 
-#define LAB_GREEN_L  82
-#define LAB_GREEN_A  99
-#define LAB_GREEN_B  142
+#define LAB_GREEN_L  83
+#define LAB_GREEN_A  97
+#define LAB_GREEN_B  143
 #define LAB_GREEN_WL 0
 #define LAB_GREEN_WA 3
 #define LAB_GREEN_WB 1
 #define LAB_GREEN_TOL 30
 
-#define LAB_BLUE_L   70
-#define LAB_BLUE_A   133
-#define LAB_BLUE_B   86
+#define LAB_BLUE_L   96
+#define LAB_BLUE_A   125
+#define LAB_BLUE_B   88
 #define LAB_BLUE_WL  0
 #define LAB_BLUE_WA  1
 #define LAB_BLUE_WB  3
 #define LAB_BLUE_TOL 30
 
 /* 黑/白: 白=高L+低黑占比, 黑=高黑占比 */
-#define WHITE_L_MIN       85    /* l_mean >= 此值 且 */
-#define WHITE_BLACK_MAX   80    /* l_black <= 此值 → 白色 */
-#define BLACK_RATIO_MIN  120    /* l_black >= 此值 → 黑色 */
+#define WHITE_L_MIN       89    /* l_mean >= 此值 且 */
+#define WHITE_BLACK_MAX   40    /* l_black <= 此值 → 白色 */
+#define BLACK_RATIO_MIN  100    /* l_black >= 此值 → 黑色 */
 #endif /* USE_OPENMV_COLOR */
 
 /* ---- 校准数据 (全局) ---- */
@@ -217,18 +217,7 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
 
     uint8_t a = data->a, b = data->b;
 
-    /* 1. 先判空槽 (环境光匹配, 用 l_mean) */
-    {
-        int dl = (int)data->red - LAB_AMB_L;
-        int da = (int)a - LAB_AMB_A;
-        int db = (int)b - LAB_AMB_B;
-        uint32_t dist_sq = (uint32_t)(dl * dl + da * da + db * db);
-        uint32_t tol_sq = (uint32_t)LAB_AMB_TOL * LAB_AMB_TOL;
-        if (dist_sq <= tol_sq)
-            return COLOR_UNKNOWN;
-    }
-
-    /* 2. 红/绿/蓝: Lab 加权距离 (只看 A+B, 忽略 L) */
+    /* 1. 红/绿/蓝: Lab 加权距离 */
     {
         struct { uint8_t l, a, b; uint8_t wl, wa, wb; uint8_t tol; Color_TypeDef color; }
         static const ref[] = {
@@ -253,10 +242,21 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
         if (best != COLOR_UNKNOWN) return best;
     }
 
-    /* 3. 黑/白 */
+    /* 2. 黑/白 */
     {
         if (data->red >= WHITE_L_MIN && data->l <= WHITE_BLACK_MAX) return COLOR_WHITE;
         if (data->l >= BLACK_RATIO_MIN) return COLOR_BLACK;
+    }
+
+    /* 3. 空槽 (环境光) */
+    {
+        int dl = (int)data->red - LAB_AMB_L;
+        int da = (int)a - LAB_AMB_A;
+        int db = (int)b - LAB_AMB_B;
+        uint32_t dist_sq = (uint32_t)(dl * dl + da * da + db * db);
+        uint32_t tol_sq = (uint32_t)LAB_AMB_TOL * LAB_AMB_TOL;
+        if (dist_sq <= tol_sq)
+            return COLOR_UNKNOWN;
     }
 
     return COLOR_UNKNOWN;
