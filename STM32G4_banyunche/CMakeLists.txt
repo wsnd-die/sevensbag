@@ -55,9 +55,8 @@ add_executable(${CMAKE_PROJECT_NAME}
         app/BollLocator.c
         app/BollLocator.h
         hardware/angle_ctrl.c
-        hardware/angle_ctrl.c
+        hardware/angle_ctrl.h
         hardware/imu660ra_config.c
-        hardware/ahrs_mahony.c
         hardware/siyuan_imu.c
 )
 
