@@ -51,9 +51,10 @@
 #define LAB_BLUE_WB  3
 #define LAB_BLUE_TOL 30
 
-/* 黑/白: 黑用 L(像素占比×255), 白用 RGB 和 */
-#define RGB_WHITE_MIN   350   /* R+G+B >= 此值 → 白色 */
-#define BLACK_RATIO_MIN 120   /* L >= 此值 → 黑色 (>50%黑色像素) */
+/* 黑/白: 白=高L+低黑占比, 黑=高黑占比 */
+#define WHITE_L_MIN       85    /* l_mean >= 此值 且 */
+#define WHITE_BLACK_MAX   80    /* l_black <= 此值 → 白色 */
+#define BLACK_RATIO_MIN  120    /* l_black >= 此值 → 黑色 */
 #endif /* USE_OPENMV_COLOR */
 
 /* ---- 校准数据 (全局) ---- */
@@ -166,8 +167,8 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
 #else
 
 /* ---- 帧解析: AA L A B R G B DD (8字节), UART2 DMA 接收 ---- */
-static bool Color_ReadFrame(uint8_t *l, uint8_t *a, uint8_t *b,
-                            uint8_t *r, uint8_t *g, uint8_t *b_rgb)
+static bool Color_ReadFrame(uint8_t *l_black, uint8_t *l_mean,
+                            uint8_t *a, uint8_t *b)
 {
     int retry = 500;
     while (!g_uart2_color_ready && --retry > 0) {
@@ -175,12 +176,10 @@ static bool Color_ReadFrame(uint8_t *l, uint8_t *a, uint8_t *b,
     }
     if (retry <= 0) return false;
 
-    *l = g_uart2_color_l;
-    *a = g_uart2_color_a;
-    *b = g_uart2_color_b;
-    *r = g_uart2_color_r;
-    *g = g_uart2_color_g;
-    *b_rgb = g_uart2_color_b_rgb;
+    *l_black = g_uart2_color_l;
+    *l_mean  = g_uart2_color_l_mean;
+    *a       = g_uart2_color_a;
+    *b       = g_uart2_color_b;
     g_uart2_color_ready = 0;
     return true;
 }
@@ -198,14 +197,16 @@ HAL_StatusTypeDef Color_SetLedLevel(uint8_t level)
 
 HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
 {
-    uint8_t l = 0, a = 0, b = 0, r = 0, g = 0, b_rgb = 0;
+    uint8_t l_black = 0, l_mean = 0, a = 0, b = 0;
     if (data == NULL) return HAL_ERROR;
-    if (!Color_ReadFrame(&l, &a, &b, &r, &g, &b_rgb)) {
+    if (!Color_ReadFrame(&l_black, &l_mean, &a, &b)) {
         data->online = 0U;
         return HAL_ERROR;
     }
-    data->l = l; data->a = a; data->b = b;
-    data->red = r; data->green = g; data->blue = b_rgb;
+    data->l   = l_black;  /* 黑色像素占比 */
+    data->red = l_mean;   /* Lab L 0~100, 用于环境光/白色 */
+    data->a   = a;        /* Lab A+128 */
+    data->b   = b;        /* Lab B+128 */
     data->online = 1U;
     return HAL_OK;
 }
@@ -214,11 +215,11 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
 {
     if (data == NULL || data->online == 0U) return COLOR_UNKNOWN;
 
-    uint8_t l = data->l, a = data->a, b = data->b;
+    uint8_t a = data->a, b = data->b;
 
-    /* 1. 先判空槽 (环境光匹配) */
+    /* 1. 先判空槽 (环境光匹配, 用 l_mean) */
     {
-        int dl = (int)l - LAB_AMB_L;
+        int dl = (int)data->red - LAB_AMB_L;
         int da = (int)a - LAB_AMB_A;
         int db = (int)b - LAB_AMB_B;
         uint32_t dist_sq = (uint32_t)(dl * dl + da * da + db * db);
@@ -238,11 +239,9 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
         uint32_t best_dist_sq = 0xFFFFFFFFUL;
         Color_TypeDef best = COLOR_UNKNOWN;
         for (size_t i = 0; i < sizeof(ref)/sizeof(ref[0]); i++) {
-            int dl = (int)l - ref[i].l;
             int da = (int)a - ref[i].a;
             int db = (int)b - ref[i].b;
             uint32_t dist_sq = (uint32_t)(
-                (int)ref[i].wl * dl * dl +
                 (int)ref[i].wa * da * da +
                 (int)ref[i].wb * db * db);
             uint32_t tol_sq = (uint32_t)ref[i].tol * ref[i].tol;
@@ -254,10 +253,9 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
         if (best != COLOR_UNKNOWN) return best;
     }
 
-    /* 3. 黑/白: 黑用 L(黑色像素占比), 白用 RGB 和 */
+    /* 3. 黑/白 */
     {
-        uint16_t rgb_sum = (uint16_t)data->red + data->green + data->blue;
-        if (rgb_sum >= RGB_WHITE_MIN) return COLOR_WHITE;
+        if (data->red >= WHITE_L_MIN && data->l <= WHITE_BLACK_MAX) return COLOR_WHITE;
         if (data->l >= BLACK_RATIO_MIN) return COLOR_BLACK;
     }
 

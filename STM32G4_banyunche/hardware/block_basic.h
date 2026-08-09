@@ -26,6 +26,7 @@ extern "C" {
 
 /* 丝杆每上升 1mm 需要的 EMM 位置模式脉冲数。 */
 #define BLOCK_STEPPER_PULSE_PER_MM       1600.0f
+#define BLOCK_LIFT_MAX_MM                43.0f   /* 丝杆最大行程 (mm) */
 
 
 #define BLOCK_SERVO_DEG              360.0f

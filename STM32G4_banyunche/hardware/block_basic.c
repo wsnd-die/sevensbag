@@ -108,8 +108,11 @@ float BlockBasic_LiftTo(uint8_t dir, float pos)
     return 0.0f;
 #else
     /* 丝杆型：使用 5 号步进电机升降。 */
-    {//43到达底部
-        uint32_t pulse = (uint32_t)(pos * BLOCK_STEPPER_PULSE_PER_MM );
+    {
+        /* 限幅: 底部=0, 顶部=BLOCK_LIFT_MAX_MM */
+        if (pos < 0.0f) pos = 0.0f;
+        if (pos > BLOCK_LIFT_MAX_MM) pos = BLOCK_LIFT_MAX_MM;
+        uint32_t pulse = (uint32_t)(pos * BLOCK_STEPPER_PULSE_PER_MM);
         if (dir == 0)
         {
             Emm_V5_Pos_Control(5, 0, 300, 50, pulse, 0, 0);

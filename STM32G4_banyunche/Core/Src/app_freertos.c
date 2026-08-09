@@ -584,10 +584,11 @@ void BsRt_task(void *argument)
 			}
 			#else  /* ---- OpenMV ---- */
 				{
-					#define JUMP_AB   15
-					#define JUMP_RGB  40
-					static uint8_t p_l, p_a, p_b, p_r, p_g, p_brgb, p_init;
-					if (!p_init) { Color_DataTypeDef init_d; if (Color_ReadData(&init_d) == HAL_OK) { p_l = init_d.l; p_a = init_d.a; p_b = init_d.b; p_r = init_d.red; p_g = init_d.green; p_brgb = init_d.blue; p_init = 1; } }
+					#define JUMP_AB    15   /* A+B 跳变 → 红绿蓝 */
+					#define JUMP_LBLK  40   /* l_black 跳变 → 黑 */
+					#define JUMP_LMEAN 20   /* l_mean 跳变 → 白 */
+					static uint8_t p_lblk, p_lmean, p_a, p_b, p_init;
+					if (!p_init) { Color_DataTypeDef id; if (Color_ReadData(&id) == HAL_OK) { p_lblk = id.l; p_lmean = id.red; p_a = id.a; p_b = id.b; p_init = 1; } }
 					if (K==0 && !g_color_collect_done&&g_last_cmd.Mode==Event_LinFolL) {
 						for (uint8_t slot = 1; slot <= 5; slot++) {
 							for (;;) {
@@ -595,11 +596,10 @@ void BsRt_task(void *argument)
 								if (Color_ReadData(&d) != HAL_OK) { osDelay(5); continue; }
 								int da = abs((int)d.a - p_a);
 								int db = abs((int)d.b - p_b);
-								int dr = abs((int)d.red - p_r);
-								int dg = abs((int)d.green - p_g);
-								int dbrgb = abs((int)d.blue - p_brgb);
-								p_l = d.l; p_a = d.a; p_b = d.b; p_r = d.red; p_g = d.green; p_brgb = d.blue;
-								int has_jump = ((da + db) >= JUMP_AB) ? 1 : ((dr + dg + dbrgb) >= JUMP_RGB);
+								int dlblk = abs((int)d.l - p_lblk);
+								int dlmean = abs((int)d.red - p_lmean);
+								p_lblk = d.l; p_lmean = d.red; p_a = d.a; p_b = d.b;
+								int has_jump = (da+db >= JUMP_AB) || (dlblk >= JUMP_LBLK) || (dlmean >= JUMP_LMEAN);
 								if (has_jump) {
 									Color_TypeDef c = Color_Judge(&d);
 									if (c != COLOR_UNKNOWN) { TT_SetColor(slot - 1, c); break; }
@@ -622,11 +622,10 @@ void BsRt_task(void *argument)
 								if (Color_ReadData(&d) != HAL_OK) { osDelay(5); continue; }
 								int da = abs((int)d.a - p_a);
 								int db = abs((int)d.b - p_b);
-								int dr = abs((int)d.red - p_r);
-								int dg = abs((int)d.green - p_g);
-								int dbrgb = abs((int)d.blue - p_brgb);
-								p_l = d.l; p_a = d.a; p_b = d.b; p_r = d.red; p_g = d.green; p_brgb = d.blue;
-								int has_jump = ((da + db) >= JUMP_AB) ? 1 : ((dr + dg + dbrgb) >= JUMP_RGB);
+								int dlblk = abs((int)d.l - p_lblk);
+								int dlmean = abs((int)d.red - p_lmean);
+								p_lblk = d.l; p_lmean = d.red; p_a = d.a; p_b = d.b;
+								int has_jump = (da+db >= JUMP_AB) || (dlblk >= JUMP_LBLK) || (dlmean >= JUMP_LMEAN);
 								if (has_jump) {
 									Color_TypeDef c = Color_Judge(&d);
 									if (c != COLOR_UNKNOWN) break;
