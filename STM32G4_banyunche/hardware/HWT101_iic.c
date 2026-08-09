@@ -93,12 +93,6 @@ static int32_t HWT101_I2cWrite(uint8_t ucAddr, uint8_t ucReg,
 
 #ifdef HWT101_USE_SERIAL
 
-/* ---- 串口发送回调 ---- */
-static void HWT101_SerialWrite(uint8_t *p_ucData, uint32_t uiLen)
-{
-    HAL_UART_Transmit(&huart1, p_ucData, (uint16_t)uiLen, 100U);
-}
-
 /* ---- 串口帧校验和 ---- */
 static uint8_t HWT101_CalcChecksum(uint8_t *data, uint16_t length)
 {
@@ -279,24 +273,12 @@ int32_t HWT101_HAL_Init(void)
 #elif defined(HWT101_USE_SERIAL)
     /* ---- 串口模式 ---- */
 
-    /* 2a. 注册串口发送回调 */
-    ret = WitSerialWriteRegister(HWT101_SerialWrite);
-    if (ret != WIT_HAL_OK) return ret;
-
-    /* 2b. 初始化协议栈：Normal 协议，地址 0x50 */
+    /* 初始化协议栈：Normal 协议，HWT101 仅向 USART1_RX 主动上报。 */
     ret = WitInit(WIT_PROTOCOL_NORMAL, HWT101_SERIAL_ADDR);
     if (ret != WIT_HAL_OK) return ret;
 
     /* 先启动接收，避免配置期间丢失主动上报数据。 */
     HWT101_UART_ErrorCallback(&huart1);
-
-    /* HWT101 只输出 Z 轴角速度和角度。 */
-    ret = WitSetContent(RSW_GYRO | RSW_ANGLE);
-    if (ret != WIT_HAL_OK) return ret;
-
-    /* USART1=115200，使用 50Hz 主动上报。 */
-    ret = WitSetOutputRate(RRATE_50HZ);
-    if (ret != WIT_HAL_OK) return ret;
 
     return WIT_HAL_OK;
 #endif
@@ -313,9 +295,8 @@ int32_t HWT101_IsOnline(void)
     return (HAL_I2C_IsDeviceReady(&hi2c1, HWT101_I2C_ADDR, 2U,
                                    HWT101_I2C_TIMEOUT_MS) == HAL_OK) ? 1 : 0;
 #elif defined(HWT101_USE_SERIAL)
-    /* 串口模式没有设备就绪检测，尝试读版本号确认 */
-    if (WitReadReg(VERSION, 1U) == WIT_HAL_OK) return 1;
-    return 0;
+    /* 仅接收模式不能查询设备，以是否收到有效数据帧判断。 */
+    return g_hwt101_data_ready ? 1 : 0;
 #endif
 }
 

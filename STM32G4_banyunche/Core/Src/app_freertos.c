@@ -16,6 +16,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
+#include "HWT101_iic.h"
 #include "stdlib.h"
 /* USER CODE END Includes */
 
@@ -759,9 +760,19 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
+  char hwt101_msg[48];
+
   for(;;)
   {
-    /* HWT101 数据由 USART1 接收中断持续更新。 */
+    if (g_hwt101_data_ready) {
+      int len = snprintf(hwt101_msg, sizeof(hwt101_msg),
+                         "HWT101 yaw=%.2f deg\r\n",
+                         (double)HWT101_GetZeroYaw());
+      if (len > 0) {
+        HAL_UART_Transmit(&huart2, (uint8_t *)hwt101_msg,
+                          (uint16_t)len, 20U);
+      }
+    }
     osDelay(100);
   }
   /* USER CODE END IMU_FUCTION */

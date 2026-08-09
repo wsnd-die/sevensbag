@@ -9,7 +9,7 @@
  *
  *          ====== 传输模式选择 ======
  *          #define HWT101_USE_I2C     → I2C 模式（DMA 读）
- *          #define HWT101_USE_SERIAL  → 串口模式（USART1，PA9/PA10）
+ *          #define HWT101_USE_SERIAL  → 串口接收模式（USART1_RX，PA10）
  *          两者互斥，同时定义时 I2C 优先生效。
  *
  *          ====== 使用示例 ======
@@ -40,7 +40,7 @@ extern "C" {
    ======================================================================== */
 
 /* #define HWT101_USE_I2C */    /* 使用 I2C 模式 */
-#define HWT101_USE_SERIAL       /* 使用 USART1（PA9/PA10）串口模式 */
+#define HWT101_USE_SERIAL       /* 使用 USART1 RX（PA10）串口模式 */
 
 #if !defined(HWT101_USE_I2C) && !defined(HWT101_USE_SERIAL)
 #error "Must define HWT101_USE_I2C or HWT101_USE_SERIAL"
