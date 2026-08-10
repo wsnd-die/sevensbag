@@ -16,15 +16,15 @@ extern "C" {
 
 /*
  * 电机地址：
- * 4号：前右 FR
+ * 1号：前右 FR
  * 2号：后左 RL
- * 1号：前左 FL
- * 3号：后右 RR
+ * 3号：前左 FL
+ * 4号：后右 RR
  */
-#define MECANUM_ADDR_FR  4U
+#define MECANUM_ADDR_FR  1U
 #define MECANUM_ADDR_RL  2U
-#define MECANUM_ADDR_FL  1U
-#define MECANUM_ADDR_RR  3U
+#define MECANUM_ADDR_FL  3U
+#define MECANUM_ADDR_RR  4U
 /**
  * @brief 麦轮底盘参数
  */

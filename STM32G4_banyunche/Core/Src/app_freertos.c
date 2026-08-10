@@ -244,9 +244,6 @@ void NLF_TASK(void *argument)
 	uint8_t P_Nava=0;
 	uint8_t rank[3]={second_place,champion,third_place};
 
-	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, (uint32_t)(89.5f / 180.0f * 2000.0f + 500.0f)); // 后级
-	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)(85.0f / 180.0f * 2000.0f + 500.0f)); //前级
-
 	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
 	printf("[TASK] Trace only\r\n");
