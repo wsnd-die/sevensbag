@@ -134,8 +134,8 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
 # Flash target: 一键编译+烧录到 STM32G4
 # 在 CLion 中切换到此 target 然后点 ▶ Run 即可烧录
 add_custom_target(flash
-    COMMAND D:/OpenOCD/xpack-openocd-0.12.0-7/bin/openocd.exe
-        -s D:/OpenOCD/xpack-openocd-0.12.0-7/openocd/scripts
+    COMMAND E:/Tools/xpack-openocd/xpack-openocd-0.12.0-7/bin/openocd.exe
+        -s E:/Tools/xpack-openocd/xpack-openocd-0.12.0-7/openocd/scripts
         -f interface/cmsis-dap.cfg
         -f target/stm32g4x.cfg
         -c "adapter speed 500; program $<TARGET_FILE:STM32G4_TEST> verify reset exit"
