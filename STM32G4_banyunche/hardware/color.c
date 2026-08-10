@@ -37,7 +37,7 @@
 
 #define LAB_GREEN_L  83
 #define LAB_GREEN_A  97
-#define LAB_GREEN_B  143
+#define LAB_GREEN_B  148
 #define LAB_GREEN_WL 0
 #define LAB_GREEN_WA 3
 #define LAB_GREEN_WB 1
@@ -45,16 +45,16 @@
 
 #define LAB_BLUE_L   96
 #define LAB_BLUE_A   125
-#define LAB_BLUE_B   88
+#define LAB_BLUE_B   90
 #define LAB_BLUE_WL  0
 #define LAB_BLUE_WA  1
 #define LAB_BLUE_WB  3
 #define LAB_BLUE_TOL 30
 
 /* 黑/白: 白=高L+低黑占比, 黑=高黑占比 */
-#define WHITE_L_MIN       89    /* l_mean >= 此值 且 */
+#define WHITE_L_MIN       81    /* l_mean >= 此值 且 */
 #define WHITE_BLACK_MAX   40    /* l_black <= 此值 → 白色 */
-#define BLACK_RATIO_MIN  100    /* l_black >= 此值 → 黑色 */
+#define BLACK_RATIO_MIN  180    /* l_black >= 此值 → 黑色 */
 #endif /* USE_OPENMV_COLOR */
 
 /* ---- 校准数据 (全局) ---- */

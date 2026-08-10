@@ -65,6 +65,7 @@ uint8_t SlotByColor(Color_TypeDef c);            /* 颜色 → 槽位 */
 uint8_t ColorAtSlot(uint8_t slot);               /* 槽位 → 颜色 */
 bool    TT_RotateByQR(void);                     /* 每次转一个槽位, 返回 false=已全部转完 */
 void    TT_RotateReset(void);                    /* 重置旋转进度 */
+bool    TT_IsDone(void);                         /* 检查是否全部转完 */
 void TogetPos(uint8_t slot, float *x, float *y, float *yaw);  /* 取点位坐标 */
 void SetPos(uint8_t slot, float x, float y, float yaw);     /* 标定点位 */
 
