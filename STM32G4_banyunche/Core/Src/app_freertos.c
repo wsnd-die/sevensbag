@@ -16,7 +16,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
-#include "HWT101_iic.h"
 #include "stdlib.h"
 /* USER CODE END Includes */
 
@@ -246,13 +245,16 @@ void NLF_TASK(void *argument)
 	uint8_t rank[3]={second_place,champion,third_place};
 
 	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, (uint32_t)(89.5f / 180.0f * 2000.0f + 500.0f)); // 后级
-	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)(81.0f / 180.0f * 2000.0f + 500.0f)); //前级
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint32_t)(85.0f / 180.0f * 2000.0f + 500.0f)); //前级
 
 	K230_SetMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_LinFolR);
-	BlockBasic_TurntableTo(1);
-	osDelay(500);
+	printf("[TASK] Trace only\r\n");
+
+	for (;;) {
+		Trace_LineFollow();
+		osDelay(10);
+	}
 
   /* Infinite loop */
   for(;;)
@@ -427,6 +429,9 @@ void Color_task(void *argument)
 	Color_Init();
 	HAL_Delay(50);
 	Servo_SetAngle(81.0f);
+	float last_trace_angle = 0.0f;
+	float last_trace_posx = 0.0f;
+	uint8_t has_trace_last = 0U;
 
 #if COLOR_CALIB_MODE
 	const char *steps[] = {"EMPTY","RED","GREEN","BLUE","WHITE","BLACK"};
@@ -468,17 +473,32 @@ void Color_task(void *argument)
 		char b[400]; int n = 0;
 
 		/* 实时 Lab + 颜色 */
-		Color_DataTypeDef d;
-		if (Color_ReadData(&d) == HAL_OK) {
-			Color_TypeDef c = Color_Judge(&d);
-			n += snprintf(b+n, sizeof(b)-n, "Blk=%d L=%d A=%d B=%d -> %s | ",
-				d.l, d.red, d.a, d.b, Color_ToString(c));
-		} else {
-			n += snprintf(b+n, sizeof(b)-n, "Lab=? | ");
-		}
+		if ((g_last_cmd.Mode == Event_LinFolL) ||
+		    (g_last_cmd.Mode == Event_LinFolR)) {
+			float delta_angle = g_trace_angle - last_trace_angle;
+			float delta_posx = g_trace_posx - last_trace_posx;
 
-		n += snprintf(b+n, sizeof(b)-n, "\r\n");
-		HAL_UART_Transmit(&huart2, (uint8_t *)b, n, 100);
+			if (!has_trace_last ||
+			    fabsf(delta_angle) >= 0.5f ||
+			    fabsf(delta_posx) >= 1.0f) {
+				n += snprintf(b+n, sizeof(b)-n,
+					"TRACE: ang=%.2f dA=%.2f posX=%.2f dX=%.2f target=%.2f v=%.2f w=%.2f\r\n",
+					(double)g_trace_angle,
+					(double)delta_angle,
+					(double)g_trace_posx,
+					(double)delta_posx,
+					(double)g_trace_target,
+					(double)g_trace_v,
+					(double)g_trace_w);
+				HAL_UART_Transmit(&huart2, (uint8_t *)b, n, 100);
+
+				last_trace_angle = g_trace_angle;
+				last_trace_posx = g_trace_posx;
+				has_trace_last = 1U;
+			}
+		} else {
+			has_trace_last = 0U;
+		}
 		osDelay(50);
   }
 #endif
@@ -763,18 +783,41 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
-  char hwt101_msg[48];
+  char k230_msg[128];
+  float last_angle = 0.0f;
+  float last_posx = 0.0f;
+  uint8_t has_last = 0U;
 
   for(;;)
   {
-    if (g_hwt101_data_ready) {
-      int len = snprintf(hwt101_msg, sizeof(hwt101_msg),
-                         "HWT101 yaw=%.2f deg\r\n",
-                         (double)HWT101_GetZeroYaw());
-      if (len > 0) {
-        HAL_UART_Transmit(&huart2, (uint8_t *)hwt101_msg,
-                          (uint16_t)len, 20U);
+    if ((g_last_cmd.Mode == Event_LinFolL) ||
+        (g_last_cmd.Mode == Event_LinFolR)) {
+      float delta_angle = g_trace_angle - last_angle;
+      float delta_posx = g_trace_posx - last_posx;
+
+      if (!has_last ||
+          fabsf(delta_angle) >= 0.5f ||
+          fabsf(delta_posx) >= 1.0f) {
+        int len = snprintf(k230_msg, sizeof(k230_msg),
+                           "K230 line: ang=%.2f dA=%.2f pos=%.2f dX=%.2f target=%.2f v=%.2f w=%.2f\r\n",
+                           (double)g_trace_angle,
+                           (double)delta_angle,
+                           (double)g_trace_posx,
+                           (double)delta_posx,
+                           (double)g_trace_target,
+                           (double)g_trace_v,
+                           (double)g_trace_w);
+        // if (len > 0) {
+        //   HAL_UART_Transmit(&huart2, (uint8_t *)k230_msg,
+        //                     (uint16_t)len, 20U);
+        // }
+
+        last_angle = g_trace_angle;
+        last_posx = g_trace_posx;
+        has_last = 1U;
       }
+    } else {
+      has_last = 0U;
     }
     osDelay(100);
   }

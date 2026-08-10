@@ -5,12 +5,13 @@
  */
 
 #include "Common_used.h"
+#include "block_basic.h"
 
 /* ======================== 全局状态 ======================== */
 
 float g_circle_vx = 0.0f;
 float g_circle_vy = 0.0f;
-char  g_circle_dir = '?';
+char  g_circle_dir = 'O';
 
 /* ======================== 找圆跟随主函数 ======================== */
 
@@ -20,26 +21,25 @@ void Circle_Follow(void)
     MecanumResult motor;
 
     /* ---- 1. 获取圆方向 ---- */
-    K230_GetCircleDir(&dir);
-
-    g_circle_dir = dir;  /* 保存方向供外部打印 */
+    if (!K230_GetCircleDir(&dir)) {
+        return;  /* 无新数据，保持当前状态 */
+    }
 
     /* ---- 2. 方向 → 速度映射 ---- */
     switch (dir) {
     case 'O':
-        g_circle_vx = 0.0f;
-        g_circle_vy = 0.0f;
+        Place('O');
         break;
 
     case 'N':
         /* 圆心偏上: 前进 */
-        g_circle_vx =  -CIRCLE_SPEED_V;
+        g_circle_vx =  CIRCLE_SPEED_V;
         g_circle_vy =  0.0f;
         break;
 
     case 'S':
         /* 圆心偏下: 后退 */
-        g_circle_vx = CIRCLE_SPEED_V;
+        g_circle_vx = -CIRCLE_SPEED_V;
         g_circle_vy =  0.0f;
         break;
 

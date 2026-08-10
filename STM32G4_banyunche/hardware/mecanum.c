@@ -71,8 +71,8 @@ MecanumResult Mecanum_Calc(float v, float w)
      */
     float fl_raw = ( v - geo_factor * w) * MEC_SPEED_COEFF;
     float fr_raw = ( v + geo_factor * w) * MEC_SPEED_COEFF;
-    float rl_raw = ( v - geo_factor * w) * MEC_SPEED_COEFF;
     float rr_raw = ( v + geo_factor * w) * MEC_SPEED_COEFF;
+    float rl_raw = ( v - geo_factor * w) * MEC_SPEED_COEFF;
 
     /* 低速动力补偿 */
     if (fabsf(v) < MEC_LOW_SPEED_LIMIT) {
@@ -84,8 +84,12 @@ MecanumResult Mecanum_Calc(float v, float w)
 
     /* 方向 + 限幅处理 */
     res.fl_speed = Mecanum_ProcessWheel(fl_raw, &res.fl_dir);
+    if (res.fl_dir==1){res.fl_dir=0;}
+    else{res.fl_dir=1;}
     res.fr_speed = Mecanum_ProcessWheel(fr_raw, &res.fr_dir);
     res.rl_speed = Mecanum_ProcessWheel(rl_raw, &res.rl_dir);
+    if (res.rl_dir==1){res.rl_dir=0;}
+    else{res.rl_dir=1;}
     res.rr_speed = Mecanum_ProcessWheel(rr_raw, &res.rr_dir);
 
     return res;

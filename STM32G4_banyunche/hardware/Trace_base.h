@@ -15,19 +15,25 @@ extern "C" {
 #include <stdint.h>
 
 /* ======================== 外环: 位置 → 目标角度 ======================== */
-#define ANGLE_KP      0.03f     /* 外环 P (作用于位置环) */
+#define ANGLE_KP      0.035f     /* 外环 P (作用于位置环) */
 #define ANGLE_KI      0.0f     /* 外环 I (作用于位置环) */
 #define ANGLE_KD      0.0f     /* 外环 D (作用于位置环) */
 #define ANGLE_OUT_MAX  100.0f   /* 外环输出限幅 (目标角度, deg) */
 /* ======================== 内环: 角度 → 角速度 ======================== */
-#define POS_KP        0.13f    /* 内环 P (作用于角度环) */
+#define POS_KP        0.21f    /* 内环 P (作用于角度环) */
 #define POS_KI        0.0f   /* 内环 I (作用于角度环) */
 #define POS_KD        0.0f    /* 内环 D (作用于角度环) */
 #define POS_INTEGRAL_MAX  10.0f /* 内环积分限幅 */
 
 /* ======================== 共用 ======================== */
 #define TRACE_BASE_SPEED   0.65f   /* 基础线速度 (m/s) */
-#define TRACE_W_MAX        0.95f    /* 最大角速度 (rad/s) */
+#define TRACE_W_MAX        1.00f    /* 最大角速度 (rad/s), 避免弯道内侧轮过慢 */
+
+/* 弯道外侧补偿: 线角越大, 目标角越向外侧偏, 减少圆弧内切 */
+#define TRACE_CURVE_OUTER_GAIN     0.135f
+#define TRACE_CURVE_OUTER_MAX_DEG  4.7f
+
+
 
 /* ======================== 函数声明 ======================== */
 

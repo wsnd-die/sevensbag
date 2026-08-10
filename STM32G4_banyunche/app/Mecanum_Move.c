@@ -16,8 +16,8 @@
     .min_move_time_s = 0.1f,
 
     /* 驱动器逻辑方向: 1=正向, 0=反向 */
-    .forward_dir[MECANUM_ADDR_FR] = 0U,
-    .forward_dir[MECANUM_ADDR_RL] = 1U,
+    .forward_dir[MECANUM_ADDR_FR] = 1U,
+    .forward_dir[MECANUM_ADDR_RL] = 0U,
     .forward_dir[MECANUM_ADDR_FL] = 0U,
     .forward_dir[MECANUM_ADDR_RR] = 1U,
 
