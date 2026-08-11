@@ -111,17 +111,14 @@ MecanumResult Mecanum_Calc(float v, float w)
 MecanumResult Mecanum_Calc_Full(float vx, float vy, float w)
 {
     MecanumResult res = {0, 0, 0, 0, 0, 0, 0, 0};
-
     /* 静止直接返回 */
     if (fabsf(vx) < MEC_STOP_THRESHOLD &&
         fabsf(vy) < MEC_STOP_THRESHOLD &&
         fabsf(w)  < MEC_STOP_THRESHOLD) {
         return res;
     }
-
     /* 几何因子 a + b */
     float geo_factor = MEC_TRACK_WIDTH / 2.0f + MEC_WHEELBASE / 2.0f;
-
     /* ---------- 全自由度逆运动学 ----------
      * ω_i = (Vx ∓ Vy ∓ (a+b)·ω) × SPEED_COEFF
      *
@@ -133,7 +130,6 @@ MecanumResult Mecanum_Calc_Full(float vx, float vy, float w)
     float fr_raw = ( vx + vy + geo_factor * w) * MEC_SPEED_COEFF;
     float rl_raw = ( vx + vy - geo_factor * w) * MEC_SPEED_COEFF;
     float rr_raw = ( vx - vy + geo_factor * w) * MEC_SPEED_COEFF;
-
     /* 低速动力补偿 */
     if (fabsf(vx) < MEC_LOW_SPEED_LIMIT &&
         fabsf(vy) < MEC_LOW_SPEED_LIMIT) {

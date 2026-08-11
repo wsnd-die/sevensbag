@@ -405,6 +405,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						i++;
   						flag_finish=false;
   						task_send(Event_Navigation);
+  						Servo_SetAngle(42);
   						osDelay(800);
   						break;
   					}

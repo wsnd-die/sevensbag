@@ -265,7 +265,7 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
 #endif /* USE_OPENMV_COLOR */
 
 /* ================================================================
- * 共用 — 不受宏影响
+ * 共用
  * ================================================================ */
 
 Color_TypeDef Color_DetectDominant(void)
