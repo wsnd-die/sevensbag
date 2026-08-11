@@ -177,7 +177,7 @@ int main(void)
 //	IMU660RC_AttitudeInit();
     HAL_Delay(200);
 	  Hal_starte();
-    HAL_Delay(1000);
+    HAL_Delay(3000);
 
     IMU660RA_AttitudeInit();
     uint8_t len=sprintf((char *)Data,"init ok");

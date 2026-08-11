@@ -63,12 +63,12 @@ void Angle_Init(AngleCtrl *ac)
     ac->yaw_tol = CFG_YAW_TOL;
 
     /* 角度环 */
-    const fp32 ak[3] = { 4.0f, 0.0f, 0.001f };
+    const fp32 ak[3] = { 2.0f, 0.0f, 0.001f };
     PID_init(&ac->pid_angle, PID_POSITION, ak, CFG_MAX_W_DEG, 30.0f);
 
     /* 角速度环 */
-    const fp32 wk[3] = { 0.028f, 0.01f, 0.001f };
-    PID_init(&ac->pid_w, PID_POSITION, wk, CFG_MAX_W, 0.5f);
+    const fp32 wk[3] = { 0.018f, 0.01f, 0.001f };
+    PID_init(&ac->pid_w, PID_POSITION, wk, CFG_MAX_W, 0.4f);
 
     /* 陀螺仪滤波 */
     ac->gyro_alpha    = 0.14f;

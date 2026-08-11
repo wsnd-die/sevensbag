@@ -246,18 +246,20 @@ void Servo_SetAngle(float Angle)
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, Angle / 180 * 2000 + 500);
 
 }
-void Place(char dir)
+void Place(char dir,uint16_t height)
 {
     MecanumMove_t move;
-
     if (dir == 'O')
     {
         /* 前进 0.05 m（车体坐标：+X 为前进） */
-        if (Mecanum_CalculateMove(&Place_config, 0.1f, 0.0f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, 0.059f, 0.0f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
         }
+        osDelay(100);
+        BlockBasic_LiftTo(DOWN,height);
+        osDelay(1000);
 
         /* 后退 0.05 m（车体坐标：-X 为后退） */
         if (Mecanum_CalculateMove(&Place_config, -0.1f, 0.0f, 0.0f, &move))

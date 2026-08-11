@@ -25,17 +25,17 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 
     {0.656f,    0.308f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
-    {0.10f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
+    {0.09f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
 
-      {    0.47f,     1.2f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+      {    0.60f,     1.07f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
       {    0.0f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
       {    0.0f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
-      {   0.12f,    -0.156f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
+      {   0.17f,    -0.136f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
       {  0.41f,    0.03f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
 
-      {    0.7f,     0.0f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+      {    0.5f,     0.20f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    -0.29f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
       {    0.25f,     -0.61f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.26f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
@@ -150,13 +150,13 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         while (error_deg < -180.0f) error_deg += 360.0f;
 
         /* 已经到位则跳过 */
-        if (fabsf(error_deg) >= 4.0f) {
+        if (fabsf(error_deg) >= 1.0f) {
             AngleCtrl ac;
             Angle_Init(&ac);
             Angle_SetTarget(&ac, target_deg);
 
             while (!Angle_Arrived(&ac)) {
-                Angle_Update(&ac,siyuan_yaw*RAD_TO_DEG ,  -imu660ra_gyro_transition(imu660ra_gyro_x));
+                Angle_Update(&ac,siyuan_yaw*RAD_TO_DEG ,  imu660ra_gyro_transition(imu660ra_gyro_x));
                 MecanumResult motor = Mecanum_Calc(0.0f, -ac.cmd_w);
                 Send_commandmotor(&motor);
                 osDelay(30);
@@ -199,7 +199,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         Angle_SetTarget(&ac_2, error_deg_2);
 
         while (!Angle_Arrived(&ac_2)) {
-            Angle_Update(&ac_2,siyuan_yaw*RAD_TO_DEG ,  -imu660ra_gyro_transition(imu660ra_gyro_x));
+            Angle_Update(&ac_2,siyuan_yaw*RAD_TO_DEG ,  imu660ra_gyro_transition(imu660ra_gyro_x));
             MecanumResult motor = Mecanum_Calc(0.0f, -ac_2.cmd_w);
             Send_commandmotor(&motor);
             osDelay(30);
