@@ -1656,16 +1656,6 @@
               <FilePath>..\hardware\block_basic.h</FilePath>
             </File>
             <File>
-              <FileName>waypoint.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\hardware\waypoint.c</FilePath>
-            </File>
-            <File>
-              <FileName>waypoint.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\hardware\waypoint.h</FilePath>
-            </File>
-            <File>
               <FileName>angle_ctrl.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\hardware\angle_ctrl.c</FilePath>
@@ -1714,6 +1704,16 @@
               <FileName>color.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\hardware\color.h</FilePath>
+            </File>
+            <File>
+              <FileName>collect_ir.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\collect_ir.c</FilePath>
+            </File>
+            <File>
+              <FileName>collect_ir.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\collect_ir.h</FilePath>
             </File>
             <File>
               <FileName>sw_uart.c</FileName>

@@ -5,13 +5,13 @@
  */
 
 #include "Common_used.h"
-#include "block_basic.h"
 
 /* ======================== 全局状态 ======================== */
 
 float g_circle_vx = 0.0f;
 float g_circle_vy = 0.0f;
-char  g_circle_dir = 'O';
+char  g_circle_dir = '?';
+float g_circle_speed = 1.0f;  /* 速度系数: 1.0=快(左侧), 0.4=慢(右侧) */
 
 /* ======================== 找圆跟随主函数 ======================== */
 
@@ -21,44 +21,47 @@ void Circle_Follow(void)
     MecanumResult motor;
 
     /* ---- 1. 获取圆方向 ---- */
-    if (!K230_GetCircleDir(&dir)) {
-        return;  /* 无新数据，保持当前状态 */
-    }
+    K230_GetCircleDir(&dir);
+        float pos_x,posy;
+    g_circle_dir = dir;  /* 保存方向供外部打印 */
 
     /* ---- 2. 方向 → 速度映射 ---- */
     switch (dir) {
     case 'O':
-        Place('O');
+        g_circle_vx = 0.0f;
+        g_circle_vy = 0.0f;
         break;
 
     case 'N':
-        /* 圆心偏上: 前进 */
-        g_circle_vx =  CIRCLE_SPEED_V;
+        g_circle_vx =  CIRCLE_SPEED_V * g_circle_speed;
         g_circle_vy =  0.0f;
+
         break;
 
     case 'S':
-        /* 圆心偏下: 后退 */
-        g_circle_vx = -CIRCLE_SPEED_V;
+        g_circle_vx = -CIRCLE_SPEED_V * g_circle_speed;
         g_circle_vy =  0.0f;
+
         break;
 
     case 'W':
-        /* 圆心偏右: 右移 */
         g_circle_vx =  0.0f;
-        g_circle_vy = -CIRCLE_SPEED_VY;
+        g_circle_vy = -CIRCLE_SPEED_VY * g_circle_speed;
+
+
         break;
 
     case 'E':
-        /* 圆心偏左: 左移 */
         g_circle_vx =  0.0f;
-        g_circle_vy =  CIRCLE_SPEED_VY;
+        g_circle_vy =  CIRCLE_SPEED_VY * g_circle_speed;
+
         break;
 
     default:
         /* 未知方向: 停止 */
         g_circle_vx = 0.0f;
         g_circle_vy = 0.0f;
+
         break;
     }
 

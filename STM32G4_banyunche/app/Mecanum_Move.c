@@ -646,7 +646,7 @@ bool Mecanum_MoveWithEncoder(const MecanumConfig_t *config,
     }
 
     /* ---- 4. 等理论耗时（期间不查 CAN，电机正在跑）---- */
-    move_ms = (uint32_t)(move.duration_s * 1800.0f);
+    move_ms = (uint32_t)(move.duration_s * 1000.0f);
     osDelay(move_ms);
 
     /* ---- 5. 轮询领队轮到位标志（最多 1s，超时不再等）---- */

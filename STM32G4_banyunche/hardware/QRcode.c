@@ -89,7 +89,7 @@ uint8_t Slop_dirjang(Jang_type jang)
     {
         if (T2[Jang_Num][i]==jang)
         {
-            return 4-i;
+            return 3-i;
         }
     }
     return 0;  /* 未匹配 */

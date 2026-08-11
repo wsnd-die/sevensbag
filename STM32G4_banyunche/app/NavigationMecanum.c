@@ -24,29 +24,30 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {0.308f,    0.656f,  90.0  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {0.656f,    0.308f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
+    {0.10f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
 
-      {    0.0f,     0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+      {    0.47f,     1.2f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
       {    0.0f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
       {    0.0f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
-      {   0.10f,    0.10f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
+      {   0.12f,    -0.156f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
-      {  0.0f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
+      {  0.41f,    0.03f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
 
-      {    0.0f,     0.77f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+      {    0.7f,     0.0f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    -0.29f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
       {    0.25f,     -0.61f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.26f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
       {    0.074f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-          {-0.60,0.80,0},//回家点
+          {-0.60,0.81,0},//回家点
 
 };
 
 /* 实际使用的路径点数量 */
-uint8_t  g_waypoint_count = 15;
+uint8_t  g_waypoint_count = 13;
 
   
 /* ============================================================
@@ -71,9 +72,6 @@ static float Nav_NormalizeAngle(float angle)
  * 公开函数
  * ============================================================ */
 
-/**
- * @brief 导航到目标世界坐标（速度模式 + 编码器反馈，单段平顺）
- */
 bool Nav_GoToWorld(float target_x, float target_y, float target_yaw)
 {
     float world_dx, world_dy, dtheta, dist;
@@ -122,13 +120,12 @@ bool Nav_GoToWorld(float target_x, float target_y, float target_yaw)
 
     return true;
 }
-
-
-/* ============================================================
+/*==============================================
  * 车体坐标运动 (Body-frame)
  *   平移: 麦轮解算 (世界坐标, 不含旋转)
  *   旋转: AngleCtrl 串级 PID, 平移到位后单独执行
  * ============================================================ */
+
 
 /**
  * @brief 车体坐标运动
@@ -146,28 +143,9 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         return true;
     }
 
-    /* ---- 2. 平移段: 车体坐标 → 麦轮 (dtheta=0, 不旋转) ---- */
-    if (dist >= 0.005f) {
-        float est_s = dist / 0.05f;
-        if (est_s < 3.0f) est_s = 3.0f;
-        uint32_t timeout_ms = (uint32_t)(est_s * 1000.0f);
+    /* ---- 2. 旋转段: rotate_rad 为世界绝对角度(rad), AngleCtrl 闭环 ---- */
 
-        success = Mecanum_MoveWithEncoder(
-            &g_mecanum_config,
-            forward_m, left_m, 0.0f,  /* dtheta=0, 纯平移 */
-            1.0f, 80U, timeout_ms
-        );
-        if (!success) return false;
-
-        /* 更新世界位姿 (仅平移) */
-        float cos_y = cosf(Self_Dir.yaw), sin_y = sinf(Self_Dir.yaw);
-        Self_Dir.x += forward_m * cos_y - left_m * sin_y;
-        Self_Dir.y += forward_m * sin_y + left_m * cos_y;
-    }
-
-    /* ---- 3. 旋转段: rotate_rad 为世界绝对角度(rad), AngleCtrl 闭环 ---- */
-    if (fabsf(rotate_rad) >= 0.01f) {
-        float target_deg = rotate_rad*(180.0f/3.1415926535f) ;
+        float target_deg = rotate_rad*(180.0f/MECANUM_PI) ;
         float error_deg   = target_deg - HWT101_GetZeroYaw();
         while (error_deg >  180.0f) error_deg -= 360.0f;
         while (error_deg < -180.0f) error_deg += 360.0f;
@@ -188,7 +166,50 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         }
 
         Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
+
+
+    /* ---- 3. 平移段: 车体坐标 → 麦轮 (dtheta=0, 不旋转) ---- */
+    if (dist >= 0.005f) {
+        float est_s = dist / 0.05f;
+        if (est_s < 3.0f) est_s = 3.0f;
+        uint32_t timeout_ms = (uint32_t)(est_s * 1000.0f);
+
+        success = Mecanum_MoveWithEncoder(
+            &g_mecanum_config,
+            forward_m, left_m, 0.0f,  /* dtheta=0, 纯平移 */
+            1.0f, 80U, timeout_ms
+        );
+        if (!success) return false;
+
+        /* 更新世界位姿 (仅平移) */
+        float cos_y = cosf(Self_Dir.yaw), sin_y = sinf(Self_Dir.yaw);
+        Self_Dir.x += forward_m * cos_y - left_m * sin_y;
+        Self_Dir.y += forward_m * sin_y + left_m * cos_y;
     }
+
+
+
+    float error_deg_2   = target_deg - HWT101_GetZeroYaw();
+    while (error_deg_2 >  180.0f) error_deg_2 -= 360.0f;
+    while (error_deg_2 < -180.0f) error_deg_2 += 360.0f;
+
+    /* 已经到位则跳过 */
+    if (fabsf(error_deg_2) >= 5.0f) {
+        AngleCtrl ac_2;
+        Angle_Init(&ac_2);
+        Angle_SetTarget(&ac_2, error_deg_2);
+
+        while (!Angle_Arrived(&ac_2)) {
+            Angle_Update(&ac_2, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+            MecanumResult motor = Mecanum_Calc(0.0f, -ac_2.cmd_w);
+            Send_commandmotor(&motor);
+            osDelay(30);
+        }
+        Mecanum_StopAll();
+    }
+
+    Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
+
 
     return true;
 }
@@ -214,13 +235,15 @@ bool Nav_Rotate(float angle_rad)
 
 
 bool Nav_FeDuanPoint() {
-    static uint8_t PontIntex=7;
+    static uint8_t PontIntex=0;
+    uint8_t idx = PontIntex;
 
-    if (!Nav_MoveBody(g_waypoints[PontIntex].x,
-                          g_waypoints[PontIntex].y,
-                          g_waypoints[PontIntex++].yaw)) {
+    if (!Nav_MoveBody(g_waypoints[idx].x,
+                          g_waypoints[idx].y,
+                          g_waypoints[idx].yaw)) {
         return false;
                           }
+    PontIntex++;
     return true;
 }
 

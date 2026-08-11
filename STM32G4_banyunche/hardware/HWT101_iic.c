@@ -48,7 +48,7 @@ volatile uint8_t  g_hwt101_data_ready = 0U;
 
 static float   s_fYawZero  = 0.0f;       /* 偏航角零偏                    */
 static uint8_t s_bZeroSet  = 0U;         /* 零偏是否已记录                 */
-
+  
 #ifdef HWT101_USE_I2C
 static SemaphoreHandle_t s_hI2cSem    = NULL;   /* DMA 完成信号量               */
 static volatile HAL_StatusTypeDef s_I2cDmaResult; /* DMA 传输结果               */

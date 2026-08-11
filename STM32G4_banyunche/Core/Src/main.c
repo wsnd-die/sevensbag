@@ -190,12 +190,12 @@ int main(void)
     HAL_Delay(1000);
     printf("init ok\r\n");
 
- //  Emm_V5_Vel_Control(1,1,10,10,0);
-	// Emm_V5_Vel_Control(2,1,10,10,0);
- //  // osDelay(10);
- //  Emm_V5_Vel_Control(3,1,10,10,0);
- //  Emm_V5_Vel_Control(4,1,10,10,0);
- // Emm_V5_Synchronous_motion(0);
+//		   Emm_V5_Vel_Control(1,1,10,10,0);
+//	 Emm_V5_Vel_Control(2,1,10,10,0);
+//   // osDelay(10);
+//   Emm_V5_Vel_Control(3,1,10,10,0);
+//   Emm_V5_Vel_Control(4,1,10,10,0);
+//  Emm_V5_Synchronous_motion(0);
 	// //OLED_ShowNum(1,1,11,3,OLED_6X8);
 	//OLED_Update();
   /* USER CODE END 2 */

@@ -164,7 +164,7 @@
           <Type>0</Type>
           <LineNumber>230</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134218550</Address>
+          <Address>134218466</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -178,41 +178,9 @@
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>290</LineNumber>
+          <LineNumber>768</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134247926</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\hardware\sw_uart.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\STM32G4_TEST\../hardware/sw_uart.c\290</Expression>
-        </Bp>
-        <Bp>
-          <Number>2</Number>
-          <Type>0</Type>
-          <LineNumber>113</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\hardware\sw_uart.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\\../hardware/sw_uart.c\113</Expression>
-        </Bp>
-        <Bp>
-          <Number>3</Number>
-          <Type>0</Type>
-          <LineNumber>400</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>134254840</Address>
+          <Address>134246816</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -221,10 +189,58 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>../Core/Src/app_freertos.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\STM32G4_TEST\../Core/Src/app_freertos.c\400</Expression>
+          <Expression>\\STM32G4_TEST\../Core/Src/app_freertos.c\768</Expression>
+        </Bp>
+        <Bp>
+          <Number>2</Number>
+          <Type>0</Type>
+          <LineNumber>249</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134246118</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>../Core/Src/app_freertos.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\STM32G4_TEST\../Core/Src/app_freertos.c\249</Expression>
+        </Bp>
+        <Bp>
+          <Number>3</Number>
+          <Type>0</Type>
+          <LineNumber>207</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134256000</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>../Core/Src/main.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\STM32G4_TEST\../Core/Src/main.c\207</Expression>
         </Bp>
         <Bp>
           <Number>4</Number>
+          <Type>0</Type>
+          <LineNumber>252</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134246124</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>../Core/Src/app_freertos.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\STM32G4_TEST\../Core/Src/app_freertos.c\252</Expression>
+        </Bp>
+        <Bp>
+          <Number>5</Number>
           <Type>0</Type>
           <LineNumber>125</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -240,7 +256,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>5</Number>
+          <Number>6</Number>
           <Type>0</Type>
           <LineNumber>126</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -256,7 +272,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>6</Number>
+          <Number>7</Number>
           <Type>0</Type>
           <LineNumber>131</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -272,7 +288,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>7</Number>
+          <Number>8</Number>
           <Type>0</Type>
           <LineNumber>174</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -288,7 +304,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>8</Number>
+          <Number>9</Number>
           <Type>0</Type>
           <LineNumber>177</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -304,7 +320,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>9</Number>
+          <Number>10</Number>
           <Type>0</Type>
           <LineNumber>183</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -320,7 +336,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>10</Number>
+          <Number>11</Number>
           <Type>0</Type>
           <LineNumber>231</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -336,7 +352,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>11</Number>
+          <Number>12</Number>
           <Type>0</Type>
           <LineNumber>232</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -352,7 +368,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>12</Number>
+          <Number>13</Number>
           <Type>0</Type>
           <LineNumber>233</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -368,7 +384,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>13</Number>
+          <Number>14</Number>
           <Type>0</Type>
           <LineNumber>256</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -384,7 +400,7 @@
           <Expression></Expression>
         </Bp>
         <Bp>
-          <Number>14</Number>
+          <Number>15</Number>
           <Type>0</Type>
           <LineNumber>257</LineNumber>
           <EnabledFlag>1</EnabledFlag>
@@ -396,22 +412,6 @@
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>0</BreakIfRCount>
           <Filename>startup_stm32g491xx.s</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression></Expression>
-        </Bp>
-        <Bp>
-          <Number>15</Number>
-          <Type>0</Type>
-          <LineNumber>768</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>0</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>0</BreakIfRCount>
-          <Filename>../Core/Src/app_freertos.c</Filename>
           <ExecCommand></ExecCommand>
           <Expression></Expression>
         </Bp>
@@ -458,12 +458,6 @@
       <pszMrulep></pszMrulep>
       <pSingCmdsp></pSingCmdsp>
       <pMultCmdsp></pMultCmdsp>
-      <SystemViewers>
-        <Entry>
-          <Name>System Viewer\USART1</Name>
-          <WinId>35905</WinId>
-        </Entry>
-      </SystemViewers>
       <DebugDescription>
         <Enable>1</Enable>
         <EnableFlashSeq>0</EnableFlashSeq>

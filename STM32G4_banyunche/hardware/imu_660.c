@@ -81,6 +81,8 @@ static float mahony_integral_z = 0.0f;
  *
  * 可以后期调参
  */
+#undef MAHONY_KP
+#undef MAHONY_KI
 #define MAHONY_KP        2.0f
 #define MAHONY_KI        0.02f
 

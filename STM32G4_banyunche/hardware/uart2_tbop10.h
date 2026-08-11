@@ -58,12 +58,17 @@ extern UART_STATE fsm_state;
 extern uint8_t frame_buf[FRAME_TOTAL_LEN];
 extern uint8_t frame_index;
 extern uint8_t dma_rx_buf[DMA_RX_BUF_SIZE];
+extern volatile uint32_t dbg_rx_cb;   /* USART2 DMA 回调次数, 诊断用 */
 void UART2_FSM_Parse_Byte(uint8_t byte);
 #endif
 
 /* ---- OpenMV 颜色帧 (UART2, AA l_black l_mean A B DD 6字节) ---- */
 extern volatile uint8_t g_uart2_color_ready;
 extern uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
+
+/* ---- GY-33 颜色帧 (UART2, 5A 5A 45 03 R G B chk) ---- */
+extern volatile uint8_t g_uart2_gy33_ready;
+extern uint8_t g_uart2_gy33_r, g_uart2_gy33_g, g_uart2_gy33_b;
 
 void UART2_StartDMAReceive(void);
 void UART2_calibrate(void);

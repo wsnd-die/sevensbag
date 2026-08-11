@@ -354,21 +354,22 @@ JQ8x00 语音模块驱动。
 
 ### hardware/imu_660.c / hardware/imu660.h
 
-IMU660RC SPI 驱动和姿态解算当前实现。
+IMU660RA SPI 驱动和姿态解算（已从 IMU660RC/LSM6DSR 切换为 IMU660RA）。
 
-- `IMU660RC_Init()`：读取 WHO_AM_I 并配置加速度计、陀螺仪量程和输出频率。
-- `IMU660RC_ReadAcc()`：读取加速度原始数据并换算。
-- `IMU660RC_ReadGyro()`：读取陀螺仪原始数据并换算。
-- `IMU660RC_WriteRegs()` / `IMU660RC_ReadRegs()` / `IMU660RC_ReadMultiRegs()`：SPI 寄存器读写。
+- `imu660ra_init()`：IMU660RA 初始化（软件复位、ID 校验、电源配置、加速度计/陀螺仪量程配置）。
+- `imu660ra_get_acc()`：读取加速度计原始数据并换算为 g 值。
+- `imu660ra_get_gyro()`：读取陀螺仪原始数据并换算为 °/s。
+- `IMU660RA_WriteReg()` / `IMU660RA_ReadReg()` / `IMU660RA_ReadMulti()`：SPI 寄存器读写（IMU660RA 协议，CS=PB12, SPI=hspi2）。
 - `quat_to_euler()`：四元数转 roll/pitch/yaw。
-- `IMU660RC_AttitudeUpdate()`：Mahony 风格姿态更新，使用加速度和陀螺仪融合。
-- `IMU660RC_AttitudeInit()`：姿态初始化和偏置估计。
+- `IMU660RA_AttitudeUpdate()`：Mahony 互补滤波姿态更新。
+- `IMU660RA_AttitudeInit()`：姿态初始化（陀螺仪零偏估计 + 加速度初始姿态）。
 
-注意：`main()` 中 `IMU660RC_Init()` 和 `IMU660RC_AttitudeInit()` 当前被注释，导航实际使用的是 USART2 帧里的 `imu_yaw/imu_gz`。
+注意：`main()` 中 IMU 初始化当前被注释，导航实际使用的是 USART2 帧里的 `imu_yaw/imu_gz`。
+ACC_CONF/GYR_CONF 寄存器配置值（0xA7）及 INIT_DATA（0x05）为典型值，需根据 IMU660RA 芯片手册校准。
 
 ### hardware/spi_imu660rc.c / hardware/spi_imu660rc.h
 
-IMU660RC 备用实现，函数名与 `imu_660.c` 基本相同。当前不在 CMake 源列表中，不能和 `imu_660.c` 同时编译，否则同名函数会冲突。
+IMU660RC 旧版备用实现。已切换为 IMU660RA，此文件不再编译，`Common_used.h` 中已注释掉相关 include。
 
 ### hardware/Gu_dao.c
 

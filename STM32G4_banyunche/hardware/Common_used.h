@@ -71,6 +71,7 @@
 #include "Trace_base.h"
 #include "Circle_base.h"
 #include "color.h"
+#include "collect_ir.h"
 #include "ColorIdentif.h"
 #include "QRcode.h"
 /*
@@ -80,7 +81,6 @@
 #include "key.h"
 #include "k230.h"
 #include "sw_uart.h"
-#include "waypoint.h"
 #include "can.h"
 #include "pid.h"
 /*

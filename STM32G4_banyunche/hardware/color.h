@@ -18,9 +18,9 @@ extern "C" {
 #include "main.h"
 #include <stdint.h>
 
-/* 颜色传感器选择: 0=GY-33, 1=OpenMV */
+/* 颜色传感器选择: 1=GY-33(software UART), 0=OpenMV */
 #ifndef USE_OPENMV_COLOR
-#define USE_OPENMV_COLOR  0
+#define USE_OPENMV_COLOR  1
 #endif
 
 /* 颜色枚举 */

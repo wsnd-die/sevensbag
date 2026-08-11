@@ -11,7 +11,7 @@
 /* 默认参数 */
 #define CFG_MAX_W       3.0f
 #define CFG_MAX_W_DEG   180.0f
-#define CFG_YAW_TOL     10.0f
+#define CFG_YAW_TOL     5.0f
 
 static float norm_deg(float d)
 {

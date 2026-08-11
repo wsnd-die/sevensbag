@@ -86,10 +86,10 @@ void Trace_LineFollow(void)
     /* ---- 7. 麦轮解算 + 发送 ---- */
     motor = Mecanum_Calc(v, w);
     /* ---- 7.1 实时打印巡线状态 ---- */
-    printf("[TRACE] v=%.3f w=%.3f angle=%.2f posx=%.3f target=%.2f comp=%.2f | FL=%u FR=%u RL=%u RR=%u | hwt_yaw=%.2f hwt_gz=%.2f\r\n",
-           g_trace_v, g_trace_w, g_trace_angle, g_trace_posx, g_trace_target, curve_comp,
-           motor.fl_speed, motor.fr_speed, motor.rl_speed, motor.rr_speed,
-           HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+    // printf("[TRACE] v=%.3f w=%.3f angle=%.2f posx=%.3f target=%.2f comp=%.2f | FL=%u FR=%u RL=%u RR=%u | hwt_yaw=%.2f hwt_gz=%.2f\r\n",
+    //        g_trace_v, g_trace_w, g_trace_angle, g_trace_posx, g_trace_target, curve_comp,
+    //        motor.fl_speed, motor.fr_speed, motor.rl_speed, motor.rr_speed,
+    //        HWT101_GetZeroYaw(), g_hwt101_gyro_z);
     Send_commandmotor(&motor);
 }
 
