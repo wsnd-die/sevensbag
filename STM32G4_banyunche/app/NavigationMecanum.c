@@ -27,22 +27,20 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 
     {0.09f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
 
-      {    0.60f,     1.07f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+      {    0.42f,     1.07f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
       {    0.0f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
       {    0.0f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
       {   0.17f,    -0.136f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
-      {  0.41f,    0.03f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
+      {  0.47f,    0.03f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
 
-      {    0.5f,     0.20f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+      {    0.43f,     0.00f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    -0.29f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
       {    0.25f,     -0.61f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.26f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
       {    0.074f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
-
-          {-0.60,0.81,0},//回家点
-
+          {-0.62,0.81,0},//回家点
 };
 
 /* 实际使用的路径点数量 */
@@ -193,10 +191,10 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
     while (error_deg_2 < -180.0f) error_deg_2 += 360.0f;
 
     /* 已经到位则跳过 */
-    if (fabsf(error_deg_2) >= 4.0f) {
+    if (fabsf(error_deg_2) >= 1.0f) {
         AngleCtrl ac_2;
         Angle_Init(&ac_2);
-        Angle_SetTarget(&ac_2, error_deg_2);
+        Angle_SetTarget(&ac_2, target_deg);   /* 修正: 目标必须是绝对角度, 不是偏差 */
 
         while (!Angle_Arrived(&ac_2)) {
             Angle_Update(&ac_2,siyuan_yaw*RAD_TO_DEG ,  imu660ra_gyro_transition(imu660ra_gyro_x));

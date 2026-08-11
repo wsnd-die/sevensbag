@@ -293,17 +293,10 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 		K230_RequestMode(K230_MODE_CIRCLE);
 		K230_ApplyMode();
 				g_circle_speed = 1.0f;  /* 左侧快 */
-				//加入物料放置转盘逻辑
-				if (flag_finish==false)
-				{
-					flag_finish = true;
-					TT_RotateByQR();
-				}
-				if (flag_finish)
-				{
 					Circle_Follow();
 					if (g_circle_dir=='O')
 					{
+						TT_RotateByQR();
 						Place('O',0);
 						printf("[TASK] FindCircle placed");
 						flag_finish = false;
@@ -313,13 +306,12 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 						}
 						task_send(Event_Navigation);
 					}
-				}
 			}
 else if (g_last_cmd.Mode==Event_PlaceDown)
 	  	{
 	K230_RequestMode(K230_MODE_CIRCLE);
 	K230_ApplyMode();
-	g_circle_speed=0.4f;
+	g_circle_speed=1.0f;
 	  		switch (rank[i])
   			{
   			case champion:
@@ -374,7 +366,6 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					{
   						BlockBasic_LiftTo(DOWN,16);
   						BlockBasic_TurntableTo(Slop_dirjang(third_place));
-  						osDelay(500);
   						//加入奖杯转盘放置逻辑（已加）
   						flag_finish=true;
   					}
@@ -474,7 +465,7 @@ void Color_task(void *argument)
 				}
 				printf("\r\n");
 			}
-			osDelay(100);
+			osDelay(500);
 		}
 	}
 #endif
@@ -521,12 +512,13 @@ void BsRt_task(void *argument)
 				for (uint8_t slot = 1; slot <= 5; slot++) {
 					TT_SetColor(slot - 1, Collect_WaitObject());
 					if (slot < 5) {
-						osDelay(200);
+						osDelay(250);
 						BlockBasic_TurntableTo(slot + 1);
 					}
 				}
 				K=1;
 				g_color_collect_done = 1;
+				osDelay(200);
 				Servo_Angle(333.0f);
 			}
 			else {
@@ -541,6 +533,7 @@ void BsRt_task(void *argument)
 				}
 				K=0;
 				BlockBasic_LiftTo(UP, 44);
+					osDelay(200);
 				Servo_Angle(180.0f);
 				g_trophy_done = 1;
 			}
@@ -626,7 +619,7 @@ void OLED_TASK(void *argument)
   {
   	printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 
-		osDelay(500);
+		osDelay(50);
   }
 
   /* USER CODE END OLED_TASK */
@@ -740,7 +733,7 @@ void IMU_FUCTION(void *argument)
   	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
   	siyuan_imu_task();
   	// e = MahonyAHRS_GetEuler_deg();
-    osDelay(10);
+    osDelay(5);
   }
   /* USER CODE END IMU_FUCTION */
 }

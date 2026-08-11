@@ -95,8 +95,8 @@ void Trace_LineFollow_Stanley(void)
     v = TRACE_BASE_SPEED;
     {
         float abs_err = fabsf(k230_angle);
-        if (abs_err > 30.0f)       v = TRACE_BASE_SPEED * 0.5f;
-        else if (abs_err > 15.0f)  v = TRACE_BASE_SPEED * 0.75f;
+        if (abs_err > 30.0f)       v = TRACE_BASE_SPEED * 0.8f;
+        else if (abs_err > 15.0f)  v = TRACE_BASE_SPEED * 0.9f;
     }
     if (v < MIN_SPEED) v = MIN_SPEED;   /* 防止除零 */
 
