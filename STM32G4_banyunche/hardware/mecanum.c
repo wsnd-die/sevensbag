@@ -143,10 +143,14 @@ MecanumResult Mecanum_Calc_Full(float vx, float vy, float w)
         rr_raw *= MEC_LOW_SPEED_GAIN;
     }
 
-    /* 方向 + 限幅处理 */
+    /* 方向 + 限幅处理（左轮 FL/RL 需反转方向） */
     res.fl_speed = Mecanum_ProcessWheel(fl_raw, &res.fl_dir);
+    if (res.fl_dir==1){res.fl_dir=0;}
+    else{res.fl_dir=1;}
     res.fr_speed = Mecanum_ProcessWheel(fr_raw, &res.fr_dir);
     res.rl_speed = Mecanum_ProcessWheel(rl_raw, &res.rl_dir);
+    if (res.rl_dir==1){res.rl_dir=0;}
+    else{res.rl_dir=1;}
     res.rr_speed = Mecanum_ProcessWheel(rr_raw, &res.rr_dir);
 
     return res;
