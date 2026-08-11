@@ -11,6 +11,7 @@
 float g_circle_vx = 0.0f;
 float g_circle_vy = 0.0f;
 char  g_circle_dir = '?';
+float g_circle_speed = 1.0f;  /* 速度系数: 1.0=快(左侧), 0.4=慢(右侧) */
 
 /* ======================== 找圆跟随主函数 ======================== */
 

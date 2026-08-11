@@ -178,6 +178,14 @@ void TT_RotateReset(void)
     g_tt_rotate_idx = 0;
 }
 
+bool TT_IsDone(void)
+{
+    if (g_tt.ok && g_tt.idx < 16)
+        return g_tt_rotate_idx >= g_tt.cnt;
+    else
+        return g_tt_rotate_idx >= 5;
+}
+
 /* ============================================================
  * TogetPos — 取点位坐标
  * ============================================================ */

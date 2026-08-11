@@ -30,6 +30,7 @@ extern "C" {
 void Circle_Follow(void);
 
 extern bool flag_finish;
+extern float g_circle_speed;  /* 找圆速度系数 */
 extern float g_circle_vx;
 extern float g_circle_vy;
 extern char  g_circle_dir;

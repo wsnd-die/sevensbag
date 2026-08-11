@@ -1,8 +1,8 @@
 /**
  * @file color.c
  * @brief 颜色传感器 — GY-33 / OpenMV 双驱动
- *   - USE_OPENMV_COLOR 1: GY-33,  帧: 5A 5A type qty data[qty] chk
- *   - USE_OPENMV_COLOR 0: OpenMV, 帧: AA CC L A B BB DD (Lab 值, OpenMV 端采集)
+ *   - USE_OPENMV_COLOR 0: GY-33,  帧: 5A 5A type qty data[qty] chk
+ *   - USE_OPENMV_COLOR 1: OpenMV, 帧: AA CC L A B BB DD (Lab 值, OpenMV 端采集)
  */
 #include "Common_used.h"
 #include <stdlib.h>  /* abs() */
@@ -37,7 +37,7 @@
 
 #define LAB_GREEN_L  83
 #define LAB_GREEN_A  97
-#define LAB_GREEN_B  143
+#define LAB_GREEN_B  148
 #define LAB_GREEN_WL 0
 #define LAB_GREEN_WA 3
 #define LAB_GREEN_WB 1
@@ -45,16 +45,16 @@
 
 #define LAB_BLUE_L   96
 #define LAB_BLUE_A   125
-#define LAB_BLUE_B   88
+#define LAB_BLUE_B   90
 #define LAB_BLUE_WL  0
 #define LAB_BLUE_WA  1
 #define LAB_BLUE_WB  3
 #define LAB_BLUE_TOL 30
 
 /* 黑/白: 白=高L+低黑占比, 黑=高黑占比 */
-#define WHITE_L_MIN       89    /* l_mean >= 此值 且 */
+#define WHITE_L_MIN       81    /* l_mean >= 此值 且 */
 #define WHITE_BLACK_MAX   40    /* l_black <= 此值 → 白色 */
-#define BLACK_RATIO_MIN  100    /* l_black >= 此值 → 黑色 */
+#define BLACK_RATIO_MIN  180    /* l_black >= 此值 → 黑色 */
 #endif /* USE_OPENMV_COLOR */
 
 /* ---- 校准数据 (全局) ---- */
@@ -64,40 +64,30 @@ Color_Ambient_t g_color_ambient;
 /* ================================================================
  * 协议层 — GY-33
  * ================================================================ */
-#if USE_OPENMV_COLOR == 1
+#if USE_OPENMV_COLOR == 0
 
 static void Color_SendCmd(uint8_t cmd)
 {
-    SW_UART_SendByte(0xA5U);
-    SW_UART_SendByte(cmd);
-    SW_UART_SendByte((uint8_t)((0xA5U + cmd) & 0xFFU));
+    uint8_t txbuf[3];
+    txbuf[0] = 0xA5U;
+    txbuf[1] = cmd;
+    txbuf[2] = (uint8_t)((0xA5U + cmd) & 0xFFU);
+    HAL_UART_Transmit(&huart2, txbuf, 3U, 50U);
 }
 
 static bool Color_ReadFrame(uint8_t *r, uint8_t *g, uint8_t *b)
 {
-    uint8_t buf[10], chk, sum;
-    uint8_t last = 0, cur = 0;
     int retry = 500;
-    while (!(last == 0x5A && cur == 0x5A) && --retry > 0) {
-        last = cur;
-        cur = SW_UART_ReadByte();
+    while (!g_uart2_gy33_ready && --retry > 0) {
+        osDelay(2);
     }
     if (retry <= 0) return false;
 
-    uint8_t dtype = SW_UART_ReadByte();
-    uint8_t qty   = SW_UART_ReadByte();
-    for (uint8_t i = 0; i < qty && i < 8; i++) buf[i] = SW_UART_ReadByte();
-    chk = SW_UART_ReadByte();
-
-    sum = 0x5A + 0x5A + dtype + qty;
-    for (uint8_t i = 0; i < qty; i++) sum += buf[i];
-    if ((sum & 0xFF) != chk) return false;
-
-    if (dtype == 0x45 && qty == 3) {
-        *r = buf[0]; *g = buf[1]; *b = buf[2];
-        return true;
-    }
-    return false;
+    *r = g_uart2_gy33_r;
+    *g = g_uart2_gy33_g;
+    *b = g_uart2_gy33_b;
+    g_uart2_gy33_ready = 0;
+    return true;
 }
 
 HAL_StatusTypeDef Color_Init(void)
@@ -312,7 +302,7 @@ const char *Color_ToString(Color_TypeDef color)
 /* ================================================================
  * 校准 — 仅 GY-33
  * ================================================================ */
-#if USE_OPENMV_COLOR == 1
+#if USE_OPENMV_COLOR == 0
 
 void Color_Calibrate(Color_TypeDef color)
 {

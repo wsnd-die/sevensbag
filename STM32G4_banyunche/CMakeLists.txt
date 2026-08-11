@@ -40,8 +40,6 @@ enable_language(C ASM)
 add_executable(${CMAKE_PROJECT_NAME}
         hardware/Uart2_tbop10.c
         hardware/uart2_tbop10.h
-        hardware/waypoint.c
-        hardware/waypoint.h
         hardware/sw_uart.h
         hardware/sw_uart.c
         hardware/k230.c
@@ -61,6 +59,7 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/ahrs_mahony.h
         hardware/siyuan_imu.c
         hardware/siyuan_imu.h
+        hardware/collect_ir.c
 )
 
 # Add STM32CubeMX generated sources
