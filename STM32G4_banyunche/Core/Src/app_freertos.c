@@ -215,9 +215,9 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
-	 SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
+	 SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolL,Event_FindCircle,Event_QRCode,Event_LinFolR,Event_PlaceDown};
 	 // SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
-	 uint8_t NavafterNum[6]={1,1,3,1,1,5};
+	 uint8_t NavafterNum[6]={1,1,5,1,1,3};
 	//SystemMode_t Navafter_mode[4]={Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
 	// uint8_t NavafterNum[4]={2,1,1,5};
 	// SystemMode_t Navafter_mode[1]={Event_PlaceDown};
@@ -486,7 +486,7 @@ void BsRt_task(void *argument)
 	/*
 	 *舵机转盘任务
 	 */
-	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
+	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
 	Servo_SetAngle(38);
 	BlockBasic_TurntableTo(1);
 	IR_Init();
