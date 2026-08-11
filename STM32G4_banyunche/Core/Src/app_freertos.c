@@ -357,8 +357,9 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   			case champion:
   				{
   					//加入奖杯转盘放置逻辑
-  					if (flag_finish==false)
-  					{
+					if (flag_finish==false)
+					{
+						BlockBasic_DualArmSetPos(3);
   						BlockBasic_TurntableTo(Slop_dirjang(champion));
   						// osDelay(500);
   						flag_finish=true;
@@ -366,7 +367,6 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
-  						Servo_SetAngle(36);
   						Place('O');
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
@@ -383,8 +383,9 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					//丝干在走进亚军时要先升起，在寻线完进行了升起
 
   					//加入奖杯转盘放置逻辑
-  					if (flag_finish==false)
-  					{
+					if (flag_finish==false)
+					{
+						BlockBasic_DualArmSetPos(1);
   						BlockBasic_TurntableTo(Slop_dirjang(second_place));
   						// osDelay(500);
   						flag_finish=true;
@@ -392,15 +393,12 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
-  						BlockBasic_LiftTo(DOWN,24);
   						osDelay(1000);
   						Place('O');
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
-  						BlockBasic_LiftTo(UP,24);
   						task_send(Event_Navigation);
-  						Servo_SetAngle(42);
   						osDelay(800);
   						break;
   					}
@@ -411,8 +409,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   				{
   					if (flag_finish==false)
   					{
-  						BlockBasic_LiftTo(DOWN,43);
-  						Servo_SetAngle(37);
+						BlockBasic_DualArmSetPos(2);
   						BlockBasic_TurntableTo(Slop_dirjang(third_place));
   						osDelay(500);
   						//加入奖杯转盘放置逻辑（已加）
