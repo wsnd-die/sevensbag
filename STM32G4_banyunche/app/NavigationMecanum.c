@@ -23,7 +23,7 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {0.656f,    0.308f,  90.0  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {0.656f,    0.308f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
     {0.10f,      0.0f,      90* MECANUM_DEG_TO_RAD },//奖杯循线点
 
@@ -41,7 +41,7 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     {    -0.26f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
       {    0.074f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-          {-0.60,0.81,0},//回家点
+          {-0.60f,0.81f,0},//回家点
 
 };
 
