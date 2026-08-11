@@ -1,12 +1,12 @@
 /**
  * @file    angle_ctrl.c
- * @brief   纯角度控制: 角度环 → 角速度环 (串级 PID)
+ * @brief   纯角度控制: 角度环 (角速度环已去掉)
  *          仅维持目标角度，不做位置导航
  */
 #include "Common_used.h"
 
 #define CLAMP(v,lo,hi)  ((v)<(lo)?(lo):((v)>(hi)?(hi):(v)))
-#define DT              0.01f
+#define DEG2RAD         0.0174532925f   /* π/180 */
 
 /* 默认参数 */
 #define CFG_MAX_W       3.0f
@@ -21,33 +21,24 @@ static float norm_deg(float d)
 }
 
 /* ================================================================
- *  角度串级: 角度环 → 角速度环
- *   输入: 当前 yaw + 角速度
- *   输出: ac->cmd_w, ac->target_w, ac->yaw_err
+ *  角度环 (角速度环已去掉)
+ *   输入: 当前 yaw
+ *   输出: ac->cmd_w(rad/s), ac->yaw_err
  * ================================================================ */
 void AngleLoop_Update(AngleCtrl *ac,
                     float cur_yaw, float cur_w)
 {
-    /* ---- 陀螺仪滤波 ---- */
-    ac->gyro_filt = ac->gyro_alpha * cur_w
-                   + (1.0f - ac->gyro_alpha) * ac->gyro_filt;
+    (void)cur_w;   /* 角速度环已去掉, 陀螺仪角速度不再参与控制 */
 
-    /* 死区: 小于阈值当 0 */
-    float w_filt = ac->gyro_filt;
-    if (fabsf(w_filt) < ac->gyro_deadband) w_filt = 0.0f;
-
-    /* 缩放 */
-    w_filt *= ac->gyro_scale;
-
-    /* ---- 角度环 ---- */
+    /* ---- 角度环: yaw_err(deg) → 角速度指令 ---- */
     ac->yaw_err = norm_deg(ac->target_yaw - cur_yaw);
 
-    /* 中层: yaw → target_w (deg/s) */
-    ac->target_w = PID_calc(&ac->pid_angle, 0.0f, ac->yaw_err);
-    ac->target_w = CLAMP(ac->target_w, -CFG_MAX_W_DEG, CFG_MAX_W_DEG);
+    /* 角度环输出为角速度目标 (deg/s) */
+    float target_w = PID_calc(&ac->pid_angle, 0.0f, ac->yaw_err);
+    target_w = CLAMP(target_w, -CFG_MAX_W_DEG, CFG_MAX_W_DEG);
 
-    /* 内层: w → cmd_w (rad/s), 用滤波后的角速度做反馈 */
-    ac->cmd_w = PID_calc(&ac->pid_w, w_filt, ac->target_w);
+    /* deg/s → rad/s, 直接作为电机指令 */
+    ac->cmd_w = target_w * DEG2RAD;
     ac->cmd_w = CLAMP(ac->cmd_w, -ac->max_w, ac->max_w);
 }
 
@@ -63,18 +54,8 @@ void Angle_Init(AngleCtrl *ac)
     ac->yaw_tol = CFG_YAW_TOL;
 
     /* 角度环 */
-    const fp32 ak[3] = { 4.0f, 0.0f, 0.001f };
+    const fp32 ak[3] = { 2.9f, 0.0f, 0.001f };
     PID_init(&ac->pid_angle, PID_POSITION, ak, CFG_MAX_W_DEG, 30.0f);
-
-    /* 角速度环 */
-    const fp32 wk[3] = { 0.028f, 0.01f, 0.001f };
-    PID_init(&ac->pid_w, PID_POSITION, wk, CFG_MAX_W, 0.5f);
-
-    /* 陀螺仪滤波 */
-    ac->gyro_alpha    = 0.14f;
-    ac->gyro_deadband = 0.15f;
-    ac->gyro_scale    = 0.05f;
-    ac->gyro_filt     = 0.0f;
 }
 
 void Angle_SetTarget(AngleCtrl *ac, float yaw)
@@ -82,7 +63,6 @@ void Angle_SetTarget(AngleCtrl *ac, float yaw)
     ac->target_yaw = yaw;
     ac->state      = ANGLE_MOVING;
     PID_clear(&ac->pid_angle);
-    PID_clear(&ac->pid_w);
 }
 
 void Angle_UpdateTarget(AngleCtrl *ac, float yaw)
@@ -100,7 +80,7 @@ void Angle_Update(AngleCtrl *ac,
         return;
     }
 
-    /* ---- 角度串级 ---- */
+    /* ---- 角度环 ---- */
     AngleLoop_Update(ac, cur_yaw, cur_w);
 
     /* ---- 到达判断 ---- */

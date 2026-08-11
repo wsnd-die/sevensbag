@@ -17,6 +17,7 @@
 /* USER CODE BEGIN Includes */
 #include "Common_used.h"
 #include "stdlib.h"
+#include "HWT101_iic.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -231,14 +232,16 @@ void StartDefaultTask(void *argument)
 void NLF_TASK(void *argument)
 {
   /* USER CODE BEGIN NLF_TASK */
-#define FIND_CIRCLE_ONLY_TASK 1
+#define FIND_CIRCLE_ONLY_TASK 0
 #if FIND_CIRCLE_ONLY_TASK
 	K230_RequestMode(K230_MODE_CIRCLE);
 	K230_ApplyMode();
 	printf("[TASK] Find circle only\r\n");
 
 	for (;;) {
-		Circle_Follow();
+		// MecanumResult motor;
+		// motor = Mecanum_Calc_Full(0.0,0.0,0.5);
+		// Send_commandmotor(&motor);
 		osDelay(10);
 	}
 }
@@ -754,7 +757,9 @@ void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
 	EulerAngle e ;
-	// calibrate_gyro();
+	AngleCtrl angle_ctrl;
+	Angle_Init(&angle_ctrl);
+
 
   for(;;)
   {
@@ -764,7 +769,14 @@ void IMU_FUCTION(void *argument)
     //     TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
     // }
   	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
-  	siyuan_imu_task();
+  	// siyuan_imu_task();
+
+  	printf("Yaw=%.2f\r\n",HWT101_GetZeroYaw());
+  	Angle_UpdateTarget(&angle_ctrl, 0.0f);
+  	AngleLoop_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+  	Angle_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+  	MecanumResult motor = Mecanum_Calc(0.0f, angle_ctrl.cmd_w);
+  	Send_commandmotor(&motor);
   	// e = MahonyAHRS_GetEuler_deg();
     osDelay(10);
   }
