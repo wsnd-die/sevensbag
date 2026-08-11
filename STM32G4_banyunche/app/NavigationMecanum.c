@@ -46,7 +46,7 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 };
 
 /* 实际使用的路径点数量 */
-uint8_t  g_waypoint_count = 15;
+uint8_t  g_waypoint_count = 13;
 
   
 /* ============================================================

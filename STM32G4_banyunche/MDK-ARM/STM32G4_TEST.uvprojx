@@ -1686,6 +1686,16 @@
               <FilePath>..\hardware\color.h</FilePath>
             </File>
             <File>
+              <FileName>collect_ir.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\hardware\collect_ir.c</FilePath>
+            </File>
+            <File>
+              <FileName>collect_ir.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\hardware\collect_ir.h</FilePath>
+            </File>
+            <File>
               <FileName>sw_uart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\hardware\sw_uart.c</FilePath>

@@ -71,6 +71,7 @@
 #include "Trace_base.h"
 #include "Circle_base.h"
 #include "color.h"
+#include "collect_ir.h"
 #include "ColorIdentif.h"
 #include "QRcode.h"
 /*

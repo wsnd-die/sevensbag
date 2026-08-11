@@ -172,7 +172,6 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* USER CODE END RTOS_THREADS */
-  SW_UART_Init();
   Color_CalibLoad();
   /* USER CODE BEGIN RTOS_EVENTS */
   /* USER CODE END RTOS_EVENTS */
@@ -247,7 +246,7 @@ void NLF_TASK(void *argument)
 	uint8_t P_Nava=0;
 	uint8_t rank[3]={second_place,champion,third_place};
 
-	K230_SetMode(K230_MODE_CIRCLE);
+	K230_RequestMode(K230_MODE_CIRCLE);
 	K230_ApplyMode();
 	task_send(Event_Navigation);
 	// BlockBasic_LiftTo(UP,43);
@@ -280,7 +279,7 @@ void NLF_TASK(void *argument)
 
 else if (g_last_cmd.Mode==Event_LinFolL)
 {
-	K230_SetMode(K230_MODE_LINE);
+	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
   		Trace_LineFollow();
   		if (g_color_collect_done==1)
@@ -288,12 +287,14 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   			task_send(Event_Navigation);
   			Mecanum_StopAll();
   			printf("[TASK] LinFolL done\r\n");
+  			K230_RequestMode(K230_MODE_CIRCLE);
+  			K230_ApplyMode();
   		}
 	osDelay(10);
   	}
   	else if (g_last_cmd.Mode==Event_LinFolR)
   	{
-  		K230_SetMode(K230_MODE_LINE);
+  		K230_RequestMode(K230_MODE_LINE);
   		K230_ApplyMode();
   		Trace_LineFollow();
         if (g_trophy_done==1)
@@ -301,14 +302,14 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 	        task_send(Event_Navigation);
         	Mecanum_StopAll();
         	printf("[TASK] LinFolR done\r\n");
-        	K230_SetMode(K230_MODE_CIRCLE);
+        	K230_RequestMode(K230_MODE_CIRCLE);
         	K230_ApplyMode();
         }
 			osDelay(10);
   	}
 	else if (g_last_cmd.Mode==Event_FindCircle)
 			{
-		K230_SetMode(K230_MODE_CIRCLE);
+		K230_RequestMode(K230_MODE_CIRCLE);
 		K230_ApplyMode();
 				g_circle_speed = 1.0f;  /* 左侧快 */
 				//加入物料放置转盘逻辑
@@ -336,9 +337,9 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 			}
 else if (g_last_cmd.Mode==Event_PlaceDown)
 	  	{
-	K230_SetMode(K230_MODE_CIRCLE);
+	K230_RequestMode(K230_MODE_CIRCLE);
 	K230_ApplyMode();
-	g_circle_speed=0.3f;
+	g_circle_speed=1.0f;
 	  		switch (rank[i])
   			{
   			case champion:
@@ -413,7 +414,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						i++;
   						flag_finish=false;
   						task_send(Event_Navigation);
-  						K230_SetMode(K230_MODE_LINE);
+  						K230_RequestMode(K230_MODE_LINE);
   						K230_ApplyMode();
   						break;
   					}
@@ -448,89 +449,62 @@ void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
 	Color_Init();
-#define COLOR_CALIB 0
-#if COLOR_CALIB
-#define COLOR_CALIB_MODE 0
-    Color_SetLedLevel(0);
-	HAL_Delay(50);
-	Color_Init();
-	HAL_Delay(50);
+	Color_SetLedLevel(0);
 
+	/* 简单校准开关: 1=执行一次校准存 Flash, 0=实时打印 RGB+颜色 */
+#define COLOR_SIMPLE_CALIB 0
+#if COLOR_SIMPLE_CALIB
+	{
+		static const Color_TypeDef seq[5] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_WHITE, COLOR_BLACK};
+		static const char *name[5] = {"RED", "GREEN", "BLUE", "WHITE", "BLACK"};
 
-#if COLOR_CALIB_MODE
-	const char *steps[] = {"EMPTY","RED","GREEN","BLUE","WHITE","BLACK"};
-	const Color_TypeDef colors[] = {COLOR_RED,COLOR_GREEN,COLOR_BLUE,COLOR_WHITE,COLOR_BLACK};
-	char msg[64];
+		printf("[CALIB] Remove block, sample ambient in 3s\r\n");
+		osDelay(3000);
+		Color_CalibAmbient();
+		printf("[CALIB] Ambient saved\r\n");
 
-	HAL_UART_Transmit(&huart1, (uint8_t *)"=== EMPTY slot ===\r\n", 20, 100);
-	osDelay(1000);
-	Color_CalibAmbient();
-	HAL_UART_Transmit(&huart1, (uint8_t *)"Ambient OK\r\n", 13, 100);
-
-	for (int i = 0; i < 5; i++) {
-		int n = snprintf(msg, sizeof(msg), "=== Slot %d: %s ===\r\n", i+1, steps[i+1]);
-		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
-
-		if (BlockBasic_TurntableTo(i+1) == BLOCK_OK) {
-			// osDelay(2000);
+		for (int i = 0; i < 5; i++) {
+			printf("[CALIB] >>> Put %s in front, sample in 3s\r\n", name[i]);
+			osDelay(3000);
 			Color_DataTypeDef d;
 			if (Color_ReadData(&d) == HAL_OK) {
-				n = snprintf(msg, sizeof(msg), "  L=%d A=%d B=%d\r\n", d.l, d.a, d.b);
-				HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
+				Color_Calibrate(seq[i]);
+				printf("[CALIB] %s: R=%3d G=%3d B=%3d saved\r\n",
+				       name[i], d.red, d.green, d.blue);
+			} else {
+				printf("[CALIB] %s: no data!\r\n", name[i]);
 			}
-			Color_Calibrate(colors[i]);
-			n = snprintf(msg, sizeof(msg), "Slot %d OK\r\n", i+1);
-		} else {
-			n = snprintf(msg, sizeof(msg), "Slot %d FAIL\r\n", i+1);
 		}
-		HAL_UART_Transmit(&huart1, (uint8_t *)msg, n, 100);
-		osDelay(500);
+		Color_CalibSave();
+		printf("[CALIB] Saved to Flash\r\n");
+		for (;;) { osDelay(1000); }
 	}
-	Color_CalibSave();
-	HAL_UART_Transmit(&huart1, (uint8_t *)"=== SAVED ===\r\n", 14, 100);
-
-  for(;;) { osDelay(1000); }
-
 #else
-  for(;;)
-  {
-		char b[400]; int n = 0;
-
-		/* 实时 Lab + 颜色 */
-		Color_DataTypeDef d;
-		if (Color_ReadData(&d) == HAL_OK) {
-			Color_TypeDef c = Color_Judge(&d);
-			n += snprintf(b+n, sizeof(b)-n, "Blk=%d L=%d A=%d B=%d -> %s | ",
-				d.l, d.red, d.a, d.b, Color_ToString(c));
-		} else {
-			n += snprintf(b+n, sizeof(b)-n, "Lab=? | ");
-		}
-
-		n += snprintf(b+n, sizeof(b)-n, "\r\n");
-		HAL_UART_Transmit(&huart1, (uint8_t *)b, n, 100);
-		osDelay(50);
-  }
-#endif
-#endif
-	for (;;)
 	{
-		// printf("TRACE: ang=%.1f posX=%.1f v=%.2f w=%.2f | CIRCLE: dir=%c vx=%.2f vy=%.2f\r\n",
-		//        imu_yaw, g_trace_posx, g_trace_v, g_trace_w,
-		//        g_circle_dir, g_circle_vx, g_circle_vy);
-		{
-			Color_DataTypeDef data;
-			Color_TypeDef c;
-			// if (Color_ReadData(&data) == HAL_OK) {
-			// 	c = Color_Judge(&data);
-			// 	printf("[OpenMV] raw=%d | color=%d (%s)\r\n",
-			// 	       data.sensor_color, (int)c, Color_ToString(c));
-			// }
+		uint8_t raw_dumped = 0;
+		for (;;) {
+			Color_DataTypeDef d;
+			if (Color_ReadData(&d) == HAL_OK) {
+				printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d)\r\n",
+				       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
+				       (unsigned long)dbg_rx_cb, (int)huart2.RxState);
+			} else {
+				printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d)\r\n",
+				       (unsigned long)dbg_rx_cb, (int)huart2.RxState);
+			}
+			/* 一次性 dump 原始接收字节, 确认帧格式 */
+			if (!raw_dumped && dbg_rx_cb > 0) {
+				raw_dumped = 1;
+				printf("raw: ");
+				for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
+					printf("%02X ", dma_rx_buf[i]);
+				}
+				printf("\r\n");
+			}
+			osDelay(100);
 		}
-
-
-		osDelay(100);
-
 	}
+#endif
 
   /* USER CODE END Color_task */
 }
@@ -551,6 +525,7 @@ void BsRt_task(void *argument)
 	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
 	Servo_SetAngle(38);
 	BlockBasic_TurntableTo(1);
+	IR_Init();
 	osDelay(1000);
 	// BlockBasic_TurntableTo(1);
 	// BlockBasic_LiftTo(UP,20);
@@ -566,63 +541,25 @@ void BsRt_task(void *argument)
 			Color_SetLedLevel(0);
 			Color_Init();
 			HAL_Delay(50);
-#if USE_OPENMV_COLOR == 1  /* ---- GY-33 ---- */
+#if USE_OPENMV_COLOR == 0  /* ---- GY-33 ---- */
+			/* 收集: 红外对射检测物体进入 → 读颜色 → 旋转转盘 */
 			if (K==0) {
-				/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
 				for (uint8_t slot = 1; slot <= 5; slot++) {
-					Color_DataTypeDef d;
-					if (Color_ReadData(&d) != HAL_OK) {
-						slot--;
-						osDelay(5);   /* 等下一帧到达再重试 */
-						continue;
-					}
-					/* 计算和环境光基线的 RGB 差值（绝对值之和） */
-					int dr = abs((int)d.red   - g_color_ambient.r);
-					int dg = abs((int)d.green - g_color_ambient.g);
-					int db = abs((int)d.blue  - g_color_ambient.b);
-					if (dr < 30 && dg < 30 && db < 30) {
-						/* 跳变太小 → 环境光/空槽 → 停止 */
-						slot--;
-						osDelay(50);
-						continue;
-					}
-					/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
-					Color_TypeDef c = Color_Judge(&d);
-					TT_SetColor(slot - 1, c);
+					TT_SetColor(slot - 1, Collect_WaitObject());
 					if (slot < 5) {
-						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
-						HAL_Delay(500);  /* 等待舵机转到位 */
-
+						BlockBasic_TurntableTo(slot + 1);
+						osDelay(500);
 					}
 				}
 				K=1;
 				g_color_collect_done = 1;
 			}
 			else {
-				/* 逐槽位检测：RGB跳变→有物块→旋转；无跳变→环境光→停止 */
 				for (uint8_t slot = 1; slot <= 3; slot++) {
-					Color_DataTypeDef d;
-					if (Color_ReadData(&d) != HAL_OK) {
-						slot--;
-						osDelay(5);   /* 等下一帧到达再重试 */
-						continue;
-					}
-					/* 计算和环境光基线的 RGB 差值（绝对值之和） */
-					int dr = abs((int)d.red   - g_color_ambient.r);
-					int dg = abs((int)d.green - g_color_ambient.g);
-					int db = abs((int)d.blue  - g_color_ambient.b);
-					if (dr < 30 && dg < 30 && db < 30) {
-						/* 跳变太小 → 环境光/空槽 → 停止 */
-						slot--;
-						osDelay(50);
-						continue;
-					}
-					/* 跳变明显 → 有物块 → 判断颜色 → 旋转 */
-					Color_TypeDef c = Color_Judge(&d);
-					//TT_SetColor(slot - 1, c);
+					Collect_WaitObject();
 					if (slot < 3) {
-						if (BlockBasic_TurntableTo(slot + 1) != BLOCK_OK) break;
-						HAL_Delay(500);  /* 等待舵机转到位 */
+						BlockBasic_TurntableTo(slot + 1);
+						osDelay(500);
 					}
 				}
 				K=0;
@@ -736,10 +673,10 @@ void FC_TASK(void *argument)
   {
 
   	// if (g_last_cmd.Mode==Event_FindCircle)  {  Circle_Follow(); }
-  	printf("yaw=%.2f pitch=%.2f roll=%.2f\r\n",
-			 siyuan_yaw * RAD_TO_DEG,
-			 siyuan_pitch * RAD_TO_DEG,
-			 siyuan_roll * RAD_TO_DEG);
+  	// printf("yaw=%.2f pitch=%.2f roll=%.2f\r\n",
+			//  siyuan_yaw * RAD_TO_DEG,
+			//  siyuan_pitch * RAD_TO_DEG,
+			//  siyuan_roll * RAD_TO_DEG);
     osDelay(50);
   }
   /* USER CODE END FC_TASK */

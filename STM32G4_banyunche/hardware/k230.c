@@ -176,7 +176,7 @@ bool K230_GetCircleDir(char *dir)
 {
     if (!k230_ctx.dir_fresh) return false;
     if (dir) *dir = k230_ctx.dir;
-    k230_ctx.dir_fresh = 'O';
+    k230_ctx.dir_fresh = 0;
     return true;
 }
 

@@ -10,6 +10,51 @@ uint8_t Flag_TBOFdata = 0;
 volatile uint8_t g_uart2_color_ready = 0;
 uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
 
+/* ---- GY-33 颜色帧接收 (UART2, 5A 5A type qty data[qty] chk) ---- */
+volatile uint8_t g_uart2_gy33_ready = 0;
+uint8_t g_uart2_gy33_r, g_uart2_gy33_g, g_uart2_gy33_b;
+
+/* GY-33 帧解析状态机 (可跨 DMA 缓冲拆包) */
+static uint8_t gy33_rx_buf[16];
+static uint8_t gy33_rx_idx = 0;
+static uint8_t gy33_rx_state = 0;   /* 0=等5A, 1=等第2个5A, 2=收数据 */
+
+static void UART2_Gy33ParseByte(uint8_t b)
+{
+    uint8_t type, qty, sum;
+
+    switch (gy33_rx_state) {
+    case 0:
+        if (b == 0x5A) { gy33_rx_buf[0] = b; gy33_rx_state = 1; }
+        break;
+    case 1:
+        if (b == 0x5A) { gy33_rx_buf[1] = b; gy33_rx_idx = 2; gy33_rx_state = 2; }
+        else gy33_rx_state = (b == 0x5A) ? 1 : 0;
+        break;
+    case 2:
+        gy33_rx_buf[gy33_rx_idx++] = b;
+        if (gy33_rx_idx < 4) break;              /* 还没收到 type+qty */
+        type = gy33_rx_buf[2];
+        qty  = gy33_rx_buf[3];
+        if (qty <= 12 && gy33_rx_idx >= (4u + qty + 1u)) {   /* 帧完整 */
+            sum = 0x5A + 0x5A + type + qty;
+            for (uint8_t i = 0; i < qty; i++) sum += gy33_rx_buf[4 + i];
+            if ((sum & 0xFF) == gy33_rx_buf[4 + qty]) {
+                if (type == 0x45 && qty == 3) {   /* RGB */
+                    g_uart2_gy33_r = gy33_rx_buf[4];
+                    g_uart2_gy33_g = gy33_rx_buf[5];
+                    g_uart2_gy33_b = gy33_rx_buf[6];
+                    g_uart2_gy33_ready = 1;
+                }
+            }
+            gy33_rx_state = 0; gy33_rx_idx = 0;
+        } else if (gy33_rx_idx >= 16) {           /* 溢出保护 */
+            gy33_rx_state = 0; gy33_rx_idx = 0;
+        }
+        break;
+    }
+}
+
 static void UART2_ScanColorFrame(const uint8_t *data, uint16_t len)
 {
     /* 扫描 AA l_black l_mean A B DD */
@@ -98,6 +143,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         /* 扫描里程计帧 AA CC ... BB DD */
         for (uint16_t i = 0; i < Size; i++) {
             UART2_FSM_Parse_Byte(dma_rx_buf[i]);
+            UART2_Gy33ParseByte(dma_rx_buf[i]);   /* GY-33 颜色帧 5A 5A ... */
         }
         __HAL_UART_CLEAR_FLAG(&huart2, UART_CLEAR_OREF | UART_CLEAR_FEF | UART_CLEAR_NEF);
         HAL_UARTEx_ReceiveToIdle_DMA(&huart2, dma_rx_buf, DMA_RX_BUF_SIZE);
