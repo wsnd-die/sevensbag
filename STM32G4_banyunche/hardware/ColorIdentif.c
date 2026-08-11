@@ -83,34 +83,19 @@ void TT_Init(void)
  * ============================================================ */
 void SetQR(uint8_t idx)
 {
-    uint8_t cnt;
-
-    if      (current_task == Event_Task1) cnt = 5;
-    else if (current_task == Event_Task2) cnt = 3;
-    else return;
-
     g_tt.idx  = idx;
     g_tt.ok   = 1;
-    g_tt.cnt  = cnt;
+    g_tt.cnt  = 5;    /* 固定物块任务: 5 个槽位 */
 
     /* 清空反向索引 */
     for (uint8_t i = 0; i < COLOR_COUNT; i++)
         g_tt.rev[i] = SLOT_NONE;
 
-    if (current_task == Event_Task1)
-    {
-        if (idx >= 16) { g_tt.ok = 0; return; }
-        for (uint8_t s = 0; s < 5; s++) {
-            uint8_t c = T1[idx][s];
-            g_tt.color[s] = c;           /* 槽位→颜色 */
-            g_tt.rev[c]   = s;           /* 颜色→槽位 */
-        }
-    }
-    else
-    {
-        if (idx >= 6)  { g_tt.ok = 0; return; }
-        for (uint8_t s = 0; s < 3; s++)
-            g_tt.trophy[s] = T2[idx][s];
+    if (idx >= 16) { g_tt.ok = 0; return; }
+    for (uint8_t s = 0; s < 5; s++) {
+        uint8_t c = T1[idx][s];
+        g_tt.color[s] = c;           /* 槽位→颜色 */
+        g_tt.rev[c]   = s;           /* 颜色→槽位 */
     }
 }
 

@@ -151,7 +151,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         while (error_deg < -180.0f) error_deg += 360.0f;
 
         /* 已经到位则跳过 */
-        if (fabsf(error_deg) >= 4.0f) {
+        if (fabsf(error_deg) >= 1.0f) {
             AngleCtrl ac;
             Angle_Init(&ac);
             Angle_SetTarget(&ac, target_deg);
@@ -194,10 +194,10 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
     while (error_deg_2 < -180.0f) error_deg_2 += 360.0f;
 
     /* 已经到位则跳过 */
-    if (fabsf(error_deg_2) >= 4.0f) {
+    if (fabsf(error_deg_2) >= 1.0f) {
         AngleCtrl ac_2;
         Angle_Init(&ac_2);
-        Angle_SetTarget(&ac_2, target_deg);
+        Angle_SetTarget(&ac_2, target_deg);   /* 修正: 目标必须是绝对角度, 不是偏差 */
 
         while (!Angle_Arrived(&ac_2)) {
             Angle_Update(&ac_2,siyuan_yaw*RAD_TO_DEG ,  imu660ra_gyro_transition(imu660ra_gyro_x));

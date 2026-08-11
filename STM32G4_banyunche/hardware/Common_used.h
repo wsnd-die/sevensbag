@@ -80,8 +80,6 @@
  */
 #include "key.h"
 #include "k230.h"
-#include "sw_uart.h"
-#include "waypoint.h"
 #include "can.h"
 #include "pid.h"
 /*
@@ -131,6 +129,10 @@ extern volatile float front_angle;
 /* --- 语音数据 --- */
 extern uint8_t buffer_flag;
 extern uint8_t buf;
+
+/* --- 角度控制任务 (FC_TASK) --- */
+extern volatile uint8_t g_angle_ctrl_enable;   /* 1=使能角度控制 */
+extern volatile float   g_angle_target_yaw;    /* 目标角度 (deg) */
 
 /* ============================================================
  * 9. 项目全局函数原型
