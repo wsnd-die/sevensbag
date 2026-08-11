@@ -33,13 +33,13 @@ void Circle_Follow(void)
         break;
 
     case 'N':
-        g_circle_vx =  CIRCLE_SPEED_V * g_circle_speed;
+        g_circle_vx = -CIRCLE_SPEED_V * g_circle_speed;
         g_circle_vy =  0.0f;
 
         break;
 
     case 'S':
-        g_circle_vx = -CIRCLE_SPEED_V * g_circle_speed;
+        g_circle_vx =  CIRCLE_SPEED_V * g_circle_speed;
         g_circle_vy =  0.0f;
 
         break;

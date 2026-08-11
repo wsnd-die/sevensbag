@@ -231,6 +231,18 @@ void StartDefaultTask(void *argument)
 void NLF_TASK(void *argument)
 {
   /* USER CODE BEGIN NLF_TASK */
+#define FIND_CIRCLE_ONLY_TASK 1
+#if FIND_CIRCLE_ONLY_TASK
+	K230_RequestMode(K230_MODE_CIRCLE);
+	K230_ApplyMode();
+	printf("[TASK] Find circle only\r\n");
+
+	for (;;) {
+		Circle_Follow();
+		osDelay(10);
+	}
+}
+#else
 	/*
 	 *导航循线任务
 	 */
@@ -436,6 +448,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 
   	osDelay(10);
 }
+#endif
   /* USER CODE END NLF_TASK */
 
 /* USER CODE BEGIN Header_Color_task */
@@ -512,8 +525,7 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
-	Servo_SetAngle(38);
-	BlockBasic_TurntableTo(1);
+	BlockBasic_DualArmSetPos(1);
 	osDelay(1000);
 	// BlockBasic_TurntableTo(1);
 	// BlockBasic_LiftTo(UP,20);

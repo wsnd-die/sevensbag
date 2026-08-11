@@ -22,7 +22,7 @@ typedef struct {
 } BlockDualArmPos;
 
 static const BlockDualArmPos block_dual_arm_pos_table[] = {
-    {81.0f,  89.5f},   /* pos 1: 初始位置 */
+    {81.0f,  89.0f},   /* pos 1: 初始位置 */
     {72.0f,  79.0f},   /* pos 2: 最低点 */
     {94.0f,  101.0f},  /* pos 3: 第二位置 */
 };
