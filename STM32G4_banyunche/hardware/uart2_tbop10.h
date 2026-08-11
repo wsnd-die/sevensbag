@@ -6,7 +6,7 @@
 #include <string.h>
 
 #ifndef LEGACY_USART2_ODOM_ENABLE
-#define LEGACY_USART2_ODOM_ENABLE 0
+#define LEGACY_USART2_ODOM_ENABLE 1   /* 1=开启 USART2 DMA 接收 (TBOP10 里程计/颜色) */
 #endif
 
 #define TB_RX_BUFF_SIZE 64
@@ -52,6 +52,8 @@ typedef union
 extern float imu_gz;
 extern float imu_yaw;
 extern uint8_t Flag_TBOFdata;
+/* UART2 收到 'T' → 手动触发进入下一个任务 (扫码任务解卡用) */
+extern volatile uint8_t g_uart2_trigger_advance;
 
 #if LEGACY_USART2_ODOM_ENABLE
 extern UART_STATE fsm_state;

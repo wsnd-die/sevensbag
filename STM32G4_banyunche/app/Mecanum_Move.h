@@ -15,16 +15,16 @@ extern "C" {
 #define MECANUM_RAD_TO_DEG  (180.0f / MECANUM_PI)
 
 /*
- * 电机地址：
- * 1号：前右 FR
+ * 电机地址（与 Send_motor.c 实测硬件映射一致）：
+ * 1号：前左 FL
  * 2号：后左 RL
- * 3号：前左 FL
- * 4号：后右 RR
+ * 3号：后右 RR
+ * 4号：前右 FR
  */
-#define MECANUM_ADDR_FR  1U
+#define MECANUM_ADDR_FR  4U
 #define MECANUM_ADDR_RL  2U
-#define MECANUM_ADDR_FL  3U
-#define MECANUM_ADDR_RR  4U
+#define MECANUM_ADDR_FL  1U
+#define MECANUM_ADDR_RR  3U
 /**
  * @brief 麦轮底盘参数
  */
@@ -59,10 +59,10 @@ typedef struct {
     /*
      * 轮子向车体前方滚动时，对应驱动器的dir值。
      *
-     * forward_dir[1]：前右
+     * forward_dir[1]：前左
      * forward_dir[2]：后左
-     * forward_dir[3]：前左
-     * forward_dir[4]：后右
+     * forward_dir[3]：后右
+     * forward_dir[4]：前右
      */
     uint8_t forward_dir[5];
 

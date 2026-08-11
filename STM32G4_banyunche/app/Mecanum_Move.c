@@ -15,11 +15,12 @@
     .max_motor_rpm = 120,
     .min_move_time_s = 0.1f,
 
-    /* 驱动器逻辑方向: 1=正向, 0=反向 */
-    .forward_dir[MECANUM_ADDR_FR] = 1U,
-    .forward_dir[MECANUM_ADDR_RL] = 0U,
-    .forward_dir[MECANUM_ADDR_FL] = 0U,
-    .forward_dir[MECANUM_ADDR_RR] = 1U,
+    /* 驱动器逻辑方向: 1=正向, 0=反向
+     * （位置模式实测方向与推导相反，4 个值整体取反修正） */
+    .forward_dir[MECANUM_ADDR_FR] = 0U,
+    .forward_dir[MECANUM_ADDR_RL] = 1U,
+    .forward_dir[MECANUM_ADDR_FL] = 1U,
+    .forward_dir[MECANUM_ADDR_RR] = 0U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
     .acceleration = 80U
@@ -118,25 +119,25 @@ static bool Mecanum_CalcMoveImpl(
      * dtheta > 0：逆时针
      */
 
-    /* 1号：前右 FR */
+    /* 4号=前右 FR */
     distance[MECANUM_ADDR_FR] =
         body_dx_m +
         body_dy_m +
         k * dtheta_rad;
 
-    /* 2号：后左 RL */
+    /* 2号=后左 RL */
     distance[MECANUM_ADDR_RL] =
         body_dx_m +
         body_dy_m -
         k * dtheta_rad;
 
-    /* 3号：前左 FL */
+    /* 1号=前左 FL */
     distance[MECANUM_ADDR_FL] =
         body_dx_m -
         body_dy_m -
         k * dtheta_rad;
 
-    /* 4号：后右 RR */
+    /* 3号=后右 RR */
     distance[MECANUM_ADDR_RR] =
         body_dx_m -
         body_dy_m +
@@ -712,10 +713,10 @@ void Mecanum_VelocityMove(float vx_m_s, float vy_m_s, float omega_rad_s,
 
     /*
      * X 型麦轮逆运动学（与 Mecanum_CalcMoveImpl 同源）：
-     *   FR(1): +vx + vy + k*ω
-     *   RL(2): +vx + vy - k*ω
-     *   FL(3): +vx - vy - k*ω
-     *   RR(4): +vx - vy + k*ω
+     *   FR(4号): +vx + vy + k*ω
+     *   RL(2号): +vx + vy - k*ω
+     *   FL(1号): +vx - vy - k*ω
+     *   RR(3号): +vx - vy + k*ω
      */
     wheel_linear[MECANUM_ADDR_FR] = vx_m_s + vy_m_s + k * w;
     wheel_linear[MECANUM_ADDR_RL] = vx_m_s + vy_m_s - k * w;

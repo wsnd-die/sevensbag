@@ -17,6 +17,17 @@ void QRcode_Clear(void)
     memset(qrcode_rx_buf, 0, sizeof(qrcode_rx_buf));
 }
 
+/* 从串口直接写入二维码数据 (USART2 扫码模块), 置 QR_Flag */
+void QRcode_SetData(const uint8_t *buf, uint16_t len)
+{
+    if (buf == NULL || len == 0) return;
+    if (len > QRCODE_RX_BUF_SIZE) len = QRCODE_RX_BUF_SIZE;
+    memset(qrcode_rx_buf, 0, sizeof(qrcode_rx_buf));
+    memcpy(qrcode_rx_buf, buf, len);
+    qrcode_rx_len = len;
+    QR_Flag = 1;
+}
+
 const uint8_t *QRcode_GetBuffer(uint16_t *len)
 {
     if (len != NULL) {
@@ -40,8 +51,13 @@ HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeou
 
 uint8_t Qr_Get(void) {
 
-    while (Read_QrFlag()==0) {
+    /* 阻塞等扫码; UART2 收到 'T' 可手动解卡进入下一个任务 */
+    while (Read_QrFlag()==0 && !g_uart2_trigger_advance) {
         osDelay(50);
+    }
+    if (g_uart2_trigger_advance) {
+        g_uart2_trigger_advance = 0;
+        return 0;   /* 'T' 手动触发, 无有效二维码 */
     }
     return QR_deel();
 }

@@ -40,6 +40,8 @@ typedef struct {
 void QRcode_Start(void);
 void QRcode_Clear(void);
 const uint8_t *QRcode_GetBuffer(uint16_t *len);
+/* 从串口直接写入二维码数据 (USART2 扫码模块), 置 QR_Flag */
+void QRcode_SetData(const uint8_t *buf, uint16_t len);
 HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeout);
 uint8_t Slop_dirjang(Jang_type jang);
 

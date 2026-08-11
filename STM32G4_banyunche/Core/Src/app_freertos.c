@@ -18,6 +18,7 @@
 #include "Common_used.h"
 #include "stdlib.h"
 #include "HWT101_iic.h"
+#include "block_basic.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -234,11 +235,12 @@ void NLF_TASK(void *argument)
   /* USER CODE BEGIN NLF_TASK */
 #define FIND_CIRCLE_ONLY_TASK 0
 #if FIND_CIRCLE_ONLY_TASK
-	K230_RequestMode(K230_MODE_CIRCLE);
+	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
 	printf("[TASK] Find circle only\r\n");
 
 	for (;;) {
+		Trace_LineFollow();
 		// MecanumResult motor;
 		// motor = Mecanum_Calc_Full(0.0,0.0,0.5);
 		// Send_commandmotor(&motor);
@@ -311,6 +313,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   	{
   		K230_RequestMode(K230_MODE_LINE);
   		K230_ApplyMode();
+
   		Trace_LineFollow();
         if (g_trophy_done==1)
         {
@@ -461,8 +464,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
-	Color_Init();
-	Color_SetLedLevel(0);
+	//Color_Init();
+	//Color_SetLedLevel(0);
 
 	/* 简单校准开关: 1=执行一次校准存 Flash, 0=实时打印 RGB+颜色 */
 #define COLOR_SIMPLE_CALIB 0
@@ -496,12 +499,12 @@ void Color_task(void *argument)
 	{
 		for (;;) {
 			Color_DataTypeDef d;
-			if (Color_ReadData(&d) == HAL_OK) {
-				printf("R=%3d G=%3d B=%3d -> %s\r\n",
-				       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
-			} else {
-				printf("R= ? G= ? B= ? (no data)\r\n");
-			}
+			// if (Color_ReadData(&d) == HAL_OK) {
+			// 	printf("R=%3d G=%3d B=%3d -> %s\r\n",
+			// 	       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
+			// } else {
+			// 	printf("R= ? G= ? B= ? (no data)\r\n");
+			// }
 			/* 一次性 dump 原始接收字节, 确认帧格式 */
 			osDelay(100);
 		}
@@ -527,6 +530,7 @@ void BsRt_task(void *argument)
 	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
 	BlockBasic_DualArmSetPos(1);
 	osDelay(1000);
+	BlockBasic_TurntableTo(1);
 	// BlockBasic_TurntableTo(1);
 	// BlockBasic_LiftTo(UP,20);
 	// HAL_Delay(1000);
@@ -535,12 +539,12 @@ void BsRt_task(void *argument)
 	{
 		osDelay(10);
 
-		if (g_last_cmd.Mode==Event_LinFolL||g_last_cmd.Mode==Event_LinFolR)
+		if (g_last_cmd.Mode==Event_LinFolL || g_last_cmd.Mode==Event_LinFolR)
 		{
 
 			Color_SetLedLevel(0);
-			Color_Init();
-			HAL_Delay(50);
+			//Color_Init();
+			osDelay(50);
 #if USE_OPENMV_COLOR == 1  /* ---- GY-33 ---- */
 			/* 收集: 红外对射检测物体进入 → 读颜色 → 旋转转盘 */
 			if (K==0) {
@@ -548,7 +552,7 @@ void BsRt_task(void *argument)
 					Color_DataTypeDef d;
 					if (Color_ReadData(&d) != HAL_OK) {
 						slot--;
-						osDelay(5);
+						osDelay(10);
 						continue;
 					}
 					int dr = abs((int)d.red   - g_color_ambient.r);
@@ -731,6 +735,8 @@ void QR_TASK(void *argument)
   		if (clr_rank_flag==false)
   		{
   			QR_result=Qr_Get();
+  			printf("QR_result=%d\n",QR_result);
+  			//Mecanum_MoveWithEncoder(&g_mecanum_config, 0.1f, 0.0f, 0.0f, 1.0f, 80U, 5000);
   			clr_rank_flag=true;
   		}
   		else
@@ -771,12 +777,15 @@ void IMU_FUCTION(void *argument)
   	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
   	// siyuan_imu_task();
 
-  	printf("Yaw=%.2f\r\n",HWT101_GetZeroYaw());
-  	Angle_UpdateTarget(&angle_ctrl, 0.0f);
-  	AngleLoop_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
-  	Angle_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
-  	MecanumResult motor = Mecanum_Calc(0.0f, angle_ctrl.cmd_w);
-  	Send_commandmotor(&motor);
+  	/* HWT101零点校准 */
+  	 //printf("Yaw=%.2f\r\n",HWT101_GetZeroYaw());
+  	// Angle_UpdateTarget(&angle_ctrl, 0.0f);
+  	// AngleLoop_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+  	// Angle_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+  	// MecanumResult motor = Mecanum_Calc(0.0f, angle_ctrl.cmd_w);
+  	// Send_commandmotor(&motor);
+
+
   	// e = MahonyAHRS_GetEuler_deg();
     osDelay(10);
   }

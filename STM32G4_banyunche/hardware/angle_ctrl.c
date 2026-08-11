@@ -54,7 +54,7 @@ void Angle_Init(AngleCtrl *ac)
     ac->yaw_tol = CFG_YAW_TOL;
 
     /* 角度环 */
-    const fp32 ak[3] = { 2.9f, 0.0f, 0.001f };
+    const fp32 ak[3] = { 0.9f, 0.0f, 0.001f };
     PID_init(&ac->pid_angle, PID_POSITION, ak, CFG_MAX_W_DEG, 30.0f);
 }
 

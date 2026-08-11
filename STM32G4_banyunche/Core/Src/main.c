@@ -181,7 +181,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  /* UART2_StartDMAReceive(); */ /* USART2 现用于调试输出 */
+  UART2_StartDMAReceive();   /* 打开串口2: USART2 DMA+IDLE 接收 (TBOP10 里程计); TX 仍用于 printf 调试 */
  //    Color_Init();
 //	IMU660RC_Init();
 //	IMU660RC_AttitudeInit();

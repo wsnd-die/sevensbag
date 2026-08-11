@@ -24,9 +24,9 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {0.656f,    0.308f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {-0.300f,    0.608f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
-    {0.10f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
+    {-0.20f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
 
       {    0.47f,     1.2f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
       {    0.0f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
@@ -123,14 +123,34 @@ bool Nav_GoToWorld(float target_x, float target_y, float target_yaw)
 /*==============================================
  * 车体坐标运动 (Body-frame)
  *   平移: 麦轮解算 (世界坐标, 不含旋转)
- *   旋转: AngleCtrl 串级 PID, 平移到位后单独执行
+ *   旋转: 参考 IMU_FUCTION 的 HWT101 零点校准模式 (角度环)
  * ============================================================ */
 
+/**
+ * @brief 按 IMU_FUCTION 的 HWT101 零点校准模式控制转向:
+ *        Angle_UpdateTarget + AngleLoop_Update/Angle_Update + Mecanum_Calc(0,cmd_w)
+ * @param target_deg 目标世界航向 (deg)
+ */
+static void Nav_TurnToDeg(float target_deg)
+{
+    AngleCtrl ac;
+    Angle_Init(&ac);
+    Angle_UpdateTarget(&ac, -target_deg);
+
+    while (!Angle_Arrived(&ac)) {
+        AngleLoop_Update(&ac, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+        Angle_Update(&ac, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+        MecanumResult motor = Mecanum_Calc(0.0f, ac.cmd_w);
+        Send_commandmotor(&motor);
+        osDelay(10);
+    }
+    Mecanum_StopAll();
+}
 
 /**
  * @brief 车体坐标运动
  *        forward_m/left_m: 车体坐标平移量 (m), 麦轮单独执行
- *        rotate_rad:       平移到位后用 AngleCtrl 旋转 (rad, CCW+)
+ *        rotate_rad:       目标世界航向 (rad, CCW+), 转到该航向后平移
  */
 bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
 {
@@ -143,30 +163,9 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         return true;
     }
 
-    /* ---- 2. 旋转段: rotate_rad 为世界绝对角度(rad), AngleCtrl 闭环 ---- */
-
-        float target_deg = rotate_rad*(180.0f/MECANUM_PI) ;
-        float error_deg   = target_deg - HWT101_GetZeroYaw();
-        while (error_deg >  180.0f) error_deg -= 360.0f;
-        while (error_deg < -180.0f) error_deg += 360.0f;
-
-        /* 已经到位则跳过 */
-        if (fabsf(error_deg) >= 5.0f) {
-            AngleCtrl ac;
-            Angle_Init(&ac);
-            Angle_SetTarget(&ac, target_deg);
-
-            while (!Angle_Arrived(&ac)) {
-                Angle_Update(&ac, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
-                MecanumResult motor = Mecanum_Calc(0.0f, -ac.cmd_w);
-                Send_commandmotor(&motor);
-                osDelay(30);
-            }
-            Mecanum_StopAll();
-        }
-
-        Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
-
+    /* ---- 2. 旋转段: 转到目标世界航向 (参考 IMU_FUCTION 角度控制模式) ---- */
+    // Nav_TurnToDeg(rotate_rad * (180.0f / MECANUM_PI));
+    // Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
 
     /* ---- 3. 平移段: 车体坐标 → 麦轮 (dtheta=0, 不旋转) ---- */
     if (dist >= 0.005f) {
@@ -187,29 +186,9 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         Self_Dir.y += forward_m * sin_y + left_m * cos_y;
     }
 
-
-
-    float error_deg_2   = target_deg - HWT101_GetZeroYaw();
-    while (error_deg_2 >  180.0f) error_deg_2 -= 360.0f;
-    while (error_deg_2 < -180.0f) error_deg_2 += 360.0f;
-
-    /* 已经到位则跳过 */
-    if (fabsf(error_deg_2) >= 5.0f) {
-        AngleCtrl ac_2;
-        Angle_Init(&ac_2);
-        Angle_SetTarget(&ac_2, error_deg_2);
-
-        while (!Angle_Arrived(&ac_2)) {
-            Angle_Update(&ac_2, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
-            MecanumResult motor = Mecanum_Calc(0.0f, -ac_2.cmd_w);
-            Send_commandmotor(&motor);
-            osDelay(30);
-        }
-        Mecanum_StopAll();
-    }
-
+    /* ---- 4. 平移后校准航向 (参考 IMU_FUCTION 角度控制模式) ---- */
+    Nav_TurnToDeg(rotate_rad * (180.0f / MECANUM_PI));
     Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
-
 
     return true;
 }
@@ -217,7 +196,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
 /** @brief 前进/后退 (车体坐标) */
 bool Nav_MoveForward(float distance_m)
 {
-    return Nav_MoveBody(distance_m, 0.0f, 0.0f);
+    return Nav_MoveBody(-distance_m, 0.0f, 0.0f);
 }
 
 /** @brief 左移/右移 (车体坐标) */
