@@ -6,11 +6,11 @@
 
 #include "Common_used.h"
 
-/* 当前里程计位姿） */
+/* 当前里程计位姿 */
 extern World_Dir_t World_position;
 
 /**
- * @brief 增量式编码器里程计，周期性调用（每 10~20ms）
+ * @brief 增量式编码器里程计
  * @return 当前世界位姿（同时更新全局 World_position）
  */
 World_Dir_t World_position_get(void);
