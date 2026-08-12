@@ -523,5 +523,5 @@ CMake 构建输出目录，包含编译中间文件、最终 ELF/HEX/BIN、compi
 - `main()` 中 IMU 初始化被注释，当前导航 yaw/gz 主要来自 USART2 的 TBOP 帧，而不是板载 IMU 驱动。
 - `TIM3` 已在 CubeMX 和代码中配置 CH1/CH2/CH3，`Hal_starte()` 同步启动三路 PWM；后续外设配置变更需要同步更新本文档。
 - `can.h` 中 `can_SendCmd(__IO uint8_t *cmd, uint8_t len)` 与 `can.c` 中 `can_SendCmd(uint8_t *cmd, uint8_t len)` 参数限定符不完全一致，通常可编译但建议统一。
-- `mecanum.h` 中 `MEC_WHEEL_RADIUS` 注释写 m，但数值 `3.75f` 更像 cm 或其他单位；`Odometry_Apply_Calib()` 又按 mm 粗略换算使用，后续做里程计时需要统一单位。
+- ~~`mecanum.h` 中 `MEC_WHEEL_RADIUS` 注释写 m，但数值更像 cm~~（已修复：`MEC_WHEEL_RADIUS=3.75` 单位明确为 **cm**=37.5mm，与 `Mecanum_Move.c` 的 `wheel_radius_m=0.0375` 一致；`malu_cm_topluse_s()` 的 2π 缺失 bug 也已修正）。
 - 多个中文注释存在编码异常，不影响编译，但影响后续维护阅读。

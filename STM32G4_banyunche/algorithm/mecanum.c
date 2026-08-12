@@ -146,7 +146,9 @@ MecanumResult Mecanum_Calc_Full(float vx, float vy, float w)
 
 uint32_t malu_cm_topluse_s(float cm)
 {
-    return (uint32_t)(cm/MEC_WHEEL_RADIUS/PI*3200);
+    /* 脉冲 = 厘米 / 周长(2πR) × 每圈脉冲数
+     * 注意周长是 2πR 不是 πR, 之前漏了 ×2 会多算一倍脉冲 */
+    return (uint32_t)(cm / (2.0f * MEC_WHEEL_RADIUS * PI) * 3200);
 }
 
 /* ================================================================
@@ -259,11 +261,11 @@ extern void Send_commandmotor(MecanumResult *data);
 OdometryCalib g_calib = {.state = CALIB_IDLE};
 
 /* 编码器增量: 当前值 − 起点 */
-static void enc_delta(EncoderData *start, float *d_forward, float *d_right)
+static void enc_delta(EncoderData *start, float *d_forward, float *d_side)
 {
     EncoderData now;
     if (!Mecanum_Read_AllPositions(&now, 20)) {
-        *d_forward = 0.0f; *d_right = 0.0f;
+        *d_forward = 0.0f; *d_side = 0.0f;
         return;
     }
 
@@ -274,8 +276,9 @@ static void enc_delta(EncoderData *start, float *d_forward, float *d_right)
 
     /* 前进: 四轮同向平均 */
     *d_forward = ( d_fl + d_fr + d_rl + d_rr) / 4.0f;
-    /* 右移: 麦轮全向侧移分量 */
-    *d_right   = (-d_fl + d_fr + d_rl - d_rr) / 4.0f;
+    /* 侧移: 麦轮全向侧移分量, 系数与 Mecanum_Calc_Full 的 vy 项一致
+     * 实际左右符号取决于轮子安装, 由标定/硬件实测确定 */
+    *d_side    = (-d_fl + d_fr + d_rl - d_rr) / 4.0f;
 }
 
 void Odometry_Calib_Start(void)
@@ -300,7 +303,7 @@ void Odometry_Calib_Update(void)
     static float       seg_tbp_x0, seg_tbp_y0;  /* 每段起点 TBOP */
     static uint8_t     entered = 0;
     MecanumResult motor;
-    float d_fwd, d_right, tbp_dx, tbp_dy;
+    float d_fwd, d_side, tbp_dx, tbp_dy;
 
     if (g_calib.state == CALIB_IDLE || g_calib.state == CALIB_DONE)
         return;
@@ -338,7 +341,7 @@ void Odometry_Calib_Update(void)
         Send_commandmotor(&motor);
 
         /* 记录编码器增量 */
-        enc_delta(&seg_enc0, &d_fwd, &d_right);
+        enc_delta(&seg_enc0, &d_fwd, &d_side);
 
         if (g_calib.state == CALIB_FWD) {
             g_calib.scale_x = (d_fwd != 0.0f) ? tbp_dx / d_fwd : 1.0f;
@@ -347,9 +350,9 @@ void Odometry_Calib_Update(void)
             g_calib.state = CALIB_RIGHT;
             printf("CALIB: RIGHT start\r\n");
         } else {
-            g_calib.scale_y = (d_right != 0.0f) ? tbp_dy / d_right : 1.0f;
+            g_calib.scale_y = (d_side != 0.0f) ? tbp_dy / d_side : 1.0f;
             printf("CALIB RIGHT: TBOP_dy=%.1f enc=%.0f scale_y=%.4f\r\n",
-                   (double)tbp_dy, (double)d_right, (double)g_calib.scale_y);
+                   (double)tbp_dy, (double)d_side, (double)g_calib.scale_y);
             g_calib.state = CALIB_DONE;
             printf("CALIB DONE: scale_x=%.4f scale_y=%.4f\r\n",
                    (double)g_calib.scale_x, (double)g_calib.scale_y);
@@ -371,7 +374,8 @@ void Odometry_Apply_Calib(float enc_dx, float enc_dy, float *mm_x, float *mm_y)
         *mm_x = enc_dx * g_calib.scale_x;
         *mm_y = enc_dy * g_calib.scale_y;
     } else {
-        /* 未标定时用粗略估算: MEC_WHEEL_RADIUS=77mm, 3200脉冲/圈 */
+        /* 未标定时用粗略估算: R=3.75cm(轮径≈75mm), 3200脉冲/圈
+         * 注意 MEC_WHEEL_RADIUS 单位是 cm, 所以 rough 单位是 cm/脉冲 */
         float rough = (2.0f * 3.14159265f * MEC_WHEEL_RADIUS) / 3200.0f;
         *mm_x = enc_dx * rough;
         *mm_y = enc_dy * rough;
