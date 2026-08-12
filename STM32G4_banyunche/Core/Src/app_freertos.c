@@ -268,8 +268,8 @@ void NLF_TASK(void *argument)
 	 *导航循线任务
 	 */
 	 //SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
-	SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
-	uint8_t NavafterNum[6]={1,1,3,1,1,5};
+	SystemMode_t Navafter_mode[7]={Event_QRCode,Event_LinFolR,Event_Navigation,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
+	uint8_t NavafterNum[7]={1,1,1,3,1,1,5};
 	//SystemMode_t Navafter_mode[4]={Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
 	// uint8_t NavafterNum[4]={2,1,1,5};
 	// SystemMode_t Navafter_mode[1]={Event_PlaceDown};
@@ -295,7 +295,7 @@ void NLF_TASK(void *argument)
 	  	printf("[TASK] Navigation done, P_Nava=%d\r\n", P_Nava);
 	  	//Nav_MoveForward(0.5);
 	  	//Nav_MoveLeft(-0.5);
-	  	if (P_Nava<6)
+	  	if (P_Nava<7)
 	  	{
 	  		task_send(Navafter_mode[P_Nava]);
 	  		NavafterNum[P_Nava]--;
@@ -335,6 +335,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
         {
 	        task_send(Event_Navigation);
         	Mecanum_StopAll();
+					BlockBasic_DualArmSetPos(5);
         	printf("[TASK] LinFolR done\r\n");
         	K230_RequestMode(K230_MODE_CIRCLE);
         	K230_ApplyMode();
@@ -364,7 +365,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 						if (TT_IsDone()) {//全部转完
 							printf("[TASK] LIFT servo");
 							// Servo_SetAngle(125);
-                            BlockBasic_DualArmSetPos(1);
+              BlockBasic_DualArmSetPos(5);
 						}
 						task_send(Event_Navigation);
 					}
@@ -377,13 +378,13 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 	g_circle_speed=1.0f;
 	  		switch (rank[i])
   			{
-  			case champion:
+  			case champion:// 冠军
   				{
   					//加入奖杯转盘放置逻辑
 					if (flag_finish==false)
 					{
 						/* HEIGHT_CHANGE: podium champion pre-place arm height. */
-						BlockBasic_DualArmSetPos(5);
+						BlockBasic_DualArmSetPos(4);
   						
   						// osDelay(500);
   						flag_finish=true;
@@ -426,6 +427,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
+							BlockBasic_DualArmSetPos(4);
   						task_send(Event_Navigation);
 							
   						/* HEIGHT_CHANGE: podium second-place post-place CH1 arm angle. */

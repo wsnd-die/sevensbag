@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file    block_basic.c
  * @brief   物块基础机构封装：丝杆升降、双机械臂升降、转盘定位。
  * @note    车型 1 使用丝杆机构；车型 2 使用双机械臂机构。
@@ -26,7 +26,7 @@ static const BlockDualArmPos block_dual_arm_pos_table[] = {
     {72.0f,  78.0f},   /* pos 2: lower */
     {82.0f,  84.0f},   /* pos 3: 亚军 low / 季军 high */
     {98.0f,  99.0f},   /* pos 4: 冠军 high */
-    {91.0f,  92.0f},   /* pos 5: 冠军 low / 亚军 high */
+    {93.5f,  94.5f},   /* pos 5: 冠军 low / 亚军 high */
 };
 
 #define BLOCK_DUAL_ARM_POS_COUNT \

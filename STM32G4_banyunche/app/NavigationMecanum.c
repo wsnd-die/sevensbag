@@ -25,14 +25,13 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 
 
     {-0.350f,    0.608f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
-
     {-0.15f,      0.1f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
+    {     0.0f,     -1.2f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：再向左平移 */
+	  {    -0.65f,      0.0f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：先0度前进 */
+    {    -0.15f,    -0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
+    {    -0.15f,    -0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
-      {    -0.9f,     -1.4f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
-      {    -0.15f,    -0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
-      {    -0.15f,    -0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
-
-      {   0.12f,    -0.156f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
+      {   1.12f,    -0.556f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
       {  0.41f,    0.03f, 90.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
 
@@ -47,7 +46,7 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 };
 
 /* 实际使用的路径点数量 */
-uint8_t  g_waypoint_count = 13;
+uint8_t  g_waypoint_count = 14;
 
   
 /* ============================================================
@@ -216,6 +215,11 @@ bool Nav_Rotate(float angle_rad)
 bool Nav_FeDuanPoint() {
     static uint8_t PontIntex=0;
     uint8_t idx = PontIntex;
+
+    if (idx == 2U) {
+        Nav_TurnToDeg(0.0f);
+        Self_Dir.yaw = 0.0f;
+    }
 
     if (!Nav_MoveBody(g_waypoints[idx].x,
                           g_waypoints[idx].y,
