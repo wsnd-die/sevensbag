@@ -263,7 +263,6 @@ void NLF_TASK(void *argument)
 		// motor = Mecanum_Calc_Full(0.0,0.0,0.5);
 		// Send_commandmotor(&motor);
 		osDelay(10);
-	}
 #else
 	/*
 	 *导航循线任务
@@ -326,7 +325,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   		}
 	osDelay(10);
   	}
-  	else if (g_last_cmd.Mode==Event_LinFolR)
+  	else if (g_last_cmd.Mode==Event_LinFolR) // 循线右
   	{
   		K230_RequestMode(K230_MODE_LINE);
   		K230_ApplyMode();
@@ -342,7 +341,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
         }
 			osDelay(10);
   	}
-	else if (g_last_cmd.Mode==Event_FindCircle)
+	else if (g_last_cmd.Mode==Event_FindCircle) // 找圆
 			{
 		K230_RequestMode(K230_MODE_CIRCLE);
 		K230_ApplyMode();
@@ -362,9 +361,10 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 						Place('O', 2);
 						printf("[TASK] FindCircle placed");
 						flag_finish = false;
-						if (TT_IsDone()) {
+						if (TT_IsDone()) {//全部转完
 							printf("[TASK] LIFT servo");
-							Servo_SetAngle(125);
+							// Servo_SetAngle(125);
+                            BlockBasic_DualArmSetPos(1);
 						}
 						task_send(Event_Navigation);
 					}
@@ -382,14 +382,17 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					//加入奖杯转盘放置逻辑
 					if (flag_finish==false)
 					{
+						/* HEIGHT_CHANGE: podium champion pre-place arm height. */
 						BlockBasic_DualArmSetPos(5);
-  						BlockBasic_TurntableTo(Slop_dirjang(champion));
+  						
   						// osDelay(500);
   						flag_finish=true;
   					}
+					  BlockBasic_TurntableTo(Slop_dirjang(champion));
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
+  						/* HEIGHT_CHANGE: podium champion place arm height via Place(height=3). */
   						Place('O', 3);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
@@ -408,7 +411,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					//加入奖杯转盘放置逻辑
 					if (flag_finish==false)
 					{
-						BlockBasic_DualArmSetPos(4);
+						/* HEIGHT_CHANGE: podium second-place pre-place arm height. */
+						BlockBasic_DualArmSetPos(5);
   						BlockBasic_TurntableTo(Slop_dirjang(second_place));
   						// osDelay(500);
   						flag_finish=true;
@@ -417,12 +421,16 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (g_circle_dir=='O')
   					{
   						osDelay(1000);
-  						Place('O', 5);
+  						/* HEIGHT_CHANGE: podium second-place place arm height via Place(height=5). */
+  						Place('O', 3);
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
+							BlockBasic_DualArmSetPos(4);
   						task_send(Event_Navigation);
-  						Servo_SetAngle(42);
+							
+  						/* HEIGHT_CHANGE: podium second-place post-place CH1 arm angle. */
+  						// Servo_SetAngle(42);
   						osDelay(800);
   						break;
   					}
@@ -433,6 +441,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   				{
   					if (flag_finish==false)
   					{
+						/* HEIGHT_CHANGE: podium third-place pre-place arm height. */
 						BlockBasic_DualArmSetPos(3);
   						BlockBasic_TurntableTo(Slop_dirjang(third_place));
   						osDelay(500);
@@ -442,6 +451,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
+  						/* HEIGHT_CHANGE: podium third-place place arm height via Place(height=2). */
   						Place('O', 2);
   						printf("[TASK] PlaceDown third done\r\n");
   						i++;
