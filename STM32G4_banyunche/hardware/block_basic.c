@@ -24,9 +24,9 @@ typedef struct {
 static const BlockDualArmPos block_dual_arm_pos_table[] = {
     {150.0f, 18.0f},   /* pos 1: init 靠手动掰，不需要使用 */
     {72.0f,  78.0f},   /* pos 2: lower */
-    {80.0f,  82.0f},   /* pos 3: 亚军 low / 季军 high */
+    {82.0f,  84.0f},   /* pos 3: 亚军 low / 季军 high */
     {98.0f,  99.0f},   /* pos 4: 冠军 high */
-    {90.0f,  90.0f},   /* pos 5: 冠军 low / 亚军 high */
+    {89.0f,  90.0f},   /* pos 5: 冠军 low / 亚军 high */
 };
 
 #define BLOCK_DUAL_ARM_POS_COUNT \
@@ -184,6 +184,7 @@ void BlockBasic_DualArmSetPos(uint8_t pos)
 
     target = &block_dual_arm_pos_table[pos - 1u];
 
+    /* HEIGHT_CHANGE: dual-arm preset writes the physical arm height. */
     /* 舵机1 前级 → CH1 */
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,
                           (uint32_t)(target->front_angle_deg / 180.0f * 2000.0f + 500.0f + 0.5f));
@@ -245,27 +246,44 @@ void Servo_SetAngle(float Angle)
 {
     if(Angle>=125){Angle=125;}
     if(Angle<=37){Angle=37;}
+    /* HEIGHT_CHANGE: direct CH1 arm angle write. */
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, Angle / 180 * 2000 + 500);
 
 }
+/**
+ * @brief  放置物体
+ * @param dir  方向
+ * @param height  高度,在双机械臂型表示位置表编号，在丝杆型表示目标升高高度，单位 mm
+ * @note   该函数会执行前进、升降、后退动作，并在每个动作后延时等待完成。
+ *         与丝杆型不同，该函数第二个参数为正表示后退，负表示前进。
+ */
+/**
+ * @brief  放置物体
+ * @param dir  方向
+ * @param height  高度,在双机械臂型表示位置表编号，在丝杆型表示目标升高高度，单位 mm
+ * @note   该函数会执行前进、升降、后退动作，并在每个动作后延时等待完成。
+ *         与丝杆型不同，该函数第二个参数为正表示后退，负表示前进。
+ */
 void Place(char dir,uint16_t height)
 {
     MecanumMove_t move;
     if (dir == 'O')
     {
+				BlockBasic_DualArmSetPos(height);
         /* 前进 0.05 m（车体坐标：+X 为前进） */
-        if (Mecanum_CalculateMove(&Place_config, 0.064f, 0.0f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, 0.0f, -0.064f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
         }
         osDelay(100);
         //BlockBasic_LiftTo(DOWN,height);
-        BlockBasic_DualArmSetPos(height);
+        /* HEIGHT_CHANGE: Place() applies the requested arm preset height. */
+        
         osDelay(800);
 
         /* 后退 0.05 m（车体坐标：-X 为后退） */
-        if (Mecanum_CalculateMove(&Place_config, -0.1f, 0.0f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, 0.0f, 0.2f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
