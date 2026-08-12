@@ -59,7 +59,7 @@ uint8_t  QR_deel(void)
         }
         result=result*10+(P-0x30);
     }
-    if (k==0)
+    if (k==1)
     {
         Jang_Num=result-1;
     }

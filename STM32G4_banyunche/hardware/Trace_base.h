@@ -35,7 +35,7 @@ extern "C" {
 #define MIN_SPEED           0.1f   /* 防止除零最低速度 (m/s) */
 
 /* ======================== 共用 ======================== */
-#define TRACE_BASE_SPEED   0.69f   /* 基础线速度 (m/s) */
+#define TRACE_BASE_SPEED   0.6f   /* 基础线速度 (m/s) */
 #define TRACE_W_MAX        0.95f  /* 最大角速度 (rad/s) */
 
 /* ======================== 函数声明 ======================== */

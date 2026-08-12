@@ -135,27 +135,26 @@ uint8_t ColorAtSlot(uint8_t slot)
  * ============================================================ */
 bool TT_RotateByQR(void)
 {
+    uint8_t cnt = (g_tt.ok && g_tt.idx < 16) ? g_tt.cnt : 5;
+    uint8_t slot;
+
+    /* cnt 未设置(=0)时按 5 处理, 保证找圆进度能推进 */
+    if (cnt == 0) cnt = 5;
+    if (g_tt_rotate_idx >= cnt) return false;
+
     if (g_tt.ok && g_tt.idx < 16) {
-        /* QR 模式: 按颜色查找槽位, 每次转一个 */
-        if (g_tt_rotate_idx >= g_tt.cnt) return false;
-        while (g_tt_rotate_idx < g_tt.cnt) {
-            uint8_t slot = SlotByColor(T1[g_tt.idx][g_tt_rotate_idx]);
-            g_tt_rotate_idx++;
-            if (slot != SLOT_NONE) {
-                BlockBasic_TurntableTo(slot + 1);
-                osDelay(500);
-                return true;
-            }
-        }
-        return false;
+        /* QR 模式: 按颜色查找槽位; 找不到时回退固定顺序, 保证转盘一定转 */
+        slot = SlotByColor(T1[g_tt.idx][g_tt_rotate_idx]);
+        if (slot == SLOT_NONE) slot = g_tt_rotate_idx;
     } else {
         /* 默认固定顺序: 直接按槽位号 1→2→3→4→5 */
-        if (g_tt_rotate_idx >= 5) return false;
-        BlockBasic_TurntableTo(g_tt_rotate_idx + 1);  /* 槽位号=索引+1 */
-        g_tt_rotate_idx++;
-        osDelay(500);
-        return true;
+        slot = g_tt_rotate_idx;
     }
+
+    g_tt_rotate_idx++;
+    BlockBasic_TurntableTo(slot + 1);
+    osDelay(500);
+    return true;
 }
 
 void TT_RotateReset(void)
@@ -165,10 +164,9 @@ void TT_RotateReset(void)
 
 bool TT_IsDone(void)
 {
-    if (g_tt.ok && g_tt.idx < 16)
-        return g_tt_rotate_idx >= g_tt.cnt;
-    else
-        return g_tt_rotate_idx >= 5;
+    uint8_t cnt = (g_tt.ok && g_tt.idx < 16) ? g_tt.cnt : 5;
+    if (cnt == 0) cnt = 5;
+    return g_tt_rotate_idx >= cnt;
 }
 
 /* ============================================================

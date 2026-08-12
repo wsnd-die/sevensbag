@@ -227,7 +227,7 @@ void NLF_TASK(void *argument)
 	uint8_t P_Nava=0;
 	uint8_t rank[3]={second_place,champion,third_place};
 
-	K230_RequestMode(K230_MODE_CIRCLE);
+	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
 	task_send(Event_Navigation);
 	// BlockBasic_LiftTo(UP,44);
@@ -293,19 +293,20 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 		K230_RequestMode(K230_MODE_CIRCLE);
 		K230_ApplyMode();
 				g_circle_speed = 1.0f;  /* 左侧快 */
-					Circle_Follow();
-					if (g_circle_dir=='O')
-					{
-						TT_RotateByQR();
-						Place('O',0);
-						printf("[TASK] FindCircle placed");
-						flag_finish = false;
-						if (TT_IsDone()) {
-							printf("[TASK] LIFT servo");
-							Servo_SetAngle(125);
-						}
-						task_send(Event_Navigation);
-					}
+
+			Circle_Follow();
+			if (g_circle_dir=='O')
+			{
+				TT_RotateByQR();
+				Place('O',0);
+				printf("[TASK] FindCircle placed");
+				flag_finish = false;
+				if (TT_IsDone()) {
+					printf("[TASK] LIFT servo");
+					// Servo_SetAngle(125);
+				}
+				task_send(Event_Navigation);
+			}
 			}
 else if (g_last_cmd.Mode==Event_PlaceDown)
 	  	{
@@ -409,8 +410,9 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
+	Color_SetLedLevel(5);
 	Color_Init();
-	Color_SetLedLevel(0);
+
 	IR_Init();
 
 	/* 简单校准开关: 1=执行一次校准存 Flash, 0=实时打印 RGB+颜色 */
@@ -421,13 +423,13 @@ void Color_task(void *argument)
 		static const char *name[5] = {"RED", "GREEN", "BLUE", "WHITE", "BLACK"};
 
 		printf("[CALIB] Remove block, sample ambient in 3s\r\n");
-		osDelay(3000);
+		osDelay(1000);
 		Color_CalibAmbient();
 		printf("[CALIB] Ambient saved\r\n");
 
 		for (int i = 0; i < 5; i++) {
 			printf("[CALIB] >>> Put %s in front, sample in 3s\r\n", name[i]);
-			osDelay(3000);
+			osDelay(1000);
 			Color_DataTypeDef d;
 			if (Color_ReadData(&d) == HAL_OK) {
 				Color_Calibrate(seq[i]);
@@ -445,26 +447,33 @@ void Color_task(void *argument)
 	{
 		uint8_t raw_dumped = 0;
 		for (;;) {
-			Color_DataTypeDef d;
-			if (Color_ReadData(&d) == HAL_OK) {
-				printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
-				       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
-				       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
-				       IR_ObjectPresent());
-			} else {
-				printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
-				       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
-				       IR_ObjectPresent());
-			}
-			/* 一次性 dump 原始接收字节, 确认帧格式 */
-			if (!raw_dumped && dbg_rx_cb > 0) {
-				raw_dumped = 1;
-				printf("raw: ");
-				for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
-					printf("%02X ", dma_rx_buf[i]);
-				}
-				printf("\r\n");
-			}
+		// 	Color_DataTypeDef d;
+		// 	if (Color_ReadData(&d) == HAL_OK) {
+		// 		printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
+		// 		       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
+		// 		       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+		// 		       IR_ObjectPresent());
+		// 	} else {
+		// 		printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
+		// 		       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+		// 		       IR_ObjectPresent());
+		// 	}
+		// 	/* 一次性 dump 原始接收字节, 确认帧格式 */
+		// 	if (!raw_dumped && dbg_rx_cb > 0) {
+		// 		raw_dumped = 1;
+		// 		printf("raw: ");
+		// 		for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
+		// 			printf("%02X ", dma_rx_buf[i]);
+		// 		}
+		// 		printf("\r\n");
+		// 	}
+			// /* 调试: 打印5个槽的颜色, 验证槽位映射是否正确 */
+			printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
+				   Color_ToString(ColorAtSlot(0)),
+				   Color_ToString(ColorAtSlot(1)),
+				   Color_ToString(ColorAtSlot(2)),
+				   Color_ToString(ColorAtSlot(3)),
+				   Color_ToString(ColorAtSlot(4)));
 			osDelay(500);
 		}
 	}
@@ -502,27 +511,59 @@ void BsRt_task(void *argument)
 		if (g_last_cmd.Mode==Event_LinFolL||g_last_cmd.Mode==Event_LinFolR)
 		{
 
-			Color_SetLedLevel(0);
-			Color_Init();
 			HAL_Delay(50);
 #if USE_OPENMV_COLOR == 0  /* ---- GY-33 ---- */
 			/* 收集: 红外对射检测物体进入 → 读颜色 → 旋转转盘 */
 			if (K==0) {
 				g_color_collect_done = 0;
-				for (uint8_t slot = 1; slot <= 5; slot++) {
-					TT_SetColor(slot - 1, Collect_WaitObject());
-					if (slot < 5) {
-						osDelay(250);
-						BlockBasic_TurntableTo(slot + 1);
+				/* 物理: 转盘初始位置1, 传感器对准槽2
+				 * 物块进入落当前槽 → 先转一格让该槽到传感器下 → 再读色
+				 * 读槽1~4, 槽5(转到位置1行程不够)读不到 → 排除法补槽5 */
+				uint8_t seen[COLOR_COUNT] = {0};   /* 已读到的颜色标记 */
+				Color_TypeDef c;
+				uint8_t slot;
+
+				/* 流水线收集: 物块进入后先转盘, 不立刻读色 —— 等下一个物块
+				 * 到来(Collect_WaitEnter)时, 转盘早已走完并停稳, 再读上一槽颜色。
+				 * 读色永远发生在转盘静止时, 不存在"转不到位就开读"。 */
+				Collect_WaitEnter();			/* 物块1进入槽1 */
+				osDelay(270);
+				BlockBasic_TurntableTo(2);		/* 槽1 → 传感器下 */
+
+				for (slot = 1; slot <= 4; slot++) {
+					/* 等物块slot+1进入槽slot+1: 这段时间转盘到位并停稳 */
+					Collect_WaitEnter();
+					/* 读取槽slot颜色(转盘静止), 跳过 UNKNOWN 和重复 */
+					for (;;) {
+						c = Collect_ReadColor();
+						if (c == COLOR_UNKNOWN || c >= COLOR_COUNT || seen[c])
+							continue;
+						break;
+					}
+					seen[c] = 1;
+					TT_SetColor(slot - 1, c);	/* 槽slot → 索引slot-1 */
+					if (slot < 4) {
+						osDelay(100);		/* 等物块slot+1落稳 */
+						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 */
 					}
 				}
+
+				/* 物块5已在最后一次等待时进入槽5 → 触发锁死 */
+				osDelay(270);
+				Servo_Angle(333.0f);
+
+				/* 槽5(索引4)颜色 = 全集 - 已读4种 */
+				for (c = COLOR_RED; c < COLOR_COUNT; c++) {
+					if (!seen[c]) { TT_SetColor(4, c); break; }
+				}
+
 				K=1;
 				g_color_collect_done = 1;
 				osDelay(200);
-				Servo_Angle(333.0f);
 			}
 			else {
 				g_trophy_done = 0;
+				BlockBasic_TurntableTo(1);
 				for (uint8_t slot = 1; slot <= 3; slot++) {
 					Collect_WaitObject();
 					if (slot < 3) {
@@ -533,7 +574,7 @@ void BsRt_task(void *argument)
 				}
 				K=0;
 				BlockBasic_LiftTo(UP, 44);
-					osDelay(200);
+					osDelay(270);
 				Servo_Angle(180.0f);
 				g_trophy_done = 1;
 			}
@@ -617,7 +658,7 @@ void OLED_TASK(void *argument)
 
   for(;;)
   {
-  	printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
+  	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 
 		osDelay(50);
   }
@@ -684,7 +725,6 @@ void QR_TASK(void *argument)
 {
   /* USER CODE BEGIN QR_TASK */
 	uint8_t QR_result=0,i=0;
-	bool clr_rank_flag=false;
 	// SystemMode_t  QR_after[2]={Event_LinFolR,Event_Navigation};
   /* Infinite loop */
   for(;;)
@@ -692,16 +732,9 @@ void QR_TASK(void *argument)
 
   	if (g_last_cmd.Mode==Event_QRCode)
   	{
-  		if (clr_rank_flag==false)
-  		{
-  			QR_result=Qr_Get();
-  			clr_rank_flag=true;
-  		}
-  		else
-  		{
-  			QR_result=Qr_Get();
-  			SetQR(QR_result);
-  		}
+  		/* 每次都 SetQR: 否则 cnt 保持 0, 找圆时 TT_RotateByQR 直接 return false */
+  		QR_result=Qr_Get();
+  		SetQR(QR_result);
   		task_send(Event_Navigation);
   	}
 

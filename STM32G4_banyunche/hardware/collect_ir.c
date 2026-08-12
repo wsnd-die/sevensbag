@@ -37,7 +37,7 @@ bool IR_ObjectEntered(void)
     bool now = IR_ObjectPresent();
     if (now && !ir_last) {
         /* 防抖: 检测到进入后等 20ms 再确认, 滤掉沿上的抖动 */
-        osDelay(20);
+        osDelay(10);
         now = IR_ObjectPresent();
     }
     bool edge = (now && !ir_last);  /* 物体进入边沿 (自动复位) */
@@ -45,10 +45,14 @@ bool IR_ObjectEntered(void)
     return edge;
 }
 
-Color_TypeDef Collect_WaitObject(void)
+bool Collect_WaitEnter(void)
 {
     while (!IR_ObjectEntered()) { osDelay(10); }   /* 等物体进入(带防抖) */
+    return true;
+}
 
+Color_TypeDef Collect_ReadColor(void)
+{
     /* 多帧采样取平均, 提高颜色识别准确度 (不追求快) */
     uint32_t rs = 0, gs = 0, bs = 0;
     int n = 0;
@@ -70,5 +74,11 @@ Color_TypeDef Collect_WaitObject(void)
     d.blue  = (uint8_t)(bs / n);
     d.online = 1U;
     return Color_Judge(&d);
+}
+
+Color_TypeDef Collect_WaitObject(void)
+{
+    Collect_WaitEnter();
+    return Collect_ReadColor();
 }
 

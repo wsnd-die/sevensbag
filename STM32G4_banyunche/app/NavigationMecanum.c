@@ -25,24 +25,26 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 
     {0.308f,    0.656f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
-    {0.0f,      0.0f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
+    {-0.1f,      0.1f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
 
-    {    -0.656f,     -0.426f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
-    {    -0.29f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
-    {    0.25f,     -0.61f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
-    {    -0.26f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
-    {    0.074f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
+    {    -0.866f,     -0.456f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+    {    -0.22f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
+    {    0.33f,     -0.61f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
+    {    -0.23f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
+    {    0.10f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-    {  0.473f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
+    {  -0.403f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
 
-    {   0.0f,    0.0f, -90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
+    {   -0.07f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
 
-    {    0.47f,     1.2f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
-    {    0.0f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
-    {    0.0f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
+    {    0.445f,     1.13f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+    {    0.03f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
+    {    0.03f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
 
-    {-1.796f,-0.264f,0},//回家点
+    {-0.513f,-0.0,0},//回家点
+    {0,-0.244f,0},
+    {-1.164f,0,0},
 
 };
 
@@ -242,6 +244,17 @@ bool Nav_FeDuanPoint() {
                           g_waypoints[PontIntex++].yaw)) {
         return false;
                           }
+    if (PontIntex==13)
+    {
+        Nav_MoveBody(g_waypoints[PontIntex].x,
+                          g_waypoints[PontIntex].y,
+                          g_waypoints[PontIntex++].yaw);
+
+        Nav_MoveBody(g_waypoints[PontIntex].x,
+                          g_waypoints[PontIntex].y,
+                          g_waypoints[PontIntex++].yaw);
+
+    }
     return true;
 }
 

@@ -28,28 +28,36 @@ void Circle_Follow(void)
     /* ---- 2. 方向 → 速度映射 ---- */
     switch (dir) {
     case 'O':
-        //g_circle_vx = 0.0f;
-        //g_circle_vy = 0.0f;
+        g_circle_vx = 0.0f;
+        g_circle_vy = 0.0f;
         break;
 
     case 'N':
         /* 圆心偏上: 前进 */
-            Nav_MoveForward(0.02f);
+        g_circle_vx = -0.05f;
+        g_circle_vy = 0.0f;
+            //Nav_MoveForward(-0.02f);
         break;
 
     case 'S':
         /* 圆心偏下: 后退 */
-            Nav_MoveForward(-0.02f);
+        g_circle_vx = 0.05f;
+        g_circle_vy = 0.0f;
+           // Nav_MoveForward(0.02f);
         break;
 
     case 'W':
         /* 圆心偏右: 右移 */
-            Nav_MoveLeft(-0.02f);
+        g_circle_vx = 0.0f;
+        g_circle_vy = -0.05f;
+            //Nav_MoveLeft(-0.02f);
         break;
 
     case 'E':
         /* 圆心偏左: 左移 */
-            Nav_MoveLeft(0.02f);
+        g_circle_vx = 0.0f;
+        g_circle_vy = 0.05f;
+            //Nav_MoveLeft(0.02f);
         break;
 
     default:
@@ -59,8 +67,8 @@ void Circle_Follow(void)
     }
 
     /* ---- 3. 全向移动解算 (vx, vy, w=0) ---- */
-    //motor = Mecanum_Calc_Full(g_circle_vx, g_circle_vy, 0.0f);
+    motor = Mecanum_Calc_Full(g_circle_vx, g_circle_vy, 0.0f);
 
     /* ---- 4. 发送电机指令 ---- */
-   // Send_commandmotor(&motor);
+    Send_commandmotor(&motor);
 }
