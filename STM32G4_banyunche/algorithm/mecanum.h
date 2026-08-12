@@ -12,7 +12,7 @@ extern "C" {
 /* ======================== 麦轮底盘几何参数 ======================== */
 #define MEC_WHEELBASE       0.176f   /* 轴距 m（前后轮中心距）*/
 #define MEC_TRACK_WIDTH     0.1564f   /* 轮距 m（左右轮中心距）*/
-#define MEC_WHEEL_RADIUS    3.75f  /* 轮子半径 m */
+#define MEC_WHEEL_RADIUS    3.75f  /* 轮子半径 cm（=37.5mm，与 Mecanum_Move.c 的 wheel_radius_m=0.0375 一致）*/
 #define MEC_SPEED_COEFF     224.058f /* 速度换算系数 (m/s → RPM) */
 #define MEC_STOP_THRESHOLD  1e-3f    /* 静止判断阈值 */
 #define MEC_LOW_SPEED_LIMIT 0.20f    /* 低速阈值 m/s */

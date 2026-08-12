@@ -97,6 +97,7 @@ set(USER_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/wit_protocol.c"
         "algorithm/ahrs_mahony.c"
         "algorithm/siyuan_imu.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/algorithm/Nav_position.c"
 )
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${USER_SOURCES}
@@ -107,6 +108,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/app"
     # User hardware include path
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware"
+    # Algorithm include path (Nav_position.h / mecanum.h 等)
+    "${CMAKE_CURRENT_SOURCE_DIR}/algorithm"
 )
 
 # Add project symbols (macros)
