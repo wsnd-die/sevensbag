@@ -22,10 +22,10 @@ typedef struct {
     float x;       /* 世界 X 坐标，单位：m */
     float y;       /* 世界 Y 坐标，单位：m */
     float yaw;     /* 世界航向角，单位：rad，范围 [-π, π] */
-} World_Dir;
+} World_Dir_t;
 
 /* 当前自身位姿（世界坐标系） */
-extern World_Dir Self_Dir;
+extern World_Dir_t Self_Dir;
 
 /* ============================================================
  * 路径点
@@ -39,7 +39,7 @@ extern World_Dir Self_Dir;
  * 每个元素: { X(m), Y(m), yaw(rad) }
  * yaw 可使用 MECANUM_DEG_TO_RAD 辅助书写，例如 90.0f * MECANUM_DEG_TO_RAD
  */
-extern World_Dir g_waypoints[NAV_WAYPOINT_MAX];
+extern World_Dir_t g_waypoints[NAV_WAYPOINT_MAX];
 extern uint8_t      g_waypoint_count;
 
 /* ============================================================

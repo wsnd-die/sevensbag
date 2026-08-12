@@ -1,4 +1,4 @@
-#include "Common_used.h"
+#include "../hardware/Common_used.h"
 
 /**
   * @brief  麦轮单轮转速转换
@@ -174,12 +174,14 @@ uint8_t Mecanum_Read_Speed(uint8_t id, int16_t *rpm, uint32_t timeout_ms)
             can_rx_flag = 0;
             uint8_t rx_id = (uint8_t)(can_rx_header.Identifier >> 8);
 
+            /* 与位置读取同规律: [命令0x35][0x01][转速int16大端][校验0x6B]
+             * rpm = data[2..3], 校验 = data[4] */
             if (can_rx_header.IdType == FDCAN_EXTENDED_ID &&
                 rx_id == id &&
                 can_rx_data[0] == 0x35 &&
-                can_rx_data[3] == 0x6B)
+                can_rx_data[4] == 0x6B)
             {
-                *rpm = (int16_t)((can_rx_data[1] << 8) | can_rx_data[2]);
+                *rpm = (int16_t)((can_rx_data[2] << 8) | can_rx_data[3]);
                 return 1;
             }
         }
@@ -205,15 +207,18 @@ uint8_t Mecanum_Read_Position(uint8_t id, int32_t *pos, uint32_t timeout_ms)
             can_rx_flag = 0;
             uint8_t rx_id = (uint8_t)(can_rx_header.Identifier >> 8);
 
+            /* 实测帧: 36 01 00 00 00 05 6B
+             * 格式: [命令0x36][0x01][位置int32大端][校验0x6B]
+             * 位置 = data[2..5], 校验 = data[6] */
             if (can_rx_header.IdType == FDCAN_EXTENDED_ID &&
                 rx_id == id &&
                 can_rx_data[0] == 0x36 &&
-                can_rx_data[5] == 0x6B)
+                can_rx_data[6] == 0x6B)
             {
-                *pos = (int32_t)((can_rx_data[1] << 24) |
-                                 (can_rx_data[2] << 16) |
-                                 (can_rx_data[3] << 8)  |
-                                 (can_rx_data[4] << 0));
+                *pos = (int32_t)((can_rx_data[2] << 24) |
+                                 (can_rx_data[3] << 16) |
+                                 (can_rx_data[4] << 8)  |
+                                 (can_rx_data[5] << 0));
                 return 1;
             }
         }

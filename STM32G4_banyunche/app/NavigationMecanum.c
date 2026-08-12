@@ -5,7 +5,7 @@
  * ============================================================ */
 
 /* 当前自身位姿（世界坐标系），上电默认原点 */
-World_Dir Self_Dir = {0.0f, 0.0f, 0.0f};
+World_Dir_t Self_Dir = {0.0f, 0.0f, 0.0f};
    
 /*
  * 路径点数组（世界坐标系）
@@ -18,7 +18,7 @@ World_Dir Self_Dir = {0.0f, 0.0f, 0.0f};
  * 修改此数组内容和你需要的目标点，
  * 同时更新 g_waypoint_count 为实际点数。
  */
-World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
+World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
 
     /* ---- 示例路径（可根据实际修改）---- */
 

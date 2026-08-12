@@ -61,10 +61,10 @@
 #include "oled.h"
 #include "oled_data.h"
 #include "imu660.h"
-#include "ahrs_mahony.h"
-#include "siyuan_imu.h"
+#include "../algorithm/ahrs_mahony.h"
+#include "../algorithm/siyuan_imu.h"
 // #include "spi_imu660rc.h"  // 已切换为 IMU660RA 版本，旧版不再使用
-#include "mecanum.h"
+#include "../algorithm/mecanum.h"
 #include "uart2_tbop10.h"
 #include "angle_ctrl.h"
 #include "block_basic.h"
@@ -78,9 +78,8 @@
  * HWT101_iic.h 不放入公共头文件 —— 其通过 wit_protocol.h 引入 q0/q1/q2/q3
  * 等短宏名，会与 imu_660.c 等模块的局部变量名冲突。
  */
-#include "key.h"
 #include "k230.h"
-#include "can.h"
+#include "../Core/Inc/can.h"
 #include "pid.h"
 /*
  * wit_protocol.h 不放入公共头文件 —— 其 q0/q1/q2/q3 等短宏名

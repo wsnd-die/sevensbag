@@ -2,7 +2,7 @@
  * siyuan_imu.c — 高级姿态解算 (带碰撞屏蔽/误差限幅/在线零偏估计)
  */
 
-#include "Common_used.h"
+#include "../hardware/Common_used.h"
 #include "siyuan_imu.h"
 
 /* ============================================================

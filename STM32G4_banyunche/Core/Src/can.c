@@ -1,4 +1,4 @@
-#include "Common_used.h"
+#include "../../hardware/Common_used.h"
 
 extern FDCAN_HandleTypeDef hfdcan1;
 
@@ -163,12 +163,14 @@ uint8_t Emm_V5_Read_Status(uint8_t id, uint8_t *status, uint32_t timeout_ms)
 
             uint8_t rx_id = (uint8_t)(can_rx_header.Identifier >> 8);
 
+            /* 与位置读取同规律: [命令0x3A][0x01][状态][校验0x6B]
+             * status = data[2], 校验 = data[3] */
             if (can_rx_header.IdType == FDCAN_EXTENDED_ID &&
                 rx_id == id &&
                 can_rx_data[0] == 0x3A &&
-                can_rx_data[2] == 0x6B)
+                can_rx_data[3] == 0x6B)
             {
-                *status = can_rx_data[1];
+                *status = can_rx_data[2];
                 return 1;
             }
         }

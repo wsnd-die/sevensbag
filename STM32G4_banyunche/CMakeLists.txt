@@ -55,11 +55,13 @@ add_executable(${CMAKE_PROJECT_NAME}
         hardware/angle_ctrl.c
         hardware/angle_ctrl.c
         hardware/imu660ra_config.c
-        hardware/ahrs_mahony.c
-        hardware/ahrs_mahony.h
-        hardware/siyuan_imu.c
-        hardware/siyuan_imu.h
+        algorithm/ahrs_mahony.c
+        algorithm/ahrs_mahony.h
+        algorithm/siyuan_imu.c
+        algorithm/siyuan_imu.h
         hardware/collect_ir.c
+        algorithm/Nav_position.c
+        algorithm/Nav_position.h
 )
 
 # Add STM32CubeMX generated sources
@@ -77,25 +79,24 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/app/Mecanum_Move.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/app/NavigationMecanum.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/block_basic.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/can.c"
+    "Core/Src/can.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/color.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/emm_v5.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/HWT101_iic.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/imu_660.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/k230.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Trace_base.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/key.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/oled.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hardware/oled.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/oled_data.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/hardware/mecanum.c"
+    "algorithm/mecanum.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/pid.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/angle_ctrl.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Send_motor.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/QRcode.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/sw_uart.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/wit_protocol.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hardware/ahrs_mahony.c"
-        "${CMAKE_CURRENT_SOURCE_DIR}/hardware/siyuan_imu.c"
+        "algorithm/ahrs_mahony.c"
+        "algorithm/siyuan_imu.c"
 )
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${USER_SOURCES}

@@ -229,7 +229,7 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_Navigation);
+	task_send(Event_GoHome);
 	// BlockBasic_LiftTo(UP,44);
 	BlockBasic_TurntableTo(1);
 	osDelay(500);
@@ -654,13 +654,20 @@ void BsRt_task(void *argument)
 /* USER CODE END Header_OLED_TASK */
 void OLED_TASK(void *argument)
 {
+  	EncoderData enc;
   /* USER CODE BEGIN OLED_TASK */
 
   for(;;)
   {
+  	if (Mecanum_Read_AllPositions(&enc, 20)) {
+  		printf("FL=%ld FR=%ld RL=%ld RR=%ld\r\n",
+				 (long)enc.fl, (long)enc.fr, (long)enc.rl, (long)enc.rr);
+  	} else {
+  		printf("READ FAIL\r\n");
+  	}
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 
-		osDelay(50);
+		osDelay(20);
   }
 
   /* USER CODE END OLED_TASK */

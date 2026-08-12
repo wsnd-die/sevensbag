@@ -1,5 +1,5 @@
 #include "ahrs_mahony.h"
-#include "imu660.h"
+#include "../hardware/imu660.h"
 #include "main.h"
 
 /* ============================================================

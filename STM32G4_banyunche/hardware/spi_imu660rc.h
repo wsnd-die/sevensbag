@@ -90,7 +90,7 @@ static float integral_fb[3] = {0, 0, 0}; // 积分项（用于 PI 中的 I）
 static uint32_t last_tick = 0;           // 用于计算 dt
 static float gyro_bias[3] = {0, 0, 0};
 /* 陀螺仪零偏（度/秒） */
-static float gyro_bias_x = 0, gyro_bias_y = 0, gyro_bias_z = 0;
+static float Rc_gyro_bias_x = 0, Rc_gyro_bias_y = 0, Rc_gyro_bias_z = 0;
 
 /* 滤波用上一帧角度 */
 static float roll_last = 0, pitch_last = 0, yaw_last = 0;

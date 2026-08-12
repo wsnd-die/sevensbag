@@ -1,7 +1,7 @@
 #ifndef __EMM_V5_H
 #define __EMM_V5_H
 
-#include "can.h"
+#include "../Core/Inc/can.h"
 #include "stm32g4xx.h"                  // Device header
 
 
