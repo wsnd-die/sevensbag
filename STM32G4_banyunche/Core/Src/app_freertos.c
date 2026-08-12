@@ -393,7 +393,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (g_circle_dir=='O')
   					{
   						/* HEIGHT_CHANGE: podium champion place arm height via Place(height=3). */
-  						Place('O', 3);
+  						Place('O', 5);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
@@ -426,7 +426,6 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
-							BlockBasic_DualArmSetPos(4);
   						task_send(Event_Navigation);
 							
   						/* HEIGHT_CHANGE: podium second-place post-place CH1 arm angle. */
