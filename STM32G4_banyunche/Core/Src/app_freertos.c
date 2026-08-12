@@ -42,7 +42,7 @@ SemaphoreHandle_t Sem_Act_FollowLineL;
 SemaphoreHandle_t Sem_Act_FollowLineR;
 SemaphoreHandle_t Sem_Act_Navigat;
 
-volatile Current_Task_t current_task = Event_IDLE;
+// volatile Current_Task_t current_task = Event_IDLE;   /* banyuntask.h 已删除 Current_Task_t, 仅注释代码在用 */
 volatile TaskCommand_t   g_last_cmd;
 volatile uint8_t         g_color_collect_done = 0;  /* 0=未完成, 1=5个槽已收集完 */
 volatile uint8_t         g_trophy_done = 0;         /* 0=未完成, 1=3个奖杯槽已收集完 */
@@ -239,14 +239,31 @@ void NLF_TASK(void *argument)
 	K230_ApplyMode();
 	printf("[TASK] Find circle only\r\n");
 
-	for (;;) {
-		Trace_LineFollow();
+		for (uint8_t slot = 1; slot <= 3; slot++) {
+			/* 等红外对射检测到物体进入 */
+			while (!IR_ObjectEntered()) {
+				osDelay(10);
+			}
+			/* ---- 读颜色过程 (已注释) ---- */
+			// Color_DataTypeDef d;
+			// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
+			// int dr = abs((int)d.red   - g_color_ambient.r);
+			// int dg = abs((int)d.green - g_color_ambient.g);
+			// int db = abs((int)d.blue  - g_color_ambient.b);
+			// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
+			if (slot < 4) {
+				osDelay(150);
+				BlockBasic_TurntableTo(slot + 1);
+
+			}
+		}
+		g_trophy_done = 1;
+		//Trace_LineFollow();
 		// MecanumResult motor;
 		// motor = Mecanum_Calc_Full(0.0,0.0,0.5);
 		// Send_commandmotor(&motor);
 		osDelay(10);
 	}
-}
 #else
 	/*
 	 *导航循线任务
@@ -342,7 +359,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 					Circle_Follow();
 					if (g_circle_dir=='O')
 					{
-						Place('O');
+						Place('O', 2);
 						printf("[TASK] FindCircle placed");
 						flag_finish = false;
 						if (TT_IsDone()) {
@@ -365,7 +382,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					//加入奖杯转盘放置逻辑
 					if (flag_finish==false)
 					{
-						BlockBasic_DualArmSetPos(3);
+						BlockBasic_DualArmSetPos(5);
   						BlockBasic_TurntableTo(Slop_dirjang(champion));
   						// osDelay(500);
   						flag_finish=true;
@@ -373,7 +390,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
-  						Place('O');
+  						Place('O', 3);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
@@ -391,7 +408,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					//加入奖杯转盘放置逻辑
 					if (flag_finish==false)
 					{
-						BlockBasic_DualArmSetPos(1);
+						BlockBasic_DualArmSetPos(4);
   						BlockBasic_TurntableTo(Slop_dirjang(second_place));
   						// osDelay(500);
   						flag_finish=true;
@@ -400,7 +417,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (g_circle_dir=='O')
   					{
   						osDelay(1000);
-  						Place('O');
+  						Place('O', 5);
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
@@ -416,7 +433,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   				{
   					if (flag_finish==false)
   					{
-						BlockBasic_DualArmSetPos(2);
+						BlockBasic_DualArmSetPos(3);
   						BlockBasic_TurntableTo(Slop_dirjang(third_place));
   						osDelay(500);
   						//加入奖杯转盘放置逻辑（已加）
@@ -425,7 +442,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
-  						Place('O');
+  						Place('O', 2);
   						printf("[TASK] PlaceDown third done\r\n");
   						i++;
   						flag_finish=false;
@@ -444,7 +461,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   		// Circle_Follow();
   		// if (g_circle_dir=='O')
   		// {
-  		// 	Place('O');
+  		// 	Place('O', 2);
   		// 	flag_finish=false;
   		// }
   		// task_send(Event_Navigation);
@@ -529,7 +546,8 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
-	BlockBasic_DualArmSetPos(1);
+	IR_Init();   /* 红外对射初始化 */
+	BlockBasic_DualArmSetPos(2);
 	osDelay(1000);
 	BlockBasic_TurntableTo(1);
 	// BlockBasic_TurntableTo(1);
@@ -547,27 +565,24 @@ void BsRt_task(void *argument)
 			//Color_Init();
 			osDelay(50);
 #if USE_OPENMV_COLOR == 1  /* ---- GY-33 ---- */
-			/* 收集: 红外对射检测物体进入 → 读颜色 → 旋转转盘 */
+			/* 收集: 红外对射检测物体进入 → 旋转转盘 (读颜色已注释) */
 			if (K==0) {
 				for (uint8_t slot = 1; slot <= 5; slot++) {
-					Color_DataTypeDef d;
-					if (Color_ReadData(&d) != HAL_OK) {
-						slot--;
+					/* 等红外对射检测到物体进入 */
+					while (!IR_ObjectEntered()) {
 						osDelay(10);
-						continue;
 					}
-					int dr = abs((int)d.red   - g_color_ambient.r);
-					int dg = abs((int)d.green - g_color_ambient.g);
-					int db = abs((int)d.blue  - g_color_ambient.b);
-					if (dr < 30 && dg < 30 && db < 30) {
-						slot--;
-						osDelay(50);
-						continue;
-					}
-					TT_SetColor(slot - 1, Color_Judge(&d));
+					/* ---- 读颜色过程 (已注释) ---- */
+					// Color_DataTypeDef d;
+					// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(10); continue; }
+					// int dr = abs((int)d.red   - g_color_ambient.r);
+					// int dg = abs((int)d.green - g_color_ambient.g);
+					// int db = abs((int)d.blue  - g_color_ambient.b);
+					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
+					// TT_SetColor(slot - 1, Color_Judge(&d));
 					if (slot < 5) {
 						BlockBasic_TurntableTo(slot + 1);
-						osDelay(500);
+						osDelay(900);
 					}
 				}
 				K=1;
@@ -575,23 +590,20 @@ void BsRt_task(void *argument)
 			}
 			else {
 				for (uint8_t slot = 1; slot <= 3; slot++) {
-					Color_DataTypeDef d;
-					if (Color_ReadData(&d) != HAL_OK) {
-						slot--;
-						osDelay(5);
-						continue;
+					/* 等红外对射检测到物体进入 */
+					while (!IR_ObjectEntered()) {
+						osDelay(10);
 					}
-					int dr = abs((int)d.red   - g_color_ambient.r);
-					int dg = abs((int)d.green - g_color_ambient.g);
-					int db = abs((int)d.blue  - g_color_ambient.b);
-					if (dr < 30 && dg < 30 && db < 30) {
-						slot--;
-						osDelay(50);
-						continue;
-					}
-					if (slot < 3) {
+					/* ---- 读颜色过程 (已注释) ---- */
+					// Color_DataTypeDef d;
+					// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
+					// int dr = abs((int)d.red   - g_color_ambient.r);
+					// int dg = abs((int)d.green - g_color_ambient.g);
+					// int db = abs((int)d.blue  - g_color_ambient.b);
+					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
+					if (slot < 4) {
+						osDelay(150);
 						BlockBasic_TurntableTo(slot + 1);
-						osDelay(500);
 					}
 				}
 				K=0;

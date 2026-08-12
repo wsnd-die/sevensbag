@@ -45,7 +45,7 @@ extern "C" {
 /* 转盘位置编号从 1 开始，合法范围为 1~5。 */
 #define BLOCK_TURNTABLE_FIRST_POS        1u
 #define BLOCK_TURNTABLE_POS_COUNT        5u
-#define BLOCK_TURNTABLE_HOME_DEG         90.0f
+#define BLOCK_TURNTABLE_HOME_DEG         30.0f
 #define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_DEG / BLOCK_TURNTABLE_POS_COUNT-0.5)
 /* 单次最大角度步长。分段移动用于降低 360 度位置舵机自动走最短路径的风险。 */
 #define BLOCK_TURNTABLE_STEP_LIMIT_DEG   60.0f
@@ -114,7 +114,7 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos);
  *         应先调用本函数同步软件状态。
  */
     void Servo_Angle(float angle_deg);
-void Place(char dir);
+void Place(char dir, uint16_t height);   /* 双机械臂: height=预设位置号(1~3), 放物用 2(最低点) */
     /*
      *
      *

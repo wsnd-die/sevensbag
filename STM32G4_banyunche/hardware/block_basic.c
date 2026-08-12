@@ -22,9 +22,11 @@ typedef struct {
 } BlockDualArmPos;
 
 static const BlockDualArmPos block_dual_arm_pos_table[] = {
-    {81.0f,  89.0f},   /* pos 1: 初始位置 */
-    {72.0f,  79.0f},   /* pos 2: 最低点 */
-    {94.0f,  101.0f},  /* pos 3: 第二位置 */
+    {150.0f, 18.0f},   /* pos 1: init 靠手动掰，不需要使用 */
+    {72.0f,  78.0f},   /* pos 2: lower */
+    {80.0f,  82.0f},   /* pos 3: 亚军 low / 季军 high */
+    {98.0f,  99.0f},   /* pos 4: 冠军 high */
+    {90.0f,  90.0f},   /* pos 5: 冠军 low / 亚军 high */
 };
 
 #define BLOCK_DUAL_ARM_POS_COUNT \
@@ -258,7 +260,8 @@ void Place(char dir,uint16_t height)
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
         }
         osDelay(100);
-        BlockBasic_LiftTo(DOWN,height);
+        //BlockBasic_LiftTo(DOWN,height);
+        BlockBasic_DualArmSetPos(height);
         osDelay(800);
 
         /* 后退 0.05 m（车体坐标：-X 为后退） */

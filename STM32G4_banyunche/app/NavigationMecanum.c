@@ -24,13 +24,13 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {-0.300f,    0.608f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {-0.350f,    0.608f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
-    {-0.20f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
+    {-0.25f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
 
-      {    0.47f,     1.2f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
-      {    0.0f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
-      {    0.0f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
+      {    0.3f,     -1.0f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+      {    0.0f,    -0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
+      {    0.0f,    -0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
       {   0.12f,    -0.156f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
