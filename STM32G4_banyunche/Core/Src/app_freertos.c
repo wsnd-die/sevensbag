@@ -268,7 +268,7 @@ void NLF_TASK(void *argument)
 	 *导航循线任务
 	 */
 	 //SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
-	SystemMode_t Navafter_mode[7]={Event_QRCode,Event_LinFolR,Event_Navigation,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
+	SystemMode_t Navafter_mode[7]={Event_QRCode,Event_LinFolR,Event_Navigation,Event_PlaceDown,Event_QRCode,Event_LinFolL,Event_FindCircle};
 	uint8_t NavafterNum[7]={1,1,1,3,1,1,5};
 	//SystemMode_t Navafter_mode[4]={Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
 	// uint8_t NavafterNum[4]={2,1,1,5};
@@ -335,7 +335,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
         {
 	        task_send(Event_Navigation);
         	Mecanum_StopAll();
-					BlockBasic_DualArmSetPos(5);
+					BlockBasic_DualArmSetPos(7);
         	printf("[TASK] LinFolR done\r\n");
         	K230_RequestMode(K230_MODE_CIRCLE);
         	K230_ApplyMode();
@@ -359,13 +359,14 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 					Circle_Follow();
 					if (g_circle_dir=='O')
 					{
+						//TT_RotateByQR();
 						Place('O', 2);
 						printf("[TASK] FindCircle placed");
 						flag_finish = false;
 						if (TT_IsDone()) {//全部转完
 							printf("[TASK] LIFT servo");
 							// Servo_SetAngle(125);
-              BlockBasic_DualArmSetPos(5);
+              //BlockBasic_DualArmSetPos(5);
 						}
 						task_send(Event_Navigation);
 					}
@@ -395,6 +396,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					{
   						/* HEIGHT_CHANGE: podium champion place arm height via Place(height=3). */
   						Place('O', 5);
+  						BlockBasic_DualArmSetPos(4);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
@@ -413,7 +415,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 					if (flag_finish==false)
 					{
 						/* HEIGHT_CHANGE: podium second-place pre-place arm height. */
-						BlockBasic_DualArmSetPos(5);
+						BlockBasic_DualArmSetPos(7);
   						BlockBasic_TurntableTo(Slop_dirjang(second_place));
   						// osDelay(500);
   						flag_finish=true;
@@ -443,7 +445,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (flag_finish==false)
   					{
 						/* HEIGHT_CHANGE: podium third-place pre-place arm height. */
-						BlockBasic_DualArmSetPos(3);
+						BlockBasic_DualArmSetPos(6);
   						BlockBasic_TurntableTo(Slop_dirjang(third_place));
   						osDelay(500);
   						//加入奖杯转盘放置逻辑（已加）
@@ -457,6 +459,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						printf("[TASK] PlaceDown third done\r\n");
   						i++;
   						flag_finish=false;
+  						BlockBasic_DualArmSetPos(2);
+  						//BlockBasic_TurntableTo(1);   /* 放完第三个奖杯后转回槽位1，后续收集5个物料也从槽位1开始 */
   						task_send(Event_Navigation);
   						K230_RequestMode(K230_MODE_LINE);
   						K230_ApplyMode();
@@ -591,13 +595,14 @@ void BsRt_task(void *argument)
 					// int db = abs((int)d.blue  - g_color_ambient.b);
 					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
 					// TT_SetColor(slot - 1, Color_Judge(&d));
-					if (slot < 5) {
-						BlockBasic_TurntableTo(slot + 1);
-						osDelay(900);
+					if (slot < 6) {
+						osDelay(165);
+						BlockBasic_TurntableTo(slot+1);
 					}
 				}
 				K=1;
 				g_color_collect_done = 1;
+				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
 			}
 			else {
 				for (uint8_t slot = 1; slot <= 3; slot++) {
@@ -613,8 +618,8 @@ void BsRt_task(void *argument)
 					// int db = abs((int)d.blue  - g_color_ambient.b);
 					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
 					if (slot < 4) {
-						osDelay(150);
-						BlockBasic_TurntableTo(slot + 1);
+						osDelay(200);
+						BlockBasic_TurntableTo(slot+1);
 					}
 				}
 				K=0;

@@ -45,7 +45,7 @@ extern "C" {
 /* 转盘位置编号从 1 开始，合法范围为 1~5。 */
 #define BLOCK_TURNTABLE_FIRST_POS        1u
 #define BLOCK_TURNTABLE_POS_COUNT        5u
-#define BLOCK_TURNTABLE_HOME_DEG         30.0f
+#define BLOCK_TURNTABLE_HOME_DEG         27.0f
 #define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_DEG / BLOCK_TURNTABLE_POS_COUNT-0.5)
 /* 单次最大角度步长。分段移动用于降低 360 度位置舵机自动走最短路径的风险。 */
 #define BLOCK_TURNTABLE_STEP_LIMIT_DEG   60.0f
@@ -105,6 +105,12 @@ void BlockBasic_DualArmSetPos(uint8_t pos);
  *         本接口只能作为框架，不能保证绝对角度定位。
  */
 BlockStatus BlockBasic_TurntableTo(uint8_t block_pos);
+
+/**
+ * @brief  转盘相对当前角度旋转指定角度。
+ * @param  delta_deg  相对旋转角度，单位 deg；会归一化到 0~360。
+ */
+void BlockBasic_TurntableRotate(float delta_deg);
 
 /**
  * @brief  重置软件记录的转盘当前角度，并立即输出该角度 PWM。

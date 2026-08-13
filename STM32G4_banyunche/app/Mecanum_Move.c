@@ -8,8 +8,8 @@
 
   MecanumConfig_t g_mecanum_config = {
     .wheel_radius_m = 0.0375f,
-    .half_length_m = 0.088f,
-    .half_width_m = 0.0782f,
+    .half_length_m = 0.105f,
+    .half_width_m = 0.0772f,
     .gear_ratio = 1.0f,
     .pulse_per_rev =3200 ,
     .max_motor_rpm = 120,

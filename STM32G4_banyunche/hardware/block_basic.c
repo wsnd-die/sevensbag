@@ -20,13 +20,15 @@ typedef struct {
     float front_angle_deg;
     float rear_angle_deg;
 } BlockDualArmPos;
-
+/*中间舵机（增加上抬，减少下降），前面舵机（减少上抬，增加下降）*/
 static const BlockDualArmPos block_dual_arm_pos_table[] = {
     {150.0f, 18.0f},   /* pos 1: init 靠手动掰，不需要使用 */
-    {72.0f,  78.0f},   /* pos 2: lower */
-    {82.0f,  84.0f},   /* pos 3: 亚军 low / 季军 high */
-    {98.0f,  99.0f},   /* pos 4: 冠军 high */
-    {93.5f,  94.5f},   /* pos 5: 冠军 low / 亚军 high */
+    {65.5f,  83.5f},   /* pos 2: lower */
+    {81.0f,  95.0f},   /* pos 3: 亚军 low*/
+    {96.0f,  100.0f},   /* pos 4: 冠军 high */
+    {89.5f,  102.5f},   /* pos 5: 冠军 low  */
+{68.0f,  74.0f},   /* pos 6:季军 high */
+{90.0f,  95.0f},   /* pos 7: 亚军 high */
 };
 
 #define BLOCK_DUAL_ARM_POS_COUNT \
@@ -214,6 +216,16 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos)
     return BLOCK_OK;
 }
 
+/**
+ * @brief  转盘相对当前角度旋转指定角度。
+ * @param  delta_deg  相对旋转角度，单位 deg；会归一化到 0~360。
+ */
+void BlockBasic_TurntableRotate(float delta_deg)
+{
+    angle_servo = normalize_servo(angle_servo + delta_deg);
+    turntable_write_angle(angle_servo);
+}
+
 MecanumConfig_t Place_config = {
     .wheel_radius_m = 0.0375f,
     .half_length_m = 0.088f,
@@ -269,9 +281,9 @@ void Place(char dir,uint16_t height)
     MecanumMove_t move;
     if (dir == 'O')
     {
-				BlockBasic_DualArmSetPos(height);
+
         /* 前进 0.05 m（车体坐标：+X 为前进） */
-        if (Mecanum_CalculateMove(&Place_config, 0.0f, -0.064f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, 0.0f, -0.077f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
@@ -279,7 +291,7 @@ void Place(char dir,uint16_t height)
         osDelay(100);
         //BlockBasic_LiftTo(DOWN,height);
         /* HEIGHT_CHANGE: Place() applies the requested arm preset height. */
-        
+        BlockBasic_DualArmSetPos(height);
         osDelay(800);
 
         /* 后退 0.05 m（车体坐标：-X 为后退） */
