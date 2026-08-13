@@ -263,7 +263,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   		Trace_LineFollow();
   		if (g_color_collect_done==1)
   		{
-  			task_send(Event_GoHome);
+  			task_send(Event_Navigation);
   			Mecanum_StopAll();
   			printf("[TASK] LinFolL done\r\n");
   			K230_RequestMode(K230_MODE_CIRCLE);
@@ -666,7 +666,7 @@ void OLED_TASK(void *argument)
   for(;;)
   {
 
-  	position=World_position_get();
+  	// position=World_position_get();
   	// printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 		osDelay(20);
@@ -762,7 +762,7 @@ void QR_TASK(void *argument)
 void IMU_FUCTION(void *argument)
 {
   /* USER CODE BEGIN IMU_FUCTION */
-	EulerAngle e ;
+	// EulerAngle e ;
 	// calibrate_gyro();
 
   for(;;)

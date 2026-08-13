@@ -220,11 +220,12 @@ MecanumConfig_t Place_config = {
     .max_motor_rpm = 80,
     .min_move_time_s = 0.1f,
 
-    /* 驱动器逻辑方向: 1=正向, 0=反向 */
+    /* 驱动器逻辑方向: 0=正向(与 Send_motor 速度环 !dir 后一致)
+     * 原 RL/RR 误设 1, 导致 Place 位置模式下后轮反转, 车打转 */
     .forward_dir[MECANUM_ADDR_FR] = 0U,
-    .forward_dir[MECANUM_ADDR_RL] = 1U,
+    .forward_dir[MECANUM_ADDR_RL] = 0U,
     .forward_dir[MECANUM_ADDR_FL] = 0U,
-    .forward_dir[MECANUM_ADDR_RR] = 1U,
+    .forward_dir[MECANUM_ADDR_RR] = 0U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
     .acceleration = 40U
