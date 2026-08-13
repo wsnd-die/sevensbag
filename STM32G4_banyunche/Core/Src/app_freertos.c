@@ -229,7 +229,7 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_GoHome);
+	task_send(Event_LinFolL);
 	// BlockBasic_LiftTo(UP,44);
 	BlockBasic_TurntableTo(1);
 	osDelay(500);
@@ -496,7 +496,7 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
-	Servo_SetAngle(38);
+	Servo_SetAngle(42);
 	BlockBasic_TurntableTo(1);
 	IR_Init();
 	osDelay(1000);
@@ -661,7 +661,7 @@ void OLED_TASK(void *argument)
   {
 
   	position=World_position_get();
-  	printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
+  	// printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 		osDelay(20);
   }

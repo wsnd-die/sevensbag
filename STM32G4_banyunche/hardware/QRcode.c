@@ -1,4 +1,5 @@
 #include "Common_used.h"
+#include "trace_tune.h"
 
 static uint8_t qrcode_rx_byte;
 static uint8_t qrcode_rx_buf[QRCODE_RX_BUF_SIZE];
@@ -66,6 +67,7 @@ uint8_t  QR_deel(void)
     else
     {
         Yan_Num=result-1;
+        k=1;
     }
 
     HAL_UART_Transmit_IT(&huart1, &result, 1);
@@ -100,6 +102,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 
     if (huart->Instance == USART1) {
+        /* 串口1 调参命令 ('#' 行) 分流, 不进入 QR 处理 */
+        if (Trace_Tune_OnByte(qrcode_rx_byte)) {
+            HAL_UART_Receive_IT(&huart1, &qrcode_rx_byte, 1);
+            return;
+        }
         if (qrcode_rx_len >= QRCODE_RX_BUF_SIZE) {
             qrcode_rx_len = 0;
         }

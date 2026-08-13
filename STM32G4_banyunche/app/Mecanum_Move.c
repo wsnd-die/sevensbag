@@ -17,9 +17,9 @@
 
     /* 驱动器逻辑方向: 1=正向, 0=反向 */
     .forward_dir[MECANUM_ADDR_FR] = 0U,
-    .forward_dir[MECANUM_ADDR_RL] = 1U,
+    .forward_dir[MECANUM_ADDR_RL] = 0U,
     .forward_dir[MECANUM_ADDR_FL] = 0U,
-    .forward_dir[MECANUM_ADDR_RR] = 1U,
+    .forward_dir[MECANUM_ADDR_RR] = 0U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
     .acceleration = 80U

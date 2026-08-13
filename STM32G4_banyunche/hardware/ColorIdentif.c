@@ -87,16 +87,12 @@ void SetQR(uint8_t idx)
     g_tt.ok   = 1;
     g_tt.cnt  = 5;    /* 固定物块任务: 5 个槽位 */
 
-    /* 清空反向索引 */
-    for (uint8_t i = 0; i < COLOR_COUNT; i++)
-        g_tt.rev[i] = SLOT_NONE;
-
     if (idx >= 16) { g_tt.ok = 0; return; }
-    for (uint8_t s = 0; s < 5; s++) {
-        uint8_t c = T1[idx][s];
-        g_tt.color[s] = c;           /* 槽位→颜色 */
-        g_tt.rev[c]   = s;           /* 颜色→槽位 */
-    }
+
+    /* 只写 QR 任务顺序, 不碰 g_tt.color[]/g_tt.rev[] ——
+     * 那两块是收集阶段 TT_SetColor 写的物理映射, 这里绝不能覆盖 */
+    for (uint8_t s = 0; s < 5; s++)
+        g_tt.task_color[s] = T1[idx][s];   /* 槽位→任务要求颜色 */
 }
 
 /* ============================================================
@@ -143,9 +139,10 @@ bool TT_RotateByQR(void)
     if (g_tt_rotate_idx >= cnt) return false;
 
     if (g_tt.ok && g_tt.idx < 16) {
-        /* QR 模式: 按颜色查找槽位; 找不到时回退固定顺序, 保证转盘一定转 */
-        slot = SlotByColor(T1[g_tt.idx][g_tt_rotate_idx]);
-        if (slot == SLOT_NONE) slot = g_tt_rotate_idx;
+        /* QR 模式: 第 i 个圆需要 task_color[i], 用物理反向索引找它实际所在槽 */
+        uint8_t need = g_tt.task_color[g_tt_rotate_idx];
+        slot = SlotByColor(need);          /* g_tt.rev[] = 收集阶段写入的物理槽位 */
+        if (slot == SLOT_NONE) slot = g_tt_rotate_idx;   /* 兜底: 保证转盘一定转 */
     } else {
         /* 默认固定顺序: 直接按槽位号 1→2→3→4→5 */
         slot = g_tt_rotate_idx;
