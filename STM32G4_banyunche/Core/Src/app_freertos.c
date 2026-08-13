@@ -229,7 +229,7 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_LinFolL);
+	task_send(Event_Navigation);
 	// BlockBasic_LiftTo(UP,44);
 	BlockBasic_TurntableTo(1);
 	osDelay(500);
@@ -263,7 +263,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   		Trace_LineFollow();
   		if (g_color_collect_done==1)
   		{
-  			task_send(Event_Navigation);
+  			task_send(Event_GoHome);
   			Mecanum_StopAll();
   			printf("[TASK] LinFolL done\r\n");
   			K230_RequestMode(K230_MODE_CIRCLE);
@@ -447,26 +447,26 @@ void Color_task(void *argument)
 	{
 		uint8_t raw_dumped = 0;
 		for (;;) {
-		// 	Color_DataTypeDef d;
-		// 	if (Color_ReadData(&d) == HAL_OK) {
-		// 		printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
-		// 		       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
-		// 		       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
-		// 		       IR_ObjectPresent());
-		// 	} else {
-		// 		printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
-		// 		       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
-		// 		       IR_ObjectPresent());
-		// 	}
-		// 	/* 一次性 dump 原始接收字节, 确认帧格式 */
-		// 	if (!raw_dumped && dbg_rx_cb > 0) {
-		// 		raw_dumped = 1;
-		// 		printf("raw: ");
-		// 		for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
-		// 			printf("%02X ", dma_rx_buf[i]);
-		// 		}
-		// 		printf("\r\n");
-		// 	}
+			Color_DataTypeDef d;
+			if (Color_ReadData(&d) == HAL_OK) {
+				printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
+				       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
+				       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+				       IR_ObjectPresent());
+			} else {
+				printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
+				       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+				       IR_ObjectPresent());
+			}
+			/* 一次性 dump 原始接收字节, 确认帧格式 */
+			if (!raw_dumped && dbg_rx_cb > 0) {
+				raw_dumped = 1;
+				printf("raw: ");
+				for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
+					printf("%02X ", dma_rx_buf[i]);
+				}
+				printf("\r\n");
+			}
 			// /* 调试: 打印5个槽的颜色, 验证槽位映射是否正确 */
 			printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
 				   Color_ToString(ColorAtSlot(0)),
@@ -496,7 +496,7 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
-	Servo_SetAngle(42);
+	Servo_SetAngle(37);
 	BlockBasic_TurntableTo(1);
 	IR_Init();
 	osDelay(1000);
@@ -527,29 +527,35 @@ void BsRt_task(void *argument)
 				 * 到来(Collect_WaitEnter)时, 转盘早已走完并停稳, 再读上一槽颜色。
 				 * 读色永远发生在转盘静止时, 不存在"转不到位就开读"。 */
 				Collect_WaitEnter();			/* 物块1进入槽1 */
-				osDelay(270);
+				osDelay(200);
 				BlockBasic_TurntableTo(2);		/* 槽1 → 传感器下 */
 
 				for (slot = 1; slot <= 4; slot++) {
-					/* 等物块slot+1进入槽slot+1: 这段时间转盘到位并停稳 */
-					Collect_WaitEnter();
-					/* 读取槽slot颜色(转盘静止), 跳过 UNKNOWN 和重复 */
-					for (;;) {
-						c = Collect_ReadColor();
-						if (c == COLOR_UNKNOWN || c >= COLOR_COUNT || seen[c])
-							continue;
-						break;
+					/* 等物块slot+1进入槽slot+1: 带超时(约6s), 防 IR 漏检卡死 */
+					{
+						uint16_t w = 0;
+						while (!IR_ObjectEntered() && w++ < 600) osDelay(10);
 					}
-					seen[c] = 1;
-					TT_SetColor(slot - 1, c);	/* 槽slot → 索引slot-1 */
+					/* 读取槽slot颜色(转盘静止): 带重试上限(约5s), 读不出不阻塞 */
+					c = COLOR_UNKNOWN;
+					for (uint16_t tries = 0; tries < 30; tries++) {
+						c = Collect_ReadColor();
+						if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
+							break;
+						osDelay(10);
+					}
+					if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c]) {
+						seen[c] = 1;
+						TT_SetColor(slot - 1, c);	/* 槽slot → 索引slot-1 */
+					}
 					if (slot < 4) {
 						osDelay(100);		/* 等物块slot+1落稳 */
 						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 */
 					}
 				}
 
-				/* 物块5已在最后一次等待时进入槽5 → 触发锁死 */
-				osDelay(270);
+				/* 必触发锁死: 物块5已进入槽5(或等超时后强制收尾), 锁死转盘 */
+				osDelay(200);
 				Servo_Angle(333.0f);
 
 				/* 槽5(索引4)颜色 = 全集 - 已读4种 */

@@ -37,7 +37,7 @@ bool IR_ObjectEntered(void)
     bool now = IR_ObjectPresent();
     if (now && !ir_last) {
         /* 防抖: 检测到进入后等 20ms 再确认, 滤掉沿上的抖动 */
-        osDelay(10);
+        osDelay(5);
         now = IR_ObjectPresent();
     }
     bool edge = (now && !ir_last);  /* 物体进入边沿 (自动复位) */
@@ -47,7 +47,7 @@ bool IR_ObjectEntered(void)
 
 bool Collect_WaitEnter(void)
 {
-    while (!IR_ObjectEntered()) { osDelay(10); }   /* 等物体进入(带防抖) */
+    while (!IR_ObjectEntered()) { osDelay(5); }   /* 等物体进入(带防抖) */
     return true;
 }
 
