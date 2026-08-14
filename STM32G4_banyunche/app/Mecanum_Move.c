@@ -12,7 +12,7 @@
     .half_width_m = 0.0782f,
     .gear_ratio = 1.0f,
     .pulse_per_rev =3200 ,
-    .max_motor_rpm = 120,
+    .max_motor_rpm = 300,
     .min_move_time_s = 0.1f,
 
     /* 驱动器逻辑方向: 1=正向, 0=反向 */
@@ -22,7 +22,7 @@
     .forward_dir[MECANUM_ADDR_RR] = 0U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
-    .acceleration = 80U
+    .acceleration = 250U
 };
 
 /* ---- 内部工具函数 ---- */

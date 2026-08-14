@@ -330,7 +330,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
-  						Place('O',24);
+  						Place('O',28);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
@@ -352,11 +352,11 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
-  						Place('O',24);
+  						Place('O',28);
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
-  						BlockBasic_LiftTo(UP,44);
+  						BlockBasic_LiftTo(UP,48);
   						task_send(Event_Navigation);
   						osDelay(800);
   						break;
@@ -528,7 +528,7 @@ void BsRt_task(void *argument)
 
 
 				Collect_WaitEnter();			/* 物块1进入槽1 */
-				osDelay(200);
+				osDelay(220);
 				BlockBasic_TurntableTo(2);		/* 槽1 → 传感器下 */
 
 				for (slot = 1; slot <= 4; slot++) {
@@ -547,7 +547,7 @@ void BsRt_task(void *argument)
 						TT_SetColor(slot - 1, c);	/* 槽slot → 索引slot-1 */
 					}
 					if (slot < 4) {
-						osDelay(100);		/* 等物块slot+1落稳 */
+						osDelay(200);		/* 等物块slot+1落稳 */
 						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 */
 					}
 				}
@@ -571,7 +571,7 @@ void BsRt_task(void *argument)
 				for (uint8_t slot = 1; slot <= 3; slot++) {
 					Collect_WaitObject();
 					if (slot < 3) {
-						osDelay(150);
+						osDelay(200);
 
 						BlockBasic_TurntableTo(slot + 1);
 					}
@@ -579,7 +579,7 @@ void BsRt_task(void *argument)
 				K=0;
 					osDelay(200);
 				Servo_Angle(180.0f);
-				BlockBasic_LiftTo(UP, 44);
+				BlockBasic_LiftTo(UP, 48);
 				g_trophy_done = 1;
 			}
 #else  /* ---- OpenMV ---- */

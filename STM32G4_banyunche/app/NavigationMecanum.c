@@ -25,17 +25,17 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
 
     {0.308f,    0.656f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
-    {-0.1f,      0.15f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
+    {0.0f,      0.1f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
 
-    {    -0.866f,     -0.456f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+    {    -0.866f,     -0.436f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    -0.22f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
     {    0.3f,     -0.71f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.23f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
     {    0.10f,     -0.52f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-    {  -0.403f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
+    {  -0.353f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
 
-    {   -0.07f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
+    {   0.08f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
 
     {    0.425f,     1.03f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
     {    0.06f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
@@ -107,7 +107,7 @@ bool Nav_GoToWorld(float target_x, float target_y, float target_yaw)
         Self_Dir.yaw,
         dtheta,
         1.0f,          /* 全速 */
-        80U,           /* acc */
+        g_mecanum_config.acceleration,           /* acc */
         timeout_ms
     );
 
