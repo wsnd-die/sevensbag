@@ -4,16 +4,12 @@
  * @note
  *   - TX: 阻塞 bit-bang，DWT/NOP 延时（发完一个字节才返回）
  *   - RX: TIM16 硬件定时器做精确位时钟 + EXTI 起始位检测
- *   - 引脚 PB6/PB7 与 OLED 软件 I2C 互斥，通过 SW_UART_ENABLE / OLED_USE_SW_I2C 切换
  */
 
 #include "Common_used.h"
 
 #if SW_UART_ENABLE
 
-#if defined(OLED_USE_SW_I2C)
-#error "SW_UART and OLED_USE_SW_I2C both use PB6/PB7 — comment out OLED_USE_SW_I2C in oled.h"
-#endif
 
 /* ================================================================
  * 内部宏
