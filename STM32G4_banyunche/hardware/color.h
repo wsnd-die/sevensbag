@@ -1,6 +1,6 @@
 /**
  * @file color.h
- * @brief GY-33 颜色传感器 UART 模式驱动
+ * @brief GY-33 color sensor driver, default I2C3 mode
  *
  * 校准流程:
  *   1. 调用 Color_Init() 初始化
@@ -18,9 +18,16 @@ extern "C" {
 #include "main.h"
 #include <stdint.h>
 
-/* 颜色传感器选择: 1=GY-33(software UART), 0=OpenMV */
+/* Color sensor selection: 1=GY-33(I2C3), 0=OpenMV */
 #ifndef USE_OPENMV_COLOR
 #define USE_OPENMV_COLOR  1
+#endif
+
+/* Default GY-33 transport is I2C3 (PA8=SCL, PB5=SDA).
+ * Keep the old software UART path available, but hidden by default.
+ */
+#ifndef COLOR_GY33_USE_SW_UART
+#define COLOR_GY33_USE_SW_UART  0U
 #endif
 
 /* 颜色枚举 */
@@ -71,18 +78,18 @@ Color_TypeDef    Color_DetectDominant(void);
 const char*      Color_ToString(Color_TypeDef color);
 
 /**
- * @brief  校准某一颜色: 读取当前传感器 RGB 存为参考
+ * @brief GY-33 color sensor driver, default I2C3 mode
  * @param  color  要校准的颜色枚举
  */
 void Color_Calibrate(Color_TypeDef color);
 
 /**
- * @brief  校准环境光: 在空槽时调用，记录环境光基准
+ * @brief GY-33 color sensor driver, default I2C3 mode
  */
 void Color_CalibAmbient(void);
 
 /**
- * @brief  保存校准数据到备份寄存器 (掉电保存)
+ * @brief GY-33 color sensor driver, default I2C3 mode
  * @note   GY-33: 连续输出模式 Auto=1 已掉电保存; LED 亮度需发 A5 CC 71 保存
  */
 void Color_CalibSave(void);

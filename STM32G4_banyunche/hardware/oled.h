@@ -5,16 +5,8 @@
 #include "oled_data.h"
 #include "main.h"
 
-/*
- * OLED 驱动方式选择（二选一）：
- *   OLED_USE_HW_I2C — 硬件 I2C3
- *   OLED_USE_SW_I2C — 软件模拟 I2C（PB6=SCL, PB7=SDA）
- *
- * 注意：软件 I2C 与软件串口 (sw_uart) 共用 PB6/PB7，
- *       两者互斥，只能启用其一。
- */
+/* OLED uses hardware I2C3 only. */
 //#define OLED_USE_HW_I2C
-//#define OLED_USE_SW_I2C  /* 与 SW_UART 互斥，串口模式下禁用 */
 
 /*参数宏定义*********************/
 
@@ -67,11 +59,6 @@ void OLED_DrawTriangle(uint8_t X0, uint8_t Y0, uint8_t X1, uint8_t Y1, uint8_t X
 void OLED_DrawCircle(uint8_t X, uint8_t Y, uint8_t Radius, uint8_t IsFilled);
 void OLED_DrawEllipse(uint8_t X, uint8_t Y, uint8_t A, uint8_t B, uint8_t IsFilled);
 void OLED_DrawArc(uint8_t X, uint8_t Y, uint8_t Radius, int16_t StartAngle, int16_t EndAngle, uint8_t IsFilled);
-
-/* 软件 I2C 通用读写接口（供同总线上的其他设备使用，如 GY-33） */
-HAL_StatusTypeDef OLED_SW_I2C_WriteReg(uint8_t DevAddr, uint8_t Reg, uint8_t Value);
-HAL_StatusTypeDef OLED_SW_I2C_ReadRegs(uint8_t DevAddr, uint8_t Reg, uint8_t *Buf, uint16_t Len);
-HAL_StatusTypeDef OLED_SW_I2C_IsDeviceReady(uint8_t DevAddr, uint8_t Trials);
 
 /*********************函数声明*/
 

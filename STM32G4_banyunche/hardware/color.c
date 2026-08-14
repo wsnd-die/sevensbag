@@ -1,7 +1,7 @@
 /**
  * @file color.c
- * @brief 颜色传感器 — GY-33 / OpenMV 双驱动
- *   - USE_OPENMV_COLOR 1: GY-33,  帧: 5A 5A type qty data[qty] chk
+ * @brief Color sensor driver: GY-33 I2C3 or OpenMV
+ *   - USE_OPENMV_COLOR 1: GY-33 on I2C3 (PA8=SCL, PB5=SDA)
  *   - USE_OPENMV_COLOR 0: OpenMV, 帧: AA CC L A B BB DD (Lab 值, OpenMV 端采集)
  */
 #include "Common_used.h"
@@ -66,6 +66,11 @@ Color_Ambient_t g_color_ambient;
  * ================================================================ */
 #if USE_OPENMV_COLOR == 1
 
+#define GY33_I2C_ADDR       (0x5AU << 1)
+#define GY33_REG_CONFIG     0x10U
+#define GY33_I2C_TIMEOUT    100U
+
+#if COLOR_GY33_USE_SW_UART
 static void Color_SendCmd(uint8_t cmd)
 {
     SW_UART_SendByte(0xA5U);
@@ -126,6 +131,74 @@ HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
     data->online = 1U;
     return HAL_OK;
 }
+
+#else
+
+static HAL_StatusTypeDef Color_ReadRegisters(uint8_t reg, uint8_t *buffer, uint16_t length)
+{
+    if (buffer == NULL || length == 0U) return HAL_ERROR;
+
+    return HAL_I2C_Mem_Read(&hi2c3,
+                            GY33_I2C_ADDR,
+                            reg,
+                            I2C_MEMADD_SIZE_8BIT,
+                            buffer,
+                            length,
+                            GY33_I2C_TIMEOUT);
+}
+
+static HAL_StatusTypeDef Color_WriteRegister(uint8_t reg, uint8_t value)
+{
+    return HAL_I2C_Mem_Write(&hi2c3,
+                             GY33_I2C_ADDR,
+                             reg,
+                             I2C_MEMADD_SIZE_8BIT,
+                             &value,
+                             1U,
+                             GY33_I2C_TIMEOUT);
+}
+
+HAL_StatusTypeDef Color_Init(void)
+{
+    return HAL_I2C_IsDeviceReady(&hi2c3, GY33_I2C_ADDR, 3U, GY33_I2C_TIMEOUT);
+}
+
+HAL_StatusTypeDef Color_SetLedLevel(uint8_t level)
+{
+    uint8_t config;
+
+    if (level > 10U) return HAL_ERROR;
+    if (Color_ReadRegisters(GY33_REG_CONFIG, &config, 1U) != HAL_OK) return HAL_ERROR;
+
+    config = (uint8_t)((level << 4) | (config & 0x01U));
+    return Color_WriteRegister(GY33_REG_CONFIG, config);
+}
+
+HAL_StatusTypeDef Color_ReadData(Color_DataTypeDef *data)
+{
+    uint8_t buffer[16];
+
+    if (data == NULL) return HAL_ERROR;
+    if (Color_ReadRegisters(0x00U, buffer, sizeof(buffer)) != HAL_OK) {
+        data->online = 0U;
+        return HAL_ERROR;
+    }
+
+    data->raw_red   = ((uint16_t)buffer[0] << 8) | buffer[1];
+    data->raw_green = ((uint16_t)buffer[2] << 8) | buffer[3];
+    data->raw_blue  = ((uint16_t)buffer[4] << 8) | buffer[5];
+    data->raw_clear = ((uint16_t)buffer[6] << 8) | buffer[7];
+    data->lux = ((uint16_t)buffer[8] << 8) | buffer[9];
+    data->color_temperature = ((uint16_t)buffer[10] << 8) | buffer[11];
+    data->red = buffer[12];
+    data->green = buffer[13];
+    data->blue = buffer[14];
+    data->sensor_color = buffer[15];
+    data->online = 1U;
+    return HAL_OK;
+}
+
+#endif /* COLOR_GY33_USE_SW_UART */
 
 Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
 {
