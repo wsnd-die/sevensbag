@@ -133,6 +133,9 @@ extern uint8_t buf;
 extern volatile uint8_t g_angle_ctrl_enable;   /* 1=使能角度控制 */
 extern volatile float   g_angle_target_yaw;    /* 目标角度 (deg) */
 
+/* --- 速度模式导航开关 --- */
+extern volatile uint8_t g_nav_speed_mode;      /* 1=下次导航用速度模式 */
+
 /* ============================================================
  * 9. 项目全局函数原型
  * ============================================================ */

@@ -48,6 +48,9 @@ volatile uint8_t         g_trophy_done = 0;         /* 0=未完成, 1=3个奖杯
 volatile uint8_t g_angle_ctrl_enable = 0;    /* 1=使能角度控制, 0=停止 */
 volatile float
 g_angle_target_yaw   = 90.0f; /* 目标角度 (deg), 固定值可改 */
+
+/* --- 速度模式导航开关 (循迹完成后置1, 下一次 Nav_FeDuanPoint 用速度模式) --- */
+volatile uint8_t g_nav_speed_mode = 0;       /* 1=下次导航用速度模式 */
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -265,6 +268,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   		Trace_LineFollow();
   		if (g_color_collect_done==1)
   		{
+	        g_nav_speed_mode = 1;   /* 循迹L完成: 下次导航用速度模式 */
   			task_send(Event_Navigation);
   			Mecanum_StopAll();
   			printf("[TASK] LinFolL done\r\n");
@@ -282,6 +286,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   		Trace_LineFollow();
         if (g_trophy_done==1)
         {
+				g_nav_speed_mode = 1;   /* 循迹R完成: 下次导航用速度模式 */
 	        task_send(Event_Navigation);
         	Mecanum_StopAll();
         	printf("[TASK] LinFolR done\r\n");
@@ -664,7 +669,7 @@ void OLED_TASK(void *argument)
   for(;;)
   {
 
-  	// position=World_position_get();
+  	position=World_position_get();
   	// printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 		osDelay(20);

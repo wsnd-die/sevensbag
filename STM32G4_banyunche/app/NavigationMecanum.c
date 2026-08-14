@@ -210,10 +210,85 @@ bool Nav_Rotate(float angle_rad)
 
 
 
+/* ============================================================
+ * 速度模式到位控制 — 编码器+陀螺仪定位
+ * ============================================================ */
+#define NAV_KP_POS   1.2f    /* 位置P: m/s 每 m 误差 */
+#define NAV_KP_YAW   2.5f    /* 航向P: rad/s 每 rad 误差 */
+#define NAV_V_MAX    0.5f    /* 最大线速度 m/s */
+#define NAV_W_MAX    1.8f    /* 最大角速度 rad/s */
+#define NAV_POS_TOL  0.015f  /* 到位距离 m */
+#define NAV_YAW_TOL  0.04f   /* 到位航向 rad */
+#define NAV_TIMEOUT  500U    /* 超时 ×10ms ≈5s */
+
+/**
+ * @brief 速度模式到位控制(世界系目标)
+ *        用编码器+陀螺仪里程计 World_position_get() 做反馈,
+ *        位置误差→vx/vy, 航向误差→w, Mecanum_Calc_Full 输出速度。
+ * @param tx,ty,tyaw 目标世界坐标(m)/航向(rad)
+ */
+bool Nav_TrackPose(float tx, float ty, float tyaw)
+{
+    uint16_t guard = 0;
+    World_Dir_t pos;
+    MecanumResult motor;
+
+    g_angle_ctrl_enable = 0;   /* 不用 FC_TASK 角度环, 防止抢电机 */
+
+    while (guard++ < NAV_TIMEOUT) {
+        pos = World_position_get();          /* 编码器+陀螺仪里程计 */
+
+        float dx = tx - pos.x;
+        float dy = ty - pos.y;
+        float dyaw = Nav_NormalizeAngle(tyaw - pos.yaw);
+        float dist = sqrtf(dx * dx + dy * dy);
+
+        /* 到位: 停车 + 更新自身位姿 */
+        if (dist < NAV_POS_TOL && fabsf(dyaw) < NAV_YAW_TOL) {
+            motor = Mecanum_Calc_Full(0.0f, 0.0f, 0.0f);
+            Send_commandmotor(&motor);
+            Self_Dir = pos;
+            return true;
+        }
+
+        /* 位置 P 控制: 世界速度 → 限幅 → 旋转到车体系 */
+        float vx_w = NAV_KP_POS * dx;
+        float vy_w = NAV_KP_POS * dy;
+        float v_w_mag = sqrtf(vx_w * vx_w + vy_w * vy_w);
+        if (v_w_mag > NAV_V_MAX) {
+            vx_w *= NAV_V_MAX / v_w_mag;
+            vy_w *= NAV_V_MAX / v_w_mag;
+        }
+        float v_bx =  vx_w * cosf(pos.yaw) + vy_w * sinf(pos.yaw);  /* 车体前进 */
+        float v_by = -vx_w * sinf(pos.yaw) + vy_w * cosf(pos.yaw);  /* 车体左移 */
+
+        /* 航向 P 控制 */
+        float w = NAV_KP_YAW * dyaw;
+        if (w >  NAV_W_MAX) w =  NAV_W_MAX;
+        if (w < -NAV_W_MAX) w = -NAV_W_MAX;
+
+        motor = Mecanum_Calc_Full(v_bx, v_by, w);
+        Send_commandmotor(&motor);
+        osDelay(10);
+    }
+
+    /* 超时: 停车 */
+    motor = Mecanum_Calc_Full(0.0f, 0.0f, 0.0f);
+    Send_commandmotor(&motor);
+    Self_Dir = World_position_get();
+    return false;
+}
+
 bool Nav_FeDuanPoint() {
     static uint8_t PontIntex=0;
 
-    if (!Nav_MoveBody(g_waypoints[PontIntex].x,
+    if (g_nav_speed_mode) {
+        g_nav_speed_mode = 0;   /* 用掉即清: 循迹后速度模式纠正到点 */
+        Nav_TrackPose(g_waypoints[PontIntex].x,
+                      g_waypoints[PontIntex].y,
+                      g_waypoints[PontIntex].yaw);
+        PontIntex++;
+    } else if (!Nav_MoveBody(g_waypoints[PontIntex].x,
                           g_waypoints[PontIntex].y,
                           g_waypoints[PontIntex++].yaw)) {
         return false;
