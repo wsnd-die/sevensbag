@@ -602,6 +602,7 @@ void BsRt_task(void *argument)
 				}
 				K=1;
 				g_color_collect_done = 1;
+				osDelay(150);
 				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
 			}
 			else {

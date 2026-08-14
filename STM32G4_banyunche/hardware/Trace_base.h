@@ -26,7 +26,7 @@ extern "C" {
 #define POS_INTEGRAL_MAX  10.0f /* 内环积分限幅 */
 
 /* ======================== 共用 ======================== */
-#define TRACE_BASE_SPEED   0.65f   /* 基础线速度 (m/s) */
+#define TRACE_BASE_SPEED   0.7f   /* 基础线速度 (m/s) */
 #define TRACE_W_MAX        0.95f    /* 最大角速度 (rad/s) */
 #define TRACE_CURVE_OUTER_GAIN     0.0f
 #define TRACE_CURVE_OUTER_MAX_DEG  0.0f

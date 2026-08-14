@@ -24,9 +24,9 @@ typedef struct {
 static const BlockDualArmPos block_dual_arm_pos_table[] = {
     {150.0f, 18.0f},   /* pos 1: init 靠手动掰，不需要使用 */
     {65.5f,  83.5f},   /* pos 2: lower */
-    {81.0f,  95.0f},   /* pos 3: 亚军 low*/
-    {96.0f,  100.0f},   /* pos 4: 冠军 high */
-    {89.5f,  102.5f},   /* pos 5: 冠军 low  */
+    {84.0f,  98.0f},   /* pos 3: 亚军 low*/
+    {94.0f,  98.0f},   /* pos 4: 冠军 high */
+    {91.5f,  104.5f},   /* pos 5: 冠军 low  */
 {68.0f,  74.0f},   /* pos 6:季军 high */
 {90.0f,  95.0f},   /* pos 7: 亚军 high */
 };
@@ -283,7 +283,7 @@ void Place(char dir,uint16_t height)
     {
 
         /* 前进 0.05 m（车体坐标：+X 为前进） */
-        if (Mecanum_CalculateMove(&Place_config, 0.0f, -0.077f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, 0.0f, -0.075f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);

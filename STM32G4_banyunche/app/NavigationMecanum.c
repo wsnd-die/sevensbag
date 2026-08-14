@@ -24,24 +24,24 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {-0.37f,    0.708f,  90.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
-    {-0.2f,      0.12f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
-    {     0.0f,     -1.2f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：再向左平移 */
-	  {    -0.7f,      0.0f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：先0度前进 */
+    {-0.27f,    0.68f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {0.22f,      0.18f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
+    {     0.0f,     -1.12f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：再向左平移 */
+	  {    -0.6f,      0.0f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：先0度前进 */
     {    -0.15f,    -0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
     {    -0.15f,    -0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
-      {   1.11f,    -0.5f, 0.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
+      {   1.11f,    -0.55f, 0.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
 
-      {  0.35f,    0.3f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
+      {  0.25f,    0.25f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
-      {    0.7f,     0.8f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
-    {    0.33f,     0.3f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
-      {    -0.23f,     0.7f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
-    {    0.23f,     0.2f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
-      {    -0.07f,     0.65f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
+      {    0.88f,     0.68f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+    {    0.20f,     0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
+      {    -0.18f,     0.82f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
+    {    0.24f,     0.15f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
+      {    -0.05f,     0.6f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-          {0.4,-1.0,0},//回家点
+          {0.43f,     -0.9f,0.0f * MECANUM_DEG_TO_RAD},//回家点
 
 };
 
@@ -217,6 +217,12 @@ bool Nav_FeDuanPoint() {
     uint8_t idx = PontIntex;
 
     if (idx == 2U) {
+        Nav_TurnToDeg(0.0f);
+        Self_Dir.yaw = 0.0f;
+    }
+
+    /* 收集完5个物料、转盘转完45°后, 原地回正到出发时的正北朝向(0°), 再向a点移动 */
+    if (idx == 8U) {
         Nav_TurnToDeg(0.0f);
         Self_Dir.yaw = 0.0f;
     }
