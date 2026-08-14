@@ -51,13 +51,9 @@ HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeou
 
 uint8_t Qr_Get(void) {
 
-    /* 阻塞等扫码; UART2 收到 'T' 可手动解卡进入下一个任务 */
-    while (Read_QrFlag()==0 && !g_uart2_trigger_advance) {
+    /* 阻塞等扫码; 收到十六进制数字串(如 31 0D → 1, 30 0D → 0)后识别 */
+    while (Read_QrFlag()==0) {
         osDelay(50);
-    }
-    if (g_uart2_trigger_advance) {
-        g_uart2_trigger_advance = 0;
-        return 0;   /* 'T' 手动触发, 无有效二维码 */
     }
     return QR_deel();
 }
@@ -68,10 +64,12 @@ uint8_t  QR_deel(void)
     uint8_t P;
     static uint8_t 	result=0,k=0;
 
-    for(uint8_t i=0;i<3;i++)
+    uint8_t cnt = qrcode_rx_len;
+    if (cnt > 3) cnt = 3;
+    for(uint8_t i=0;i<cnt;i++)
     {
         P=qrcode_rx_buf[i];
-        if(P==0x0D)
+        if(P==0x0D || P<'0' || P>'9')
         {
             break;
         }

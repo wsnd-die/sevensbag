@@ -315,6 +315,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
   		Trace_LineFollow();
+	osDelay(150);
   		if (g_color_collect_done==1)
   		{
   			task_send(Event_Navigation);
@@ -351,7 +352,6 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 				if (flag_finish==false)
 				{
 					flag_finish = true;
-					TT_RotateByQR();
 				}
 				if (flag_finish)
 				{
@@ -359,8 +359,9 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 					Circle_Follow();
 					if (g_circle_dir=='O')
 					{
-						//TT_RotateByQR();
-						Place('O', 2);
+						TT_RotateByQR();
+						osDelay(100);
+						Place('O', 8);
 						printf("[TASK] FindCircle placed");
 						flag_finish = false;
 						if (TT_IsDone()) {//全部转完
@@ -459,7 +460,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						printf("[TASK] PlaceDown third done\r\n");
   						i++;
   						flag_finish=false;
-  						BlockBasic_DualArmSetPos(2);
+  						BlockBasic_DualArmSetPos(8);
   						//BlockBasic_TurntableTo(1);   /* 放完第三个奖杯后转回槽位1，后续收集5个物料也从槽位1开始 */
   						task_send(Event_Navigation);
   						K230_RequestMode(K230_MODE_LINE);
@@ -562,7 +563,7 @@ void BsRt_task(void *argument)
 	 */
 	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
 	IR_Init();   /* 红外对射初始化 */
-	BlockBasic_DualArmSetPos(2);
+	BlockBasic_DualArmSetPos(8);
 	osDelay(1000);
 	BlockBasic_TurntableTo(1);
 	// BlockBasic_TurntableTo(1);
@@ -580,29 +581,46 @@ void BsRt_task(void *argument)
 			//Color_Init();
 			osDelay(50);
 #if USE_OPENMV_COLOR == 1  /* ---- GY-33 ---- */
-			/* 收集: 红外对射检测物体进入 → 旋转转盘 (读颜色已注释) */
+			/* 收集: 红外对射检测物体进入 → 识别记录当前槽位颜色 → 转下一槽位 */
 			if (K==0) {
 				for (uint8_t slot = 1; slot <= 5; slot++) {
 					/* 等红外对射检测到物体进入 */
 					while (!IR_ObjectEntered()) {
 						osDelay(10);
 					}
-					/* ---- 读颜色过程 (已注释) ---- */
-					// Color_DataTypeDef d;
-					// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(10); continue; }
-					// int dr = abs((int)d.red   - g_color_ambient.r);
-					// int dg = abs((int)d.green - g_color_ambient.g);
-					// int db = abs((int)d.blue  - g_color_ambient.b);
-					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
-					// TT_SetColor(slot - 1, Color_Judge(&d));
 					if (slot < 6) {
 						osDelay(165);
 						BlockBasic_TurntableTo(slot+1);
 					}
+					if (slot <= 4) {
+						/* ---- 读颜色并记录到当前槽位 ---- */
+						Color_DataTypeDef d;
+						if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(10); continue; }
+						int dr = abs((int)d.red   - g_color_ambient.r);
+						int dg = abs((int)d.green - g_color_ambient.g);
+						int db = abs((int)d.blue  - g_color_ambient.b);
+						if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
+						TT_SetColor(slot, Color_Judge(&d));
+					}
+					else {
+						/* 识别完4个槽位后, 剩余最后一个颜色自动记录到槽位5 */
+						Color_TypeDef missing = COLOR_UNKNOWN;
+						for (Color_TypeDef c = COLOR_RED; c < COLOR_COUNT; c++) {
+							uint8_t s;
+							for (s = 0; s < 4; s++) {
+								if (g_tt.color[s] == c) break;
+							}
+							if (s == 4) { missing = c; break; }
+						}
+						if (missing != COLOR_UNKNOWN) {
+							TT_SetColor(4, missing);
+						}
+					}
+
 				}
+				osDelay(150);
 				K=1;
 				g_color_collect_done = 1;
-				osDelay(150);
 				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
 			}
 			else {
@@ -619,7 +637,7 @@ void BsRt_task(void *argument)
 					// int db = abs((int)d.blue  - g_color_ambient.b);
 					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
 					if (slot < 4) {
-						osDelay(200);
+						osDelay(220);
 						BlockBasic_TurntableTo(slot+1);
 					}
 				}

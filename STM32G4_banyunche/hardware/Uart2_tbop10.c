@@ -6,7 +6,6 @@ TBData_t TB_speed = {0};
 float imu_gz = 0;
 float imu_yaw = 0;
 uint8_t Flag_TBOFdata = 0;
-volatile uint8_t g_uart2_trigger_advance = 0;   /* UART2 收到 'T' → 手动触发进入下一个任务 */
 
 /* ---- OpenMV 颜色帧接收 (UART2, AA l_black l_mean A B DD 6字节) ---- */
 volatile uint8_t g_uart2_color_ready = 0;
@@ -49,16 +48,6 @@ static void UART2_ScanQR(const uint8_t *data, uint16_t len)
         } else {
             /* 非数字/换行字节, 清空重新收 */
             qr_digits_idx = 0;
-        }
-    }
-}
-
-/* ---- UART2 命令触发: 收到 'T' → 手动进入下一个任务 ---- */
-static void UART2_ScanCmd(const uint8_t *data, uint16_t len)
-{
-    for (uint16_t i = 0; i < len; i++) {
-        if (data[i] == 'T') {           /* 0x54 */
-            g_uart2_trigger_advance = 1;
         }
     }
 }
@@ -133,8 +122,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         UART2_ScanColorFrame(dma_rx_buf, Size);
         /* 扫描二维码数字串 (扫码模块) */
         UART2_ScanQR(dma_rx_buf, Size);
-        /* 检测 'T' 命令 → 手动触发进入下一个任务 */
-        UART2_ScanCmd(dma_rx_buf, Size);
         /* 扫描里程计帧 AA CC ... BB DD */
         for (uint16_t i = 0; i < Size; i++) {
             UART2_FSM_Parse_Byte(dma_rx_buf[i]);

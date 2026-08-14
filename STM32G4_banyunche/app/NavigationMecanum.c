@@ -35,13 +35,13 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 
       {  0.25f,    0.25f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
-      {    0.88f,     0.68f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
-    {    0.20f,     0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
-      {    -0.18f,     0.82f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
-    {    0.24f,     0.15f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
-      {    -0.05f,     0.6f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
+      {    0.83f,     0.55f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+    {    0.15f,     0.23f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
+      {    -0.35f,     0.64f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
+    {    0.16f,     0.12f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
+      {    -0.2f,     0.52f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-          {0.43f,     -0.9f,0.0f * MECANUM_DEG_TO_RAD},//回家点
+          {0.37f,     -0.85f,0.0f * MECANUM_DEG_TO_RAD},//回家点
 
 };
 
