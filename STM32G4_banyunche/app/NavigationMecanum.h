@@ -101,6 +101,9 @@ bool Nav_MoveLeft(float distance_m);
 /** @brief 原地旋转 (rad)，正=CCW */
 bool Nav_Rotate(float angle_rad);
 
+/** @brief 速度模式到位控制(世界系目标), 编码器+陀螺仪定位 */
+bool Nav_TrackPose(float tx, float ty, float tyaw);
+
 
 #ifdef __cplusplus
 }
