@@ -5,7 +5,7 @@
 #include "Common_used.h"
 #include "collect_ir.h"
 
-static bool ir_last = false;
+static bool ir_last = true;
 
 void IR_Init(void)
 {
@@ -47,7 +47,7 @@ bool IR_ObjectEntered(void)
 
 bool Collect_WaitEnter(void)
 {
-    while (!IR_ObjectEntered()) { osDelay(5); }   /* 等物体进入(带防抖) */
+    while (!IR_ObjectEntered()) { osDelay(10); }   /* 等物体进入(带防抖) */
     return true;
 }
 

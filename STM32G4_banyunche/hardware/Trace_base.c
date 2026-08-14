@@ -77,8 +77,8 @@ void Trace_LineFollow_PID(void)
     v = g_tune_control_override ? g_tune_speed : TRACE_BASE_SPEED;
     {
         float abs_err = fabsf(k230_angle);
-        if (abs_err > 30.0f)       v *= 0.5f;
-        else if (abs_err > 15.0f)  v *= 0.75f;
+        if (abs_err > 30.0f)       v *= 0.7f;
+        else if (abs_err > 15.0f)  v *= 0.85f;
     }
 
     /* ---- 6. 保存供打印 ---- */

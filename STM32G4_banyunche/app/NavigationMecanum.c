@@ -31,15 +31,15 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
     {    -0.22f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
     {    0.3f,     -0.71f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.23f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
-    {    0.10f,     -0.48f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
+    {    0.10f,     -0.52f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
     {  -0.403f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
 
     {   -0.07f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
 
     {    0.425f,     1.03f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
-    {    0.03f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
-    {    0.03f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
+    {    0.06f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
+    {    0.06f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
 
     {-0.513f,-0.0,0},//回家点
@@ -125,7 +125,7 @@ bool Nav_GoToWorld(float target_x, float target_y, float target_yaw)
 /*==============================================
  * 车体坐标运动 (Body-frame)
  *   平移: 麦轮解算 (世界坐标, 不含旋转)
- *   旋转: AngleCtrl 串级 PID, 平移到位后单独执行
+ *   旋转: 交由 FC_TASK 角度环 (串级PID) 执行
  * ============================================================ */
 
 
@@ -139,35 +139,31 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
     float dist;
     bool  success;
 
-    /* ---- 1. 到位判断 ---- */
     dist = sqrtf(forward_m * forward_m + left_m * left_m);
     if (dist < 0.005f && fabsf(rotate_rad) < 0.01f) {
         return true;
     }
 
-    /* ---- 2. 旋转段: rotate_rad 为世界绝对角度(rad), AngleCtrl 闭环 ---- */
+    {
+        float target_deg = rotate_rad * (180.0f / M_PI);
+        float err;
+        uint16_t guard = 0;
 
-        float target_deg = rotate_rad*(180.0f/M_PI) ;
-        float error_deg   = target_deg - siyuan_yaw*RAD_TO_DEG;
-        while (error_deg >  180.0f) error_deg -= 360.0f;
-        while (error_deg < -180.0f) error_deg += 360.0f;
+        g_angle_target_yaw = target_deg;
+        g_angle_ctrl_enable = 1;              /* 打开 FC_TASK 角度环 */
 
-        /* 已经到位则跳过 */
-        if (fabsf(error_deg) >= 4.0f) {
-            AngleCtrl ac;
-            Angle_Init(&ac);
-            Angle_SetTarget(&ac, target_deg);
-
-            while (!Angle_Arrived(&ac)) {
-                Angle_Update(&ac,siyuan_yaw*RAD_TO_DEG ,  imu660ra_gyro_transition(imu660ra_gyro_x));
-                MecanumResult motor = Mecanum_Calc(0.0f, -ac.cmd_w);
-                Send_commandmotor(&motor);
-                osDelay(30);
-            }
-            Mecanum_StopAll();
+        while (guard++ < 800) {               /* 超时约8s, 防角度环异常卡死 */
+            err = target_deg - siyuan_yaw * RAD_TO_DEG;
+            while (err >  180.0f) err -= 360.0f;
+            while (err < -180.0f) err += 360.0f;
+            if (fabsf(err) <= 4.0f) break;
+            osDelay(10);
         }
 
+        g_angle_ctrl_enable = 0;              /* 转完关闭, 避免与后面平移抢电机 */
+        osDelay(20);                          /* 等 FC_TASK 停止输出 */
         Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
+    }
 
 
     /* ---- 3. 平移段: 车体坐标 → 麦轮 (dtheta=0, 不旋转) ---- */
@@ -189,28 +185,6 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         Self_Dir.y += forward_m * sin_y + left_m * cos_y;
     }
 
-
-
-    float error_deg_2   = target_deg - siyuan_yaw*RAD_TO_DEG;
-    while (error_deg_2 >  180.0f) error_deg_2 -= 360.0f;
-    while (error_deg_2 < -180.0f) error_deg_2 += 360.0f;
-
-    /* 已经到位则跳过 */
-    // if (fabsf(error_deg_2) >= 4.0f) {
-    //     AngleCtrl ac_2;
-    //     Angle_Init(&ac_2);
-    //     Angle_SetTarget(&ac_2, target_deg);   /* 修正: 目标必须是绝对角度, 不是偏差 */
-    //
-    //     while (!Angle_Arrived(&ac_2)) {
-    //         Angle_Update(&ac_2,siyuan_yaw*RAD_TO_DEG ,  imu660ra_gyro_transition(imu660ra_gyro_x));
-    //         MecanumResult motor = Mecanum_Calc(0.0f, -ac_2.cmd_w);
-    //         Send_commandmotor(&motor);
-    //         osDelay(30);
-    //     }
-    //     Mecanum_StopAll();
-    // }
-
-    Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
 
 
     return true;

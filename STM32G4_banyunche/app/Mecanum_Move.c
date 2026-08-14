@@ -649,12 +649,22 @@ bool Mecanum_MoveWithEncoder(const MecanumConfig_t *config,
     move_ms = (uint32_t)(move.duration_s * 1000.0f);
     osDelay(move_ms);
 
-    /* ---- 5. 轮询领队轮到位标志（最多 1s，超时不再等）---- */
-    for (retry = 0; retry < 40; retry++) {
-        if (Emm_V5_Is_Reached(leader_addr) == 1) {
-            return true;
+    /* ---- 5. 轮询领队轮到位标志（位置模式已自动停, 此处只是确认, 少轮询几次即可）---- */
+    {
+        uint32_t poll_t0 = osKernelGetTickCount();   /* 调试: 量化到位轮询耗时 */
+        int reached = 0;
+        for (retry = 0; retry < 5; retry++) {
+            if (Emm_V5_Is_Reached(leader_addr) == 1) {
+                reached = 1;
+                break;
+            }
+            osDelay(50);
         }
-        osDelay(50);
+        printf("[MOVE] dur=%.2fs poll=%lums reached=%d leader=%u\r\n",
+               (double)move.duration_s,
+               (unsigned long)(osKernelGetTickCount() - poll_t0),
+               reached, (unsigned)leader_addr);
+        if (reached) return true;
     }
 
     /* 超时未读到到位标志也继续（位置模式应该已经自停） */
