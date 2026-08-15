@@ -46,6 +46,9 @@ SemaphoreHandle_t Sem_Act_Navigat;
 volatile TaskCommand_t   g_last_cmd;
 volatile uint8_t         g_color_collect_done = 0;  /* 0=未完成, 1=5个槽已收集完 */
 volatile uint8_t         g_trophy_done = 0;         /* 0=未完成, 1=3个奖杯槽已收集完 */
+volatile uint8_t         g_color_req = 0;           /* 1=颜色任务正在/等待读色 */
+volatile uint8_t         g_color_req_slot = 0;      /* 待读槽索引 0~3 */
+static uint8_t           s_seen[COLOR_COUNT];       /* 收集阶段已识别颜色 */
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -273,30 +276,13 @@ void NLF_TASK(void *argument)
 
 		/* 读取槽slot颜色(转盘静止): 带重试上限, 读不出不阻塞 */
 		c = COLOR_UNKNOWN;
-		uint8_t color_counts[COLOR_COUNT] = {0};
-		for (uint16_t tries = 0; tries < 15; tries++) {
+		for (uint16_t tries = 0; tries < 10; tries++) {
 			if (Color_ReadData(&d) != HAL_OK) { osDelay(10); continue; }
-			Color_TypeDef sample = Color_Judge(&d);
-			if (tries >= 5 &&
-			    sample != COLOR_UNKNOWN &&
-			    sample < COLOR_COUNT &&
-			    !seen[sample]) {
-				color_counts[sample]++;
-			}
+			c = Color_Judge(&d);
+			if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
+				break;
 			osDelay(10);
 		}
-		uint8_t best_count = 0;
-		uint8_t tie = 0;
-		for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
-			if (color_counts[cc] > best_count) {
-				best_count = color_counts[cc];
-				c = cc;
-				tie = 0;
-			} else if (color_counts[cc] == best_count && best_count > 0) {
-				tie = 1;
-			}
-		}
-		if (tie) c = COLOR_UNKNOWN;
 		if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c]) {
 			seen[c] = 1;
 			TT_SetColor(slot - 1, c);   /* 槽slot → 索引slot-1 */
@@ -572,6 +558,43 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 }
   /* USER CODE END NLF_TASK */
 
+static Color_TypeDef Color_ReadStableUnseen(const uint8_t seen[COLOR_COUNT],
+                                            Color_DataTypeDef *last_data)
+{
+	uint8_t counts[COLOR_COUNT] = {0};
+	Color_TypeDef best = COLOR_UNKNOWN;
+	uint8_t best_count = 0;
+	uint8_t tie = 0;
+
+	for (uint16_t tries = 0; tries < 8; tries++) {
+		Color_DataTypeDef d;
+		if (Color_ReadData(&d) == HAL_OK) {
+			Color_TypeDef sample = Color_Judge(&d);
+			if (last_data != NULL) *last_data = d;
+			if (tries >= 2 &&
+			    sample != COLOR_UNKNOWN &&
+			    sample < COLOR_COUNT &&
+			    !seen[sample]) {
+				counts[sample]++;
+			}
+		}
+		osDelay(20);
+	}
+
+	for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
+		if (counts[cc] > best_count) {
+			best_count = counts[cc];
+			best = cc;
+			tie = 0;
+		} else if (counts[cc] == best_count && best_count > 0) {
+			tie = 1;
+		}
+	}
+
+	if (tie || best_count < 2) return COLOR_UNKNOWN;
+	return best;
+}
+
 /* USER CODE BEGIN Header_Color_task */
 /**
 * @brief Function implementing the ColorFunion thread.
@@ -616,14 +639,23 @@ void Color_task(void *argument)
 #else
 	{
 		for (;;) {
-			Color_DataTypeDef d;
-			// if (Color_ReadData(&d) == HAL_OK) {
-			// 	printf("R=%3d G=%3d B=%3d -> %s\r\n",d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
-			// } else {
-			// 	printf("R= ? G= ? B= ? (no data)\r\n");
-			// }
-			/* 一次性 dump 原始接收字节, 确认帧格式 */
-			osDelay(100);
+			if (g_color_req) {
+				uint8_t slot = g_color_req_slot;
+				Color_DataTypeDef d = {0};
+				Color_TypeDef c = Color_ReadStableUnseen(s_seen, &d);
+
+				if (slot < 4 && c != COLOR_UNKNOWN && c < COLOR_COUNT && !s_seen[c]) {
+					s_seen[c] = 1;
+					TT_SetColor(slot, c);
+					printf("[COLLECT] slot=%d, color=%s, R=%3d G=%3d B=%3d\r\n",
+					       (int)(slot + 1), Color_ToString(c), d.red, d.green, d.blue);
+				} else {
+					printf("[COLLECT] slot=%d, color=UNKNOWN, R=%3d G=%3d B=%3d\r\n",
+					       (int)(slot + 1), d.red, d.green, d.blue);
+				}
+				g_color_req = 0;
+			}
+			osDelay(5);
 		}
 	}
 #endif
@@ -661,7 +693,7 @@ void BsRt_task(void *argument)
 		{
 
 			Color_SetLedLevel(0);
-			//Color_Init();
+			Color_Init();
 			osDelay(50);
 #if USE_OPENMV_COLOR == 1  /* ---- GY-33 ---- */
 			/* 收集: 红外对射检测物体进入 → 识别记录当前槽位颜色 → 转下一槽位 */
@@ -670,67 +702,38 @@ void BsRt_task(void *argument)
 				// osDelay(200);
 
 				g_color_collect_done = 0;
-				uint8_t seen[COLOR_COUNT] = {0};   /* 已读到的颜色标记 */
 				Color_TypeDef c;
 				uint8_t slot;
-				Color_DataTypeDef d;
+				for (uint8_t i = 0; i < COLOR_COUNT; i++) s_seen[i] = 0;
+				g_color_req = 0;
 
 				/* 收集流程: 物料进入当前槽 → 转盘转一格让该槽到传感器下 → 读色记录为该槽位
 				 * 物理(本车): 槽1初始在入料口、传感器对着槽5;
 					 *            故槽N到传感器下需 TurntableTo(N+1) (顺时针转一格) */
 				for (slot = 1; slot <= 4; slot++) {
 					/* 第1个物料进入槽1(后续物料进入槽slot, 转盘已在对应位置) */
-					while (!IR_ObjectEntered()) osDelay(10);
+					while (!IR_ObjectEntered()) osDelay(5);
 					osDelay(150);               /* 等物料落稳 */
 
 					/* 转盘转一格 → 槽slot到传感器下 (本车槽N到传感器下=位置N+1) */
+					while (g_color_req) osDelay(5);
 					BlockBasic_TurntableTo(slot + 1);
-					osDelay(650);
+					osDelay(350);
 
-					/* 读取槽slot颜色(转盘静止): 带重试上限, 读不出不阻塞 */
-					c = COLOR_UNKNOWN;
-					uint8_t color_counts[COLOR_COUNT] = {0};
-					for (uint16_t tries = 0; tries < 6; tries++) {
-						if (Color_ReadData(&d) != HAL_OK) { osDelay(10); continue; }
-						Color_TypeDef sample = Color_Judge(&d);
-						if (tries >= 2 &&
-						    sample != COLOR_UNKNOWN &&
-						    sample < COLOR_COUNT &&
-						    !seen[sample]) {
-							color_counts[sample]++;
-						}
-						osDelay(10);
-					}
-					uint8_t best_count = 0;
-					uint8_t tie = 0;
-					for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
-						if (color_counts[cc] > best_count) {
-							best_count = color_counts[cc];
-							c = cc;
-							tie = 0;
-						} else if (color_counts[cc] == best_count && best_count > 0) {
-							tie = 1;
-						}
-					}
-					if (tie) c = COLOR_UNKNOWN;
-					if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c]) {
-						seen[c] = 1;
-						TT_SetColor(slot - 1, c);   /* 槽slot → 索引slot-1 */
-						printf("[COLLECT] slot=%d, color=%s, R=%3d G=%3d B=%3d\r\n",
-							   slot, Color_ToString(c), d.red, d.green, d.blue);
-					} else {
-						printf("[COLLECT] slot=%d, color=UNKNOWN\r\n", slot);
-					}
+					/* 请求 Color_task 读取当前槽颜色。 */
+					g_color_req_slot = slot - 1;
+					g_color_req = 1;
 				}
 
-				osDelay(190);
-				g_color_collect_done = 1;
+				while (!IR_ObjectEntered()) osDelay(5);
+				osDelay(150);
+				while (g_color_req) osDelay(5);
 				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
 
 				/* 槽5(索引4)颜色 = 全集 - 已读4种 (排除法) */
 				c = COLOR_UNKNOWN;
 				for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
-					if (!seen[cc]) { c = cc; break; }
+					if (!s_seen[cc]) { c = cc; break; }
 				}
 				if (c != COLOR_UNKNOWN) {
 					TT_SetColor(4, c);

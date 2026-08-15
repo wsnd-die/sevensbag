@@ -11,6 +11,8 @@ uint8_t Flag_TBOFdata = 0;
 volatile uint8_t g_uart2_color_ready = 0;
 uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
 
+volatile uint8_t g_uart2_trigger_advance = 0;
+
 volatile uint8_t g_uart2_gy33_ready = 0;
 uint8_t g_uart2_gy33_r, g_uart2_gy33_g, g_uart2_gy33_b;
 

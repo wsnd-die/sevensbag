@@ -66,6 +66,8 @@ void UART2_FSM_Parse_Byte(uint8_t byte);
 extern volatile uint8_t g_uart2_color_ready;
 extern uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
 
+extern volatile uint8_t g_uart2_trigger_advance;
+
 void UART2_StartDMAReceive(void);
 void UART2_calibrate(void);
 
