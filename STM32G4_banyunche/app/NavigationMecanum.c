@@ -7,6 +7,9 @@
 /* 当前自身位姿（世界坐标系），上电默认原点 */
 World_Dir_t Self_Dir = {0.0f, 0.0f, 0.0f};
 
+/* 循迹完成后置 1: 下一次 FeDuan 用速度模式纠正到点 */
+volatile uint8_t g_nav_speed_mode = 0;
+
 /*
  * 路径点数组（世界坐标系）
  *
@@ -29,13 +32,13 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
 
     {    -0.816f,     -0.466f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    -0.255f,     -0.22f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
-    {    0.28f,     -0.71f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
+    {    0.3f,     -0.67f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.23f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
     {    0.16f,     -0.52f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
     {  -0.253f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
 
-    {   0.18f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
+    {   0.0f,    0.1f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
 
     {    0.405f,     1.03f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
     {    0.06f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
@@ -64,10 +67,10 @@ uint8_t  g_waypoint_count = 13;
  * ============================================================ */
 
 /* ---- 目标点设计坐标 (世界系, m) ---- */
-#define CALIB_A_X        (-0.91f)     /* a点设计值 */
-#define CALIB_A_Y        (-0.576f)
-#define CALIB_YAJUN_X    ( 0.405f)     /* 亚军点设计值 */
-#define CALIB_YAJUN_Y    ( 1.03f)
+#define CALIB_A_X        (-0.889f)     /* a点设计值 */
+#define CALIB_A_Y        (-0.556f)
+#define CALIB_YAJUN_X    ( 0.485f)     /* 亚军点设计值 */
+#define CALIB_YAJUN_Y    ( 0.83f)
 
 /* ---- 循迹终点设计坐标 (世界系, m) ---- */
 #define TRACE_END_A_X    ( 2.536f)       /* 物料循迹(LinFolL)终点设计值 */
@@ -360,21 +363,25 @@ bool Nav_FeDuanPoint() {
                       g_waypoints[PontIntex].y,
                       g_waypoints[PontIntex].yaw);
         PontIntex++;
-    } else if (!Nav_MoveBody(g_waypoints[PontIntex].x,
-                          g_waypoints[PontIntex].y,
-                          g_waypoints[PontIntex++].yaw)) {
-        return false;
-                          }
+    } else {
+        uint8_t idx = PontIntex++;   /* 先取再推进, 避免同一表达式内多次读写(UB) */
+        if (!Nav_MoveBody(g_waypoints[idx].x,
+                          g_waypoints[idx].y,
+                          g_waypoints[idx].yaw)) {
+            return false;
+        }
+    }
     if (PontIntex==13)
     {
         Nav_MoveBody(g_waypoints[PontIntex].x,
                           g_waypoints[PontIntex].y,
-                          g_waypoints[PontIntex++].yaw);
+                          g_waypoints[PontIntex].yaw);
+        PontIntex++;
 
         Nav_MoveBody(g_waypoints[PontIntex].x,
                           g_waypoints[PontIntex].y,
-                          g_waypoints[PontIntex++].yaw);
-
+                          g_waypoints[PontIntex].yaw);
+        PontIntex++;
     }
     return true;
 }
