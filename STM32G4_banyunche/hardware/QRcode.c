@@ -62,11 +62,11 @@ uint8_t  QR_deel(void)
     }
     if (k==1)
     {
-        Jang_Num=result-1;
+        Jang_Num=result;
     }
     else
     {
-        Yan_Num=result-1;
+        Yan_Num=result;
         k=1;
     }
 

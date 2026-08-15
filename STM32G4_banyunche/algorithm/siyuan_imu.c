@@ -191,7 +191,20 @@ void siyuan_quat_to_euler(float q0, float q1, float q2, float q3,
     *pitch = asinf(sinp);
 
     *yaw   = atan2f(2.0f * (q0 * q3 + q1 * q2),
-                    1.0f - 2.0f * (q2 * q2 + q3 * q3));
+                    1.0f - 2.0f * (q2 * q2 + q3 * q3)) * SIYUAN_YAW_SCALE;  /* 比例标度校准 */
+}
+
+/* ============================================================
+ * 姿态四元数导出
+ * ============================================================ */
+
+void siyuan_get_quat(float q[4])
+{
+    if (!q) return;
+    q[0] = siyuan_ahrs.q0;
+    q[1] = siyuan_ahrs.q1;
+    q[2] = siyuan_ahrs.q2;
+    q[3] = siyuan_ahrs.q3;
 }
 
 /* ============================================================
@@ -237,7 +250,7 @@ float siyuan_update_gyro_rate(float gz)
  * 在线零偏估计 → Mahony 解算 → 输出欧拉角
  * ============================================================ */
 
-void siyuan_degree_update(float *yaw, float *pitch, float *roll)
+void siyuan_degree_update(float *yaw, float *pitch, float *roll, float dt)
 {
     float ax, ay, az;
     float gx, gy, gz;
@@ -273,24 +286,27 @@ void siyuan_degree_update(float *yaw, float *pitch, float *roll)
         fabsf(gy_rad) < GYRO_STATIC_THRESH &&
         fabsf(gz_rad) < GYRO_STATIC_THRESH)
     {
-        gz_bias_online += gz_rad * 0.001f;  /* 微调残余 */
+        gz_bias_online += gz_rad * 0.003f;  /* 微调残余 (加快静止收敛) */
         gz_rad = 0.0f;
     }
 
-    /* 6. Mahony 解算 */
+    /* 6. Mahony 解算 (实测 dt) */
     siyuan_ahrs_update(&siyuan_ahrs,
                        gx_rad, gy_rad, gz_rad,
                        ax, ay, az,
-                       0.005f);
+                       dt);
 
     /* 7. 四元数 → 欧拉角 */
     siyuan_quat_to_euler(siyuan_ahrs.q0, siyuan_ahrs.q1,
                          siyuan_ahrs.q2, siyuan_ahrs.q3,
                          roll, pitch, yaw);
 
-    /* 8. 静止时保持 yaw */
+    /* 8. 静止时保持 yaw — 必须三轴都静止才锁值。
+     *    若只看 gx/gy, 原地偏航时 gz 大而 gx/gy≈0 会误判静止,
+     *    导致 yaw 被冻结成阶梯状, 角度环来回抖。 */
     if (fabsf(gx_rad) < GYRO_STATIC_THRESH &&
-        fabsf(gy_rad) < GYRO_STATIC_THRESH)
+        fabsf(gy_rad) < GYRO_STATIC_THRESH &&
+        fabsf(gz_rad) < GYRO_STATIC_THRESH)
     {
         *yaw = yaw_hold;
     }
@@ -306,5 +322,17 @@ void siyuan_degree_update(float *yaw, float *pitch, float *roll)
 
 void siyuan_imu_task(void)
 {
-    siyuan_degree_update(&siyuan_yaw, &siyuan_pitch, &siyuan_roll);
+    static uint32_t last_tick = 0;
+    uint32_t now = HAL_GetTick();
+    float dt;
+
+    if (last_tick == 0) {
+        last_tick = now;
+    }
+    dt = (float)(now - last_tick) / 1000.0f;
+    if (dt <= 0.0f) dt = 0.005f;
+    if (dt > 0.05f) dt = 0.05f;   /* 防任务卡顿导致 dt 异常 */
+    last_tick = now;
+
+    siyuan_degree_update(&siyuan_yaw, &siyuan_pitch, &siyuan_roll, dt);
 }

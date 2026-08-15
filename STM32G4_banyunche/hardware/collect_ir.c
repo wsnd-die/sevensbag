@@ -76,6 +76,21 @@ Color_TypeDef Collect_ReadColor(void)
     return Color_Judge(&d);
 }
 
+Color_TypeDef Collect_ReadColor_NB(void)
+{
+    /* 非阻塞: 有当前帧立即判色, 无帧立即返回 UNKNOWN, 不等待 */
+    if (!g_uart2_gy33_ready) return COLOR_UNKNOWN;
+
+    g_uart2_gy33_ready = 0;
+
+    Color_DataTypeDef d;
+    d.red    = g_uart2_gy33_r;
+    d.green  = g_uart2_gy33_g;
+    d.blue   = g_uart2_gy33_b;
+    d.online = 1U;
+    return Color_Judge(&d);
+}
+
 Color_TypeDef Collect_WaitObject(void)
 {
     Collect_WaitEnter();

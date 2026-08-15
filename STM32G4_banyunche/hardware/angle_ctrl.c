@@ -11,7 +11,7 @@
 /* 默认参数 */
 #define CFG_MAX_W       3.0f
 #define CFG_MAX_W_DEG   180.0f
-#define CFG_YAW_TOL     5.0f
+#define CFG_YAW_TOL     1.0f   /* 修严: 角度环实际修到 ~1° 再判到位, 否则导航等 4°/2° 会干等满 guard */
 
 static float norm_deg(float d)
 {

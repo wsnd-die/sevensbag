@@ -7,6 +7,9 @@
 /* 当前自身位姿（世界坐标系），上电默认原点 */
 World_Dir_t Self_Dir = {0.0f, 0.0f, 0.0f};
 
+/* 循迹完成后置 1: 下一次 FeDuan 用速度模式纠正到点 */
+volatile uint8_t g_nav_speed_mode = 0;
+
 /*
  * 路径点数组（世界坐标系）
  *
@@ -23,21 +26,21 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {0.308f,    0.656f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {0.358f,    0.706f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
-    {0.0f,      0.1f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
+    {-0.11f,      0.14f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
 
-    {    -0.866f,     -0.436f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
-    {    -0.22f,     -0.20f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
-    {    0.3f,     -0.71f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
-    {    -0.23f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
-    {    0.10f,     -0.52f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
+    {    -0.816f,     -0.466f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+    {    -0.225f,     -0.21f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
+    {    0.34f,     -0.6f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
+    {    -0.2f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
+    {    0.18f,     -0.5f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
-    {  -0.353f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
+    {  -0.253f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
 
-    {   0.08f,    0.0f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
+    {   0.0f,    -0.15f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
 
-    {    0.425f,     1.03f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
+    {    0.405f,     1.03f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
     {    0.06f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
     {    0.06f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
@@ -50,6 +53,36 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
 
 /* 实际使用的路径点数量 */
 uint8_t  g_waypoint_count = 13;
+
+
+/* ============================================================
+ * 循迹后点位校准
+ *
+ * 循迹完成时车停的位置 (World_position_get) 与设计坐标有偏差,
+ * 用"实测终点 + 固定偏移"重算 a 点 / 亚军点:
+ *
+ *   目标点 = 实测循迹终点 + (目标点设计值 - 循迹终点设计值)
+ *
+ * 偏移量可现场调整, 改下面宏即可 (单位: m)。
+ * ============================================================ */
+
+/* ---- 目标点设计坐标 (世界系, m) ---- */
+#define CALIB_A_X        (-0.86f)     /* a点设计值 */
+#define CALIB_A_Y        (-0.556f)
+#define CALIB_YAJUN_X    ( 0.485f)     /* 亚军点设计值 */
+#define CALIB_YAJUN_Y    ( 0.83f)
+
+/* ---- 循迹终点设计坐标 (世界系, m) ---- */
+#define TRACE_END_A_X    ( 2.436f)       /* 物料循迹(LinFolL)终点设计值 */
+#define TRACE_END_A_Y    ( 0.447f)
+#define TRACE_END_YAJUN_X (2.334f)      /* 奖杯循迹(LinFolR)终点设计值 */
+#define TRACE_END_YAJUN_Y (-0.631f)
+
+/* ---- 固定偏移 = 目标点设计值 - 循迹终点设计值 ---- */
+#define CALIB_A_OFF_X    (CALIB_A_X - TRACE_END_A_X)
+#define CALIB_A_OFF_Y    (CALIB_A_Y - TRACE_END_A_Y)
+#define CALIB_YAJUN_OFF_X (CALIB_YAJUN_X - TRACE_END_YAJUN_X)
+#define CALIB_YAJUN_OFF_Y (CALIB_YAJUN_Y - TRACE_END_YAJUN_Y)
 
 
 /* ============================================================
@@ -152,20 +185,17 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         g_angle_target_yaw = target_deg;
         g_angle_ctrl_enable = 1;              /* 打开 FC_TASK 角度环 */
 
-        while (guard++ < 800) {               /* 超时约8s, 防角度环异常卡死 */
+        while (guard++ < 150) {               /* 超时约8s, 防角度环异常卡死 */
             err = target_deg - siyuan_yaw * RAD_TO_DEG;
             while (err >  180.0f) err -= 360.0f;
             while (err < -180.0f) err += 360.0f;
             if (fabsf(err) <= 4.0f) break;
             osDelay(10);
         }
-
         g_angle_ctrl_enable = 0;              /* 转完关闭, 避免与后面平移抢电机 */
         osDelay(20);                          /* 等 FC_TASK 停止输出 */
-        Self_Dir.yaw = Nav_NormalizeAngle(rotate_rad);
+        Self_Dir.yaw = siyuan_yaw;            /* 用实测航向, 不要硬设目标 */
     }
-
-
     /* ---- 3. 平移段: 车体坐标 → 麦轮 (dtheta=0, 不旋转) ---- */
     if (dist >= 0.005f) {
         float est_s = dist / 0.05f;
@@ -175,16 +205,43 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         success = Mecanum_MoveWithEncoder(
             &g_mecanum_config,
             forward_m, left_m, 0.0f,  /* dtheta=0, 纯平移 */
-            1.0f, 80U, timeout_ms
+            1.0f, g_mecanum_config.acceleration, timeout_ms
         );
         if (!success) return false;
-
-        /* 更新世界位姿 (仅平移) */
         float cos_y = cosf(Self_Dir.yaw), sin_y = sinf(Self_Dir.yaw);
         Self_Dir.x += forward_m * cos_y - left_m * sin_y;
         Self_Dir.y += forward_m * sin_y + left_m * cos_y;
     }
 
+    /* ---- 第二段角度矫正: 只用实测漂移, 超阈值才修, 到位收紧, 结束写实测航向 ---- */
+    {
+        float target_deg = rotate_rad * (180.0f / M_PI);
+        float drift;
+        uint16_t guard = 0;
+
+        drift = target_deg - siyuan_yaw * RAD_TO_DEG;
+        while (drift >  180.0f) drift -= 360.0f;
+        while (drift < -180.0f) drift += 360.0f;
+
+        if (fabsf(drift) > 4.0f) {            /* 真实漂移超阈值才修, 避免空转 */
+            float err;
+
+            g_angle_target_yaw = target_deg;
+            g_angle_ctrl_enable = 1;          /* 打开 FC_TASK 角度环 */
+
+            while (guard++ < 100) {           /* 超时1s, 防角度环异常卡死 */
+                err = target_deg - siyuan_yaw * RAD_TO_DEG;
+                while (err >  180.0f) err -= 360.0f;
+                while (err < -180.0f) err += 360.0f;
+                if (fabsf(err) <= 4.0f) break;   /* 与第一段一致; FC_TASK 容差已收紧到1°, 实际能修到更小 */
+                osDelay(10);
+            }
+
+            g_angle_ctrl_enable = 0;          /* 转完关闭, 避免与后面平移抢电机 */
+            osDelay(20);                      /* 等 FC_TASK 停止输出 */
+        }
+        Self_Dir.yaw = siyuan_yaw;            /* 用实测航向, 不要硬设目标 */
+    }
 
 
     return true;
@@ -208,6 +265,24 @@ bool Nav_Rotate(float angle_rad)
     return Nav_MoveBody(0.0f, 0.0f, angle_rad);
 }
 
+void Nav_CalibrateAfterTrace(bool is_trophy)
+{
+    World_Dir_t p = World_position_get();
+
+    if (is_trophy) {
+        g_waypoints[9].x = p.x + CALIB_YAJUN_OFF_X;
+        g_waypoints[9].y = p.y + CALIB_YAJUN_OFF_Y;
+        printf("[CAL] 亚军点 <- (%.3f,%.3f) 终点=(%.3f,%.3f)\r\n",
+               (double)g_waypoints[9].x, (double)g_waypoints[9].y,
+               (double)p.x, (double)p.y);
+    } else {
+        g_waypoints[2].x = p.x + CALIB_A_OFF_X;
+        g_waypoints[2].y = p.y + CALIB_A_OFF_Y;
+        printf("[CAL] a点 <- (%.3f,%.3f) 终点=(%.3f,%.3f)\r\n",
+               (double)g_waypoints[2].x, (double)g_waypoints[2].y,
+               (double)p.x, (double)p.y);
+    }
+}
 
 
 /* ============================================================
@@ -288,21 +363,25 @@ bool Nav_FeDuanPoint() {
                       g_waypoints[PontIntex].y,
                       g_waypoints[PontIntex].yaw);
         PontIntex++;
-    } else if (!Nav_MoveBody(g_waypoints[PontIntex].x,
-                          g_waypoints[PontIntex].y,
-                          g_waypoints[PontIntex++].yaw)) {
-        return false;
-                          }
+    } else {
+        uint8_t idx = PontIntex++;   /* 先取再推进, 避免同一表达式内多次读写(UB) */
+        if (!Nav_MoveBody(g_waypoints[idx].x,
+                          g_waypoints[idx].y,
+                          g_waypoints[idx].yaw)) {
+            return false;
+        }
+    }
     if (PontIntex==13)
     {
         Nav_MoveBody(g_waypoints[PontIntex].x,
                           g_waypoints[PontIntex].y,
-                          g_waypoints[PontIntex++].yaw);
+                          g_waypoints[PontIntex].yaw);
+        PontIntex++;
 
         Nav_MoveBody(g_waypoints[PontIntex].x,
                           g_waypoints[PontIntex].y,
-                          g_waypoints[PontIntex++].yaw);
-
+                          g_waypoints[PontIntex].yaw);
+        PontIntex++;
     }
     return true;
 }

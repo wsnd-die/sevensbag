@@ -63,6 +63,13 @@ void Chassis_WorldMoveTest(void);
  */
 bool Nav_GoToWorld(float target_x, float target_y, float target_yaw);
 bool Nav_FeDuanPoint(void);
+
+/**
+ * @brief 循迹完成后按实测位置校准 a 点 / 亚军点
+ *
+ * @param is_trophy true=奖杯循迹(LinFolR)校准亚军点, false=物料循迹(LinFolL)校准a点
+ */
+void Nav_CalibrateAfterTrace(bool is_trophy);
 /**
  * @brief 依次执行所有路径点
  *
