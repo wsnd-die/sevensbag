@@ -26,13 +26,13 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {0.358f,    0.706f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {0.358f,    0.686f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
     {-0.11f,      0.14f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
 
     {    -0.816f,     -0.466f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    -0.225f,     -0.21f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
-    {    0.34f,     -0.6f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
+    {    0.32f,     -0.60f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.2f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
     {    0.18f,     -0.5f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
@@ -67,7 +67,7 @@ uint8_t  g_waypoint_count = 13;
  * ============================================================ */
 
 /* ---- 目标点设计坐标 (世界系, m) ---- */
-#define CALIB_A_X        (-0.86f)     /* a点设计值 */
+#define CALIB_A_X        (-0.82f)     /* a点设计值 */
 #define CALIB_A_Y        (-0.556f)
 #define CALIB_YAJUN_X    ( 0.485f)     /* 亚军点设计值 */
 #define CALIB_YAJUN_Y    ( 0.83f)
