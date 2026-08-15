@@ -459,36 +459,36 @@ void Color_task(void *argument)
 	}
 #else
 	{
-		// uint8_t raw_dumped = 0;
+		uint8_t raw_dumped = 0;
 		for (;;) {
-		// 	Color_DataTypeDef d;
-		// 	if (Color_ReadData(&d) == HAL_OK) {
-		// 		printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
-		// 		       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
-		// 		       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
-		// 		       IR_ObjectPresent());
-		// 	} else {
-		// 		printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
-		// 		       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
-		// 		       IR_ObjectPresent());
-		// 	}
-		// 	/* 一次性 dump 原始接收字节, 确认帧格式 */
-		// 	if (!raw_dumped && dbg_rx_cb > 0) {
-		// 		raw_dumped = 1;
-		// 		printf("raw: ");
-		// 		for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
-		// 			printf("%02X ", dma_rx_buf[i]);
-		// 		}
-		// 		printf("\r\n");
-		// 	}
-		// 	// /* 调试: 打印5个槽的颜色, 验证槽位映射是否正确 */
-		// 	printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
-		// 		   Color_ToString(ColorAtSlot(0)),
-		// 		   Color_ToString(ColorAtSlot(1)),
-		// 		   Color_ToString(ColorAtSlot(2)),
-		// 		   Color_ToString(ColorAtSlot(3)),
-		// 		   Color_ToString(ColorAtSlot(4)));
-			osDelay(10);
+			Color_DataTypeDef d;
+			if (Color_ReadData(&d) == HAL_OK) {
+				printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
+				       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
+				       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+				       IR_ObjectPresent());
+			} else {
+				printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
+				       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+				       IR_ObjectPresent());
+			}
+			/* 一次性 dump 原始接收字节, 确认帧格式 */
+			if (!raw_dumped && dbg_rx_cb > 0) {
+				raw_dumped = 1;
+				printf("raw: ");
+				for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
+					printf("%02X ", dma_rx_buf[i]);
+				}
+				printf("\r\n");
+			}
+			// /* 调试: 打印5个槽的颜色, 验证槽位映射是否正确 */
+			printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
+				   Color_ToString(ColorAtSlot(0)),
+				   Color_ToString(ColorAtSlot(1)),
+				   Color_ToString(ColorAtSlot(2)),
+				   Color_ToString(ColorAtSlot(3)),
+				   Color_ToString(ColorAtSlot(4)));
+			osDelay(300);
 		}
 	}
 #endif
@@ -525,7 +525,6 @@ void BsRt_task(void *argument)
 		if (g_last_cmd.Mode==Event_LinFolL||g_last_cmd.Mode==Event_LinFolR)
 		{
 
-			HAL_Delay(50);
 #if USE_OPENMV_COLOR == 0  /* ---- GY-33 ---- */
 			/* 收集: 红外对射检测物体进入 → 读颜色 → 旋转转盘 */
 			if (K==0) {
@@ -539,15 +538,15 @@ void BsRt_task(void *argument)
 
 
 				Collect_WaitEnter();			/* 物块1进入槽1 */
-				osDelay(230);
+				osDelay(200);
 				BlockBasic_TurntableTo(2);		/* 槽1 → 传感器下 */
 
 				for (slot = 1; slot <= 4; slot++) {
-						while (!IR_ObjectEntered()) osDelay(10);
+						while (!IR_ObjectEntered()) osDelay(5);
 
 					/* 读取槽slot颜色(转盘静止): 带重试上限(约5s), 读不出不阻塞 */
 					c = COLOR_UNKNOWN;
-					for (uint16_t tries = 0; tries < 10; tries++) {
+					for (uint16_t tries = 0; tries < 50; tries++) {
 						c = Collect_ReadColor();
 						if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
 							break;
@@ -558,7 +557,7 @@ void BsRt_task(void *argument)
 						TT_SetColor(slot - 1, c);	/* 槽slot → 索引slot-1 */
 					}
 					if (slot < 4) {
-						osDelay(230);		/* 等物块slot+1落稳 */
+						osDelay(200);		/* 等物块slot+1落稳 */
 						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 */
 					}
 				}
@@ -676,7 +675,7 @@ void OLED_TASK(void *argument)
   {
 
   	position=World_position_get();
-  	// printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
+  	// printf("xyyawixiy:%2f,%2f,%2f,%.2f,%.2f\r\n",position.x,position.y,position.yaw,g_ins.x,g_ins.y);
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 		osDelay(20);
   }
@@ -774,6 +773,7 @@ void IMU_FUCTION(void *argument)
   /* USER CODE BEGIN IMU_FUCTION */
 	// EulerAngle e ;
 	// calibrate_gyro();
+	// Ins_Init();                    /* 惯导初始化 (清零状态, 记录起始 tick) */
 
   for(;;)
   {
@@ -784,6 +784,7 @@ void IMU_FUCTION(void *argument)
     // }
   	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
   	siyuan_imu_task();
+  	// Ins_Update();
   	// e = MahonyAHRS_GetEuler_deg();
     osDelay(5);
   }

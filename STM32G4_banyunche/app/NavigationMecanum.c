@@ -26,19 +26,19 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {0.358f,    0.736f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {0.358f,    0.706f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
-    {-0.05f,      0.1f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
+    {-0.11f,      0.14f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
 
     {    -0.816f,     -0.466f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
-    {    -0.255f,     -0.22f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
-    {    0.3f,     -0.67f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
-    {    -0.23f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
-    {    0.16f,     -0.52f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
+    {    -0.225f,     -0.21f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
+    {    0.34f,     -0.6f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
+    {    -0.2f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
+    {    0.18f,     -0.5f,   0.0f  * MECANUM_DEG_TO_RAD },  /* e点 */
 
     {  -0.253f,    0.201f, 0.0f * MECANUM_DEG_TO_RAD },  /* 奖杯二维码点*/
 
-    {   0.0f,    0.1f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
+    {   0.0f,    -0.15f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
 
     {    0.405f,     1.03f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
     {    0.06f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
@@ -67,13 +67,13 @@ uint8_t  g_waypoint_count = 13;
  * ============================================================ */
 
 /* ---- 目标点设计坐标 (世界系, m) ---- */
-#define CALIB_A_X        (-0.869f)     /* a点设计值 */
+#define CALIB_A_X        (-0.86f)     /* a点设计值 */
 #define CALIB_A_Y        (-0.556f)
 #define CALIB_YAJUN_X    ( 0.485f)     /* 亚军点设计值 */
 #define CALIB_YAJUN_Y    ( 0.83f)
 
 /* ---- 循迹终点设计坐标 (世界系, m) ---- */
-#define TRACE_END_A_X    ( 2.536f)       /* 物料循迹(LinFolL)终点设计值 */
+#define TRACE_END_A_X    ( 2.436f)       /* 物料循迹(LinFolL)终点设计值 */
 #define TRACE_END_A_Y    ( 0.447f)
 #define TRACE_END_YAJUN_X (2.334f)      /* 奖杯循迹(LinFolR)终点设计值 */
 #define TRACE_END_YAJUN_Y (-0.631f)

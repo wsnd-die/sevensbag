@@ -72,6 +72,9 @@ void siyuan_ahrs_update(SiyuanAHRS_t *ahrs,
 void siyuan_quat_to_euler(float q0, float q1, float q2, float q3,
                           float *roll, float *pitch, float *yaw);
 
+/* 导出最近姿态四元数 [w,x,y,z] — 供惯导(INS)等模块使用 */
+void siyuan_get_quat(float q[4]);
+
 void siyuan_gyro_calibrate(void);
 
 float siyuan_update_gyro_rate(float gz);

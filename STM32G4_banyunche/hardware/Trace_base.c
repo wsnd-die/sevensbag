@@ -25,6 +25,9 @@ float g_trace_target = 0.0f;
 pid_type_def g_pid_angle;
 pid_type_def g_pid_pos;
 static uint8_t g_pid_inited = 0;
+static uint8_t s_start = 0;
+static uint32_t s_start_tick = 0;
+static float s_w_last = 0.0f;
 
 void Trace_LineFollow_PID(void)
 {
@@ -55,6 +58,8 @@ void Trace_LineFollow_PID(void)
                  g_tune_control_override ? g_tune_wmax : TRACE_W_MAX,
                  POS_INTEGRAL_MAX);
         g_pid_inited = 1;
+        s_start = 1;
+        s_start_tick = HAL_GetTick();   /* 记录缓启动起点 */
     }
 
     /* ---- 3. 外环: 角度 → 目标位置 ---- */
@@ -71,14 +76,32 @@ void Trace_LineFollow_PID(void)
         float wmax = g_tune_control_override ? g_tune_wmax : TRACE_W_MAX;
         if (w >  wmax) w =  wmax;
         if (w < -wmax) w = -wmax;
+
+        /* 新增: 每周期 w 变化量限幅, 防止快冲 */
+        float dw = w - s_w_last;
+        float step = W_RATE_MAX;             /* 每帧最大变化, 建议 0.05~0.15 */
+        if (dw >  step) dw =  step;
+        if (dw < -step) dw = -step;
+        w = s_w_last + dw;
+        s_w_last = w;
     }
 
     /* ---- 5. 速度自适应 ---- */
     v = g_tune_control_override ? g_tune_speed : TRACE_BASE_SPEED;
     {
         float abs_err = fabsf(k230_angle);
-        if (abs_err > 30.0f)       v *= 0.7f;
+        if (abs_err > 40.0f)       v *= 0.5f;
+        else if (abs_err > 30.0f)       v *= 0.7f;
         else if (abs_err > 15.0f)  v *= 0.85f;
+    }
+    /* 缓启动: 起步后 SOFT_START_MS 内 v 从 0 线性爬升到目标速度, 避免猛冲 */
+    if (s_start) {
+        uint32_t el = HAL_GetTick() - s_start_tick;
+        if (el >= SOFT_START_MS) {
+            s_start = 0;                /* 爬升完成 */
+        } else {
+            v = v * (float)el / (float)SOFT_START_MS;
+        }
     }
 
     /* ---- 6. 保存供打印 ---- */
