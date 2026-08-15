@@ -16,6 +16,8 @@
 void          IR_Init(void);
 bool          IR_ObjectPresent(void);   /* 当前是否有物体遮光 */
 bool          IR_ObjectEntered(void);   /* 物体刚进入(边沿, 自动复位) */
+bool          Collect_WaitEnter(void);  /* 只等一个物体进入, 不读色 */
+Color_TypeDef Collect_ReadColor(void);  /* 只读颜色(多帧平均), 不等待进入 */
 Color_TypeDef Collect_WaitObject(void); /* 等一个物体进入并读色, 返回颜色 */
 
 #endif

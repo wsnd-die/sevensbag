@@ -66,10 +66,6 @@ void UART2_FSM_Parse_Byte(uint8_t byte);
 extern volatile uint8_t g_uart2_color_ready;
 extern uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
 
-/* ---- GY-33 颜色帧 (UART2, 5A 5A 45 03 R G B chk) ---- */
-extern volatile uint8_t g_uart2_gy33_ready;
-extern uint8_t g_uart2_gy33_r, g_uart2_gy33_g, g_uart2_gy33_b;
-
 void UART2_StartDMAReceive(void);
 void UART2_calibrate(void);
 

@@ -87,16 +87,12 @@ void SetQR(uint8_t idx)
     g_tt.ok   = 1;
     g_tt.cnt  = 5;    /* 固定物块任务: 5 个槽位 */
 
-    /* 清空反向索引 */
-    for (uint8_t i = 0; i < COLOR_COUNT; i++)
-        g_tt.rev[i] = SLOT_NONE;
-
     if (idx >= 16) { g_tt.ok = 0; return; }
-    for (uint8_t s = 0; s < 5; s++) {
-        uint8_t c = T1[idx][s];
-        g_tt.color[s] = c;           /* 槽位→颜色 */
-        g_tt.rev[c]   = s;           /* 颜色→槽位 */
-    }
+
+    /* 只写 QR 任务顺序, 不碰 g_tt.color[]/g_tt.rev[] ——
+     * 那两块是收集阶段 TT_SetColor 写的物理映射, 这里绝不能覆盖 */
+    for (uint8_t s = 0; s < 5; s++)
+        g_tt.task_color[s] = T1[idx][s];   /* 槽位→任务要求颜色 */
 }
 
 /* ============================================================
@@ -135,27 +131,32 @@ uint8_t ColorAtSlot(uint8_t slot)
  * ============================================================ */
 bool TT_RotateByQR(void)
 {
+    uint8_t cnt = (g_tt.ok && g_tt.idx < 16) ? g_tt.cnt : 5;
+    uint8_t slot;
+    uint8_t need = COLOR_UNKNOWN;
+
+    /* cnt 未设置(=0)时按 5 处理, 保证找圆进度能推进 */
+    if (cnt == 0) cnt = 5;
+    if (g_tt_rotate_idx >= cnt) return false;
+
     if (g_tt.ok && g_tt.idx < 16) {
-        /* QR 模式: 按颜色查找槽位, 每次转一个 */
-        if (g_tt_rotate_idx >= g_tt.cnt) return false;
-        while (g_tt_rotate_idx < g_tt.cnt) {
-            uint8_t slot = SlotByColor(T1[g_tt.idx][g_tt_rotate_idx]);
-            g_tt_rotate_idx++;
-            if (slot != SLOT_NONE) {
-                BlockBasic_TurntableTo(slot + 1);
-                osDelay(500);
-                return true;
-            }
-        }
-        return false;
+        /* QR 模式: 第 i 个圆需要 task_color[i], 用物理反向索引找它实际所在槽 */
+        need = g_tt.task_color[g_tt_rotate_idx];
+        slot = SlotByColor(need);          /* g_tt.rev[] = 收集阶段写入的物理槽位 */
+        if (slot == SLOT_NONE) slot = g_tt_rotate_idx;   /* 兜底: 保证转盘一定转 */
     } else {
         /* 默认固定顺序: 直接按槽位号 1→2→3→4→5 */
-        if (g_tt_rotate_idx >= 5) return false;
-        BlockBasic_TurntableTo(g_tt_rotate_idx + 1);  /* 槽位号=索引+1 */
-        g_tt_rotate_idx++;
-        osDelay(500);
-        return true;
+        slot = g_tt_rotate_idx;
     }
+
+    g_tt_rotate_idx++;
+    BlockBasic_TurntableTo(slot + 1);
+    osDelay(500);
+    printf("[PLACE] rotate_idx=%d need=%s -> turntable slot=%d\r\n",
+           (int)(g_tt_rotate_idx - 1),
+           need < COLOR_COUNT ? Color_ToString((Color_TypeDef)need) : "?",
+           (int)(slot + 1));
+    return true;
 }
 
 void TT_RotateReset(void)
@@ -165,10 +166,9 @@ void TT_RotateReset(void)
 
 bool TT_IsDone(void)
 {
-    if (g_tt.ok && g_tt.idx < 16)
-        return g_tt_rotate_idx >= g_tt.cnt;
-    else
-        return g_tt_rotate_idx >= 5;
+    uint8_t cnt = (g_tt.ok && g_tt.idx < 16) ? g_tt.cnt : 5;
+    if (cnt == 0) cnt = 5;
+    return g_tt_rotate_idx >= cnt;
 }
 
 /* ============================================================
