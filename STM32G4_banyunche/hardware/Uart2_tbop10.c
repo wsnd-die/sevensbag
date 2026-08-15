@@ -6,7 +6,6 @@ TBData_t TB_speed = {0};
 float imu_gz = 0;
 float imu_yaw = 0;
 uint8_t Flag_TBOFdata = 0;
-volatile uint8_t g_uart2_trigger_advance = 0;   /* UART2 收到 'T' → 手动触发进入下一个任务 */
 
 /* ---- OpenMV 颜色帧接收 (UART2, AA l_black l_mean A B DD 6字节) ---- */
 volatile uint8_t g_uart2_color_ready = 0;
@@ -155,8 +154,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         UART2_ScanGY33Frame(dma_rx_buf, Size);
         /* 扫描二维码数字串 (扫码模块) */
         UART2_ScanQR(dma_rx_buf, Size);
-        /* 检测 'T' 命令 → 手动触发进入下一个任务 */
-        UART2_ScanCmd(dma_rx_buf, Size);
         /* 扫描里程计帧 AA CC ... BB DD */
         for (uint16_t i = 0; i < Size; i++) {
             UART2_FSM_Parse_Byte(dma_rx_buf[i]);

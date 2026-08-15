@@ -52,8 +52,6 @@ typedef union
 extern float imu_gz;
 extern float imu_yaw;
 extern uint8_t Flag_TBOFdata;
-/* UART2 收到 'T' → 手动触发进入下一个任务 (扫码任务解卡用) */
-extern volatile uint8_t g_uart2_trigger_advance;
 
 #if LEGACY_USART2_ODOM_ENABLE
 extern UART_STATE fsm_state;
@@ -67,10 +65,6 @@ void UART2_FSM_Parse_Byte(uint8_t byte);
 /* ---- OpenMV 颜色帧 (UART2, AA l_black l_mean A B DD 6字节) ---- */
 extern volatile uint8_t g_uart2_color_ready;
 extern uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
-
-/* ---- GY-33 颜色帧 (UART2, 5A 5A 45 03 R G B chk) ---- */
-extern volatile uint8_t g_uart2_gy33_ready;
-extern uint8_t g_uart2_gy33_r, g_uart2_gy33_g, g_uart2_gy33_b;
 
 void UART2_StartDMAReceive(void);
 void UART2_calibrate(void);

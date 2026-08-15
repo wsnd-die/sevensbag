@@ -5,7 +5,7 @@
 #include "Common_used.h"
 #include "collect_ir.h"
 
-static bool ir_last = false;
+static bool ir_last = true;   /* 初值 true: 上电即遮挡不误触发, 需先离开再进入才计数 */
 
 void IR_Init(void)
 {
@@ -45,19 +45,23 @@ bool IR_ObjectEntered(void)
     return edge;
 }
 
-Color_TypeDef Collect_WaitObject(void)
+bool Collect_WaitEnter(void)
 {
     while (!IR_ObjectEntered()) { osDelay(10); }   /* 等物体进入(带防抖) */
+    return true;
+}
 
-    /* 多帧采样取平均, 提高颜色识别准确度 (不追求快) */
+Color_TypeDef Collect_ReadColor(void)
+{
+    /* 多帧采样取平均, 提高颜色识别准确度 (不追求快) —— 走 I2C3 GY-33 */
     uint32_t rs = 0, gs = 0, bs = 0;
     int n = 0;
-    for (int i = 0; i < 40 && n < 3; i++) {   /* 最多 ~160ms, 采满 3 帧即停 */
-        if (g_uart2_gy33_ready) {
-            g_uart2_gy33_ready = 0;
-            rs += g_uart2_gy33_r;
-            gs += g_uart2_gy33_g;
-            bs += g_uart2_gy33_b;
+    for (int i = 0; i < 8 && n < 3; i++) {   /* 采满 3 帧即停; I2C3 阻塞读, 上限防离线卡死 */
+        Color_DataTypeDef d;
+        if (Color_ReadData(&d) == HAL_OK && d.online) {
+            rs += d.red;
+            gs += d.green;
+            bs += d.blue;
             n++;
         }
         osDelay(4);
@@ -70,5 +74,11 @@ Color_TypeDef Collect_WaitObject(void)
     d.blue  = (uint8_t)(bs / n);
     d.online = 1U;
     return Color_Judge(&d);
+}
+
+Color_TypeDef Collect_WaitObject(void)
+{
+    Collect_WaitEnter();
+    return Collect_ReadColor();
 }
 

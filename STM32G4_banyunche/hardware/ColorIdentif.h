@@ -41,7 +41,8 @@ typedef struct {
 
     /* 槽位上的内容 */
     uint8_t cnt;              /* 有效槽位数: Task1=5, Task2=3 */
-    uint8_t color[5];         /* slot[A..E] 的颜色枚举 */
+    uint8_t task_color[5];    /* QR 任务顺序: 收集阶段要求的 5 种颜色 (SetQR 写入, 与物理映射分离) */
+    uint8_t color[5];         /* 物理: slot[A..E] 实际放的物块颜色 (TT_SetColor 写入) */
     uint8_t trophy[3];        /* slot[A..C] 奖杯: 1=金奖 2=银奖 3=铜奖 */
 
     /* 颜色 → 槽位 反向索引 (Task1) */

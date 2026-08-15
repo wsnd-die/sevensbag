@@ -239,24 +239,90 @@ void NLF_TASK(void *argument)
 	K230_ApplyMode();
 	printf("[TASK] Find circle only\r\n");
 
-		for (uint8_t slot = 1; slot <= 3; slot++) {
-			/* 等红外对射检测到物体进入 */
-			while (!IR_ObjectEntered()) {
-				osDelay(10);
-			}
-			/* ---- 读颜色过程 (已注释) ---- */
-			// Color_DataTypeDef d;
-			// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
-			// int dr = abs((int)d.red   - g_color_ambient.r);
-			// int dg = abs((int)d.green - g_color_ambient.g);
-			// int db = abs((int)d.blue  - g_color_ambient.b);
-			// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
-			if (slot < 4) {
-				osDelay(150);
-				BlockBasic_TurntableTo(slot + 1);
+	Color_Init();
+	Color_SetLedLevel(5);
+	// for (;;) {
+	// 	Color_DataTypeDef d;
+	// 	if (Color_ReadData(&d) == HAL_OK) {
+	// 		printf("R=%3d G=%3d B=%3d -> %s\r\n",
+	// 			   d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
+	// 	}
+	// 	/* 一次性 dump 原始接收字节, 确认帧格式 */
+	// 	osDelay(100);
+	// }
+	//
+	g_color_collect_done = 0;
+	uint8_t seen[COLOR_COUNT] = {0};   /* 已读到的颜色标记 */
+	Color_TypeDef c;
+	uint8_t slot;
+	Color_DataTypeDef d;
 
-			}
+	/* 收集流程: 物料进入当前槽 → 转盘转一格让该槽到传感器下 → 读色记录为该槽位
+					 * 物理(本车): 槽1初始在入料口、传感器对着槽5;
+					 *            故槽N到传感器下需 TurntableTo(N+1) (顺时针转一格) */
+	// BlockBasic_TurntableTo(1);      /* 收集前复位: 槽1对准入料口 */
+	// osDelay(200);
+	for (slot = 1; slot <= 4; slot++) {
+		/* 第1个物料进入槽1(后续物料进入槽slot, 转盘已在对应位置) */
+		while (!IR_ObjectEntered()) osDelay(10);
+		osDelay(150);               /* 等物料落稳 */
+
+		/* 转盘转一格 → 槽slot到传感器下 (本车槽N到传感器下=位置N+1) */
+		BlockBasic_TurntableTo(slot + 1);
+		osDelay(650);
+
+		/* 读取槽slot颜色(转盘静止): 带重试上限, 读不出不阻塞 */
+		c = COLOR_UNKNOWN;
+		for (uint16_t tries = 0; tries < 10; tries++) {
+			if (Color_ReadData(&d) != HAL_OK) { osDelay(10); continue; }
+			c = Color_Judge(&d);
+			if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
+				break;
+			osDelay(10);
 		}
+		if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c]) {
+			seen[c] = 1;
+			TT_SetColor(slot - 1, c);   /* 槽slot → 索引slot-1 */
+			printf("[COLLECT] slot=%d, color=%s, R=%3d G=%3d B=%3d\r\n",
+				   slot, Color_ToString(c), d.red, d.green, d.blue);
+		} else {
+			printf("[COLLECT] slot=%d, color=UNKNOWN\r\n", slot);
+		}
+	}
+
+	osDelay(150);
+	g_color_collect_done = 1;
+	BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
+
+	/* 槽5(索引4)颜色 = 全集 - 已读4种 (排除法) */
+	c = COLOR_UNKNOWN;
+	for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
+		if (!seen[cc]) { c = cc; break; }
+	}
+	if (c != COLOR_UNKNOWN) {
+		TT_SetColor(4, c);
+		printf("[COLLECT] slot=5, color=%s\r\n", Color_ToString(c));
+	} else {
+		printf("[COLLECT] slot=5, color=UNKNOWN (no missing found)\r\n");
+	}
+		// for (uint8_t slot = 1; slot <= 3; slot++) {
+		// 	/* 等红外对射检测到物体进入 */
+		// 	while (!IR_ObjectEntered()) {
+		// 		osDelay(10);
+		// 	}
+		// 	/* ---- 读颜色过程 (已注释) ---- */
+		// 	// Color_DataTypeDef d;
+		// 	// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
+		// 	// int dr = abs((int)d.red   - g_color_ambient.r);
+		// 	// int dg = abs((int)d.green - g_color_ambient.g);
+		// 	// int db = abs((int)d.blue  - g_color_ambient.b);
+		// 	// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
+		// 	if (slot < 4) {
+		// 		osDelay(150);
+		// 		BlockBasic_TurntableTo(slot + 1);
+		//
+		// 	}
+		// }
 		g_trophy_done = 1;
 		//Trace_LineFollow();
 		// MecanumResult motor;
@@ -315,6 +381,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
   		Trace_LineFollow();
+	osDelay(150);
   		if (g_color_collect_done==1)
   		{
   			task_send(Event_Navigation);
@@ -351,7 +418,6 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 				if (flag_finish==false)
 				{
 					flag_finish = true;
-					TT_RotateByQR();
 				}
 				if (flag_finish)
 				{
@@ -359,8 +425,9 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 					Circle_Follow();
 					if (g_circle_dir=='O')
 					{
-						//TT_RotateByQR();
-						Place('O', 2);
+						TT_RotateByQR();
+						osDelay(100);
+						Place('O', 8);
 						printf("[TASK] FindCircle placed");
 						flag_finish = false;
 						if (TT_IsDone()) {//全部转完
@@ -386,7 +453,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 					{
 						/* HEIGHT_CHANGE: podium champion pre-place arm height. */
 						BlockBasic_DualArmSetPos(4);
-  						
+
   						// osDelay(500);
   						flag_finish=true;
   					}
@@ -431,7 +498,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						flag_finish=false;
 							BlockBasic_DualArmSetPos(4);
   						task_send(Event_Navigation);
-							
+
   						/* HEIGHT_CHANGE: podium second-place post-place CH1 arm angle. */
   						// Servo_SetAngle(42);
   						osDelay(800);
@@ -459,8 +526,9 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						printf("[TASK] PlaceDown third done\r\n");
   						i++;
   						flag_finish=false;
-  						BlockBasic_DualArmSetPos(2);
-  						//BlockBasic_TurntableTo(1);   /* 放完第三个奖杯后转回槽位1，后续收集5个物料也从槽位1开始 */
+  						BlockBasic_DualArmSetPos(8);
+  						osDelay(100);
+  						BlockBasic_TurntableTo(1);   /* 放完第三个奖杯后转回槽位1，后续收集5个物料也从槽位1开始 */
   						task_send(Event_Navigation);
   						K230_RequestMode(K230_MODE_LINE);
   						K230_ApplyMode();
@@ -483,8 +551,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   	}
 
   	osDelay(10);
-}
 #endif
+}
   /* USER CODE END NLF_TASK */
 
 /* USER CODE BEGIN Header_Color_task */
@@ -497,8 +565,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
-	//Color_Init();
-	//Color_SetLedLevel(0);
+	Color_Init();
+	Color_SetLedLevel(5);
 
 	/* 简单校准开关: 1=执行一次校准存 Flash, 0=实时打印 RGB+颜色 */
 #define COLOR_SIMPLE_CALIB 0
@@ -533,8 +601,7 @@ void Color_task(void *argument)
 		for (;;) {
 			Color_DataTypeDef d;
 			// if (Color_ReadData(&d) == HAL_OK) {
-			// 	printf("R=%3d G=%3d B=%3d -> %s\r\n",
-			// 	       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
+			// 	printf("R=%3d G=%3d B=%3d -> %s\r\n",d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
 			// } else {
 			// 	printf("R= ? G= ? B= ? (no data)\r\n");
 			// }
@@ -562,7 +629,7 @@ void BsRt_task(void *argument)
 	 */
 	uint8_t K = 1;//0为先走物块任务，1为先走奖杯任务
 	IR_Init();   /* 红外对射初始化 */
-	BlockBasic_DualArmSetPos(2);
+	BlockBasic_DualArmSetPos(8);
 	osDelay(1000);
 	BlockBasic_TurntableTo(1);
 	// BlockBasic_TurntableTo(1);
@@ -580,30 +647,67 @@ void BsRt_task(void *argument)
 			//Color_Init();
 			osDelay(50);
 #if USE_OPENMV_COLOR == 1  /* ---- GY-33 ---- */
-			/* 收集: 红外对射检测物体进入 → 旋转转盘 (读颜色已注释) */
+			/* 收集: 红外对射检测物体进入 → 识别记录当前槽位颜色 → 转下一槽位 */
 			if (K==0) {
-				for (uint8_t slot = 1; slot <= 5; slot++) {
-					/* 等红外对射检测到物体进入 */
-					while (!IR_ObjectEntered()) {
+				// BlockBasic_TurntableTo(1);   /* 收集前转盘回槽1: 槽1对准入料口, 传感器正对槽5 */
+				// osDelay(200);
+
+				g_color_collect_done = 0;
+				uint8_t seen[COLOR_COUNT] = {0};   /* 已读到的颜色标记 */
+				Color_TypeDef c;
+				uint8_t slot;
+				Color_DataTypeDef d;
+
+				/* 收集流程: 物料进入当前槽 → 转盘转一格让该槽到传感器下 → 读色记录为该槽位
+				 * 物理(本车): 槽1初始在入料口、传感器对着槽5;
+					 *            故槽N到传感器下需 TurntableTo(N+1) (顺时针转一格) */
+				for (slot = 1; slot <= 4; slot++) {
+					/* 第1个物料进入槽1(后续物料进入槽slot, 转盘已在对应位置) */
+					while (!IR_ObjectEntered()) osDelay(10);
+					osDelay(150);               /* 等物料落稳 */
+
+					/* 转盘转一格 → 槽slot到传感器下 (本车槽N到传感器下=位置N+1) */
+					BlockBasic_TurntableTo(slot + 1);
+					osDelay(650);
+
+					/* 读取槽slot颜色(转盘静止): 带重试上限, 读不出不阻塞 */
+					c = COLOR_UNKNOWN;
+					for (uint16_t tries = 0; tries < 10; tries++) {
+						if (Color_ReadData(&d) != HAL_OK) { osDelay(10); continue; }
+						c = Color_Judge(&d);
+						if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
+							break;
 						osDelay(10);
 					}
-					/* ---- 读颜色过程 (已注释) ---- */
-					// Color_DataTypeDef d;
-					// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(10); continue; }
-					// int dr = abs((int)d.red   - g_color_ambient.r);
-					// int dg = abs((int)d.green - g_color_ambient.g);
-					// int db = abs((int)d.blue  - g_color_ambient.b);
-					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
-					// TT_SetColor(slot - 1, Color_Judge(&d));
-					if (slot < 6) {
-						osDelay(165);
-						BlockBasic_TurntableTo(slot+1);
+					if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c]) {
+						seen[c] = 1;
+						TT_SetColor(slot - 1, c);   /* 槽slot → 索引slot-1 */
+						printf("[COLLECT] slot=%d, color=%s, R=%3d G=%3d B=%3d\r\n",
+							   slot, Color_ToString(c), d.red, d.green, d.blue);
+					} else {
+						printf("[COLLECT] slot=%d, color=UNKNOWN\r\n", slot);
 					}
 				}
+
+				osDelay(150);
+				g_color_collect_done = 1;
+				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
+
+				/* 槽5(索引4)颜色 = 全集 - 已读4种 (排除法) */
+				c = COLOR_UNKNOWN;
+				for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
+					if (!seen[cc]) { c = cc; break; }
+				}
+				if (c != COLOR_UNKNOWN) {
+					TT_SetColor(4, c);
+					printf("[COLLECT] slot=5, color=%s\r\n", Color_ToString(c));
+				} else {
+					printf("[COLLECT] slot=5, color=UNKNOWN (no missing found)\r\n");
+				}
+
+				osDelay(100);
 				K=1;
 				g_color_collect_done = 1;
-				osDelay(150);
-				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
 			}
 			else {
 				for (uint8_t slot = 1; slot <= 3; slot++) {
@@ -619,7 +723,7 @@ void BsRt_task(void *argument)
 					// int db = abs((int)d.blue  - g_color_ambient.b);
 					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
 					if (slot < 4) {
-						osDelay(200);
+						osDelay(220);
 						BlockBasic_TurntableTo(slot+1);
 					}
 				}
@@ -772,7 +876,7 @@ void QR_TASK(void *argument)
   		else
   		{
   			QR_result=Qr_Get();
-  			SetQR(QR_result);
+  			SetQR(QR_result - 1);   /* QR号从1起, T1下标从0起 */
   		}
   		task_send(Event_Navigation);
   	}
@@ -791,33 +895,33 @@ void QR_TASK(void *argument)
 /* USER CODE END Header_IMU_FUCTION */
 void IMU_FUCTION(void *argument)
 {
-  /* USER CODE BEGIN IMU_FUCTION */
+	/* USER CODE BEGIN IMU_FUCTION */
 	EulerAngle e ;
 	AngleCtrl angle_ctrl;
 	Angle_Init(&angle_ctrl);
 
 
-  for(;;)
-  {
-    // if (Flag_TBOFdata) {
-    //   Flag_TBOFdata = 0;
-    //   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
-    //     TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
-    // }
-  	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
-  	// siyuan_imu_task();
+	for(;;)
+	{
+		// if (Flag_TBOFdata) {
+		//   Flag_TBOFdata = 0;
+		//   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
+		//     TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
+		// }
+		// MahonyAHRS_Update(0.01f);                      // dt = 5ms
+		// siyuan_imu_task();
 
-  	/* HWT101零点校准 */
-  	 //printf("Yaw=%.2f\r\n",HWT101_GetZeroYaw());
-  	// Angle_UpdateTarget(&angle_ctrl, 0.0f);
-  	// AngleLoop_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
-  	// Angle_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
-  	// MecanumResult motor = Mecanum_Calc(0.0f, angle_ctrl.cmd_w);
-  	// Send_commandmotor(&motor);
+		/* HWT101零点校准 */
+		//printf("Yaw=%.2f\r\n",HWT101_GetZeroYaw());
+		// Angle_UpdateTarget(&angle_ctrl, 0.0f);
+		// AngleLoop_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+		// Angle_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+		// MecanumResult motor = Mecanum_Calc(0.0f, angle_ctrl.cmd_w);
+		// Send_commandmotor(&motor);
 
 
-  	// e = MahonyAHRS_GetEuler_deg();
-    osDelay(10);
-  }
-  /* USER CODE END IMU_FUCTION */
+		// e = MahonyAHRS_GetEuler_deg();
+		osDelay(10);
+	}
+	/* USER CODE END IMU_FUCTION */
 }
