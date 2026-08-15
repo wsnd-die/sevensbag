@@ -22,7 +22,7 @@
     .forward_dir[MECANUM_ADDR_RR] = 0U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
-    .acceleration = 250U
+    .acceleration = 200U
 };
 
 /* ---- 内部工具函数 ---- */

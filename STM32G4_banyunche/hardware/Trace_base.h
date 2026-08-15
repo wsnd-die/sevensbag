@@ -18,7 +18,7 @@ extern "C" {
 #define TRACE_USE_STANLEY   0   /* 0=PID, 1=Stanley */
 
 /* ======================== PID 外环: 位置 → 目标角度 ======================== */
-#define ANGLE_KP      0.21f     /* 外环 P (作用于位置环) [调参值] */
+#define ANGLE_KP      0.14f     /* 外环 P (作用于位置环) [调参值] */
 #define ANGLE_KI      0.0f     /* 外环 I */
 #define ANGLE_KD      0.013f    /* 外环 D [调参值] */
 #define ANGLE_OUT_MAX  100.0f   /* 外环输出限幅 (目标角度, deg) */
@@ -35,7 +35,7 @@ extern "C" {
 #define MIN_SPEED           0.1f   /* 防止除零最低速度 (m/s) */
 
 /* ======================== 共用 ======================== */
-#define TRACE_BASE_SPEED   0.68f   /* 基础线速度 (m/s) [调参值] */
+#define TRACE_BASE_SPEED   0.6f   /* 基础线速度 (m/s) [调参值] */
 #define TRACE_W_MAX        0.95f  /* 最大角速度 (rad/s) */
 
 /* ======================== 函数声明 ======================== */

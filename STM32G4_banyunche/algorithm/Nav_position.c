@@ -30,8 +30,8 @@ World_Dir_t World_position_get(void)
 
     /* 脉冲→mm */
     Odometry_Apply_Calib(d_fwd, d_side, &fwd_mm, &side_mm);
-    World_position.x += (fwd_mm * cosf(yaw) - side_mm * sinf(yaw)) / 1000.0f;
-    World_position.y += (fwd_mm * sinf(yaw) + side_mm * cosf(yaw)) / 1000.0f;
+    World_position.x += (fwd_mm * cosf(yaw) - side_mm * sinf(yaw)) / 2000.0f;
+    World_position.y += (fwd_mm * sinf(yaw) + side_mm * cosf(yaw)) / 2000.0f;
     World_position.yaw = yaw;
 
     return World_position;

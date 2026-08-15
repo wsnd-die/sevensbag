@@ -232,6 +232,7 @@ void NLF_TASK(void *argument)
 	K230_ApplyMode();
 	task_send(Event_Navigation);
 	// BlockBasic_LiftTo(UP,44);
+	// Nav_MoveForward(0.5);
 	BlockBasic_TurntableTo(1);
 	osDelay(500);
   /* Infinite loop */
@@ -267,7 +268,12 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   		{
   			task_send(Event_Navigation);
   			Mecanum_StopAll();
-  			printf("[TASK] LinFolL done\r\n");
+  			{
+  			    World_Dir_t p = World_position_get();
+  			    printf("[POS] LinFolL  x=%.3f y=%.3f yaw=%.2f\r\n",
+  			           (double)p.x, (double)p.y, (double)(p.yaw * RAD_TO_DEG));
+  			}
+  			Nav_CalibrateAfterTrace(false);   /* 物料循迹 → 校准a点 */
   			K230_RequestMode(K230_MODE_CIRCLE);
   			K230_ApplyMode();
   			g_color_collect_done=0;
@@ -284,7 +290,12 @@ else if (g_last_cmd.Mode==Event_LinFolL)
         {
 	        task_send(Event_Navigation);
         	Mecanum_StopAll();
-        	printf("[TASK] LinFolR done\r\n");
+        	{
+        	    World_Dir_t p = World_position_get();
+        	    printf("[POS] LinFolR  x=%.3f y=%.3f yaw=%.2f\r\n",
+        	           (double)p.x, (double)p.y, (double)(p.yaw * RAD_TO_DEG));
+        	}
+        	Nav_CalibrateAfterTrace(true);    /* 奖杯循迹 → 校准亚军点 */
         	K230_RequestMode(K230_MODE_CIRCLE);
         	K230_ApplyMode();
         	g_color_collect_done=0;
@@ -499,7 +510,7 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
-	Servo_SetAngle(37);
+	Servo_SetAngle(40);
 	BlockBasic_TurntableTo(1);
 	IR_Init();
 	osDelay(1000);
@@ -528,7 +539,7 @@ void BsRt_task(void *argument)
 
 
 				Collect_WaitEnter();			/* 物块1进入槽1 */
-				osDelay(220);
+				osDelay(230);
 				BlockBasic_TurntableTo(2);		/* 槽1 → 传感器下 */
 
 				for (slot = 1; slot <= 4; slot++) {
@@ -536,7 +547,7 @@ void BsRt_task(void *argument)
 
 					/* 读取槽slot颜色(转盘静止): 带重试上限(约5s), 读不出不阻塞 */
 					c = COLOR_UNKNOWN;
-					for (uint16_t tries = 0; tries < 30; tries++) {
+					for (uint16_t tries = 0; tries < 10; tries++) {
 						c = Collect_ReadColor();
 						if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
 							break;
@@ -547,13 +558,13 @@ void BsRt_task(void *argument)
 						TT_SetColor(slot - 1, c);	/* 槽slot → 索引slot-1 */
 					}
 					if (slot < 4) {
-						osDelay(200);		/* 等物块slot+1落稳 */
+						osDelay(230);		/* 等物块slot+1落稳 */
 						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 */
 					}
 				}
 
 				/* 必触发锁死: 物块5已进入槽5(或等超时后强制收尾), 锁死转盘 */
-				osDelay(200);
+				osDelay(230);
 				Servo_Angle(333.0f);
 
 				/* 槽5(索引4)颜色 = 全集 - 已读4种 */
@@ -664,8 +675,8 @@ void OLED_TASK(void *argument)
   for(;;)
   {
 
-  	// position=World_position_get();
-  	// printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
+  	position=World_position_get();
+  	printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 		osDelay(20);
   }
@@ -707,7 +718,7 @@ void FC_TASK(void *argument)
 			Angle_UpdateTarget(&ac, g_angle_target_yaw);
 			Angle_Update(&ac,
 			             siyuan_yaw * RAD_TO_DEG,
-			             -imu660ra_gyro_transition(imu660ra_gyro_x));
+			             siyuan_gyro_z_rate);   /* 用已 LPF + 减零偏的偏航率, 替代原始陀螺 */
 			MecanumResult motor = Mecanum_Calc(0.0f, -ac.cmd_w);
 			Send_commandmotor(&motor);
 		} else {

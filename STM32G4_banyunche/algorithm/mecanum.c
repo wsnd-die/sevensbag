@@ -236,8 +236,8 @@ uint8_t Mecanum_Read_AllPositions(EncoderData *enc, uint32_t timeout_ms)
 
     if (!Mecanum_Read_Position(3, &enc->fl, timeout_ms)) return 0;  // 前左
     if (!Mecanum_Read_Position(1, &enc->fr, timeout_ms)) return 0;  // 前右
-    if (!Mecanum_Read_Position(2, &enc->rl, timeout_ms)) return 0;  // 后左
-    if (!Mecanum_Read_Position(4, &enc->rr, timeout_ms)) return 0;  // 后右
+    if (!Mecanum_Read_Position(2, &enc->rr, timeout_ms)) return 0;  // 后左
+    if (!Mecanum_Read_Position(4, &enc->rl, timeout_ms)) return 0;  // 后右
 
     return 1;
 }
