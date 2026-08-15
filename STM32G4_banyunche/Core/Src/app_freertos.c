@@ -574,19 +574,19 @@ static Color_TypeDef Color_ReadStableUnseen(const uint8_t seen[COLOR_COUNT],
 	uint8_t best_count = 0;
 	uint8_t tie = 0;
 
-	for (uint16_t tries = 0; tries < 12; tries++) {
+	for (uint16_t tries = 0; tries < 9; tries++) {
 		Color_DataTypeDef d;
 		if (Color_ReadData(&d) == HAL_OK) {
 			Color_TypeDef sample = Color_Judge(&d);
 			if (last_data != NULL) *last_data = d;
-			if (tries >= 4 &&
+			if (tries >= 3 &&
 			    sample != COLOR_UNKNOWN &&
 			    sample < COLOR_COUNT &&
 			    !seen[sample]) {
 				counts[sample]++;
 			}
 		}
-		osDelay(50);
+		osDelay(40);
 	}
 
 	for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
@@ -599,7 +599,7 @@ static Color_TypeDef Color_ReadStableUnseen(const uint8_t seen[COLOR_COUNT],
 		}
 	}
 
-	if (tie || best_count < 3) return COLOR_UNKNOWN;
+	if (tie || best_count < 2) return COLOR_UNKNOWN;
 	return best;
 }
 
@@ -735,7 +735,7 @@ void BsRt_task(void *argument)
 					/* 转盘转一格 → 槽slot到传感器下 (本车槽N到传感器下=位置N+1) */
 					while (g_color_req) osDelay(5);
 					BlockBasic_TurntableTo(slot + 1);
-					osDelay(650);
+					osDelay(500);
 
 					/* 请求 Color_task 读取当前槽颜色。 */
 					g_color_req_slot = slot - 1;
@@ -746,10 +746,10 @@ void BsRt_task(void *argument)
 				}
 
 				while (!IR_ObjectEntered()) osDelay(5);
-				osDelay(150);
+				osDelay(120);
 				while (g_color_req) osDelay(5);
 				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
-				osDelay(650);
+				osDelay(500);
 				g_color_req_slot = 4;
 				g_color_req = 1;
 				while (g_color_req) osDelay(5);
