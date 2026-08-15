@@ -239,24 +239,36 @@ void NLF_TASK(void *argument)
 	K230_ApplyMode();
 	printf("[TASK] Find circle only\r\n");
 
-		for (uint8_t slot = 1; slot <= 3; slot++) {
-			/* 等红外对射检测到物体进入 */
-			while (!IR_ObjectEntered()) {
-				osDelay(10);
-			}
-			/* ---- 读颜色过程 (已注释) ---- */
-			// Color_DataTypeDef d;
-			// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
-			// int dr = abs((int)d.red   - g_color_ambient.r);
-			// int dg = abs((int)d.green - g_color_ambient.g);
-			// int db = abs((int)d.blue  - g_color_ambient.b);
-			// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
-			if (slot < 4) {
-				osDelay(150);
-				BlockBasic_TurntableTo(slot + 1);
-
-			}
+	Color_Init();
+	Color_SetLedLevel(5);
+	for (;;) {
+		Color_DataTypeDef d;
+		if (Color_ReadData(&d) == HAL_OK) {
+			printf("R=%3d G=%3d B=%3d -> %s\r\n",
+				   d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
 		}
+		/* 一次性 dump 原始接收字节, 确认帧格式 */
+		osDelay(100);
+	}
+
+		// for (uint8_t slot = 1; slot <= 3; slot++) {
+		// 	/* 等红外对射检测到物体进入 */
+		// 	while (!IR_ObjectEntered()) {
+		// 		osDelay(10);
+		// 	}
+		// 	/* ---- 读颜色过程 (已注释) ---- */
+		// 	// Color_DataTypeDef d;
+		// 	// if (Color_ReadData(&d) != HAL_OK) { slot--; osDelay(5); continue; }
+		// 	// int dr = abs((int)d.red   - g_color_ambient.r);
+		// 	// int dg = abs((int)d.green - g_color_ambient.g);
+		// 	// int db = abs((int)d.blue  - g_color_ambient.b);
+		// 	// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
+		// 	if (slot < 4) {
+		// 		osDelay(150);
+		// 		BlockBasic_TurntableTo(slot + 1);
+		//
+		// 	}
+		// }
 		g_trophy_done = 1;
 		//Trace_LineFollow();
 		// MecanumResult motor;
@@ -484,8 +496,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   	}
 
   	osDelay(10);
-}
 #endif
+}
   /* USER CODE END NLF_TASK */
 
 /* USER CODE BEGIN Header_Color_task */
@@ -498,8 +510,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 void Color_task(void *argument)
 {
   /* USER CODE BEGIN Color_task */
-	//Color_Init();
-	//Color_SetLedLevel(0);
+	Color_Init();
+	Color_SetLedLevel(5);
 
 	/* 简单校准开关: 1=执行一次校准存 Flash, 0=实时打印 RGB+颜色 */
 #define COLOR_SIMPLE_CALIB 0
@@ -533,12 +545,12 @@ void Color_task(void *argument)
 	{
 		for (;;) {
 			Color_DataTypeDef d;
-			// if (Color_ReadData(&d) == HAL_OK) {
-			// 	printf("R=%3d G=%3d B=%3d -> %s\r\n",
-			// 	       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
-			// } else {
-			// 	printf("R= ? G= ? B= ? (no data)\r\n");
-			// }
+			if (Color_ReadData(&d) == HAL_OK) {
+				printf("R=%3d G=%3d B=%3d -> %s\r\n",
+				       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)));
+			} else {
+				printf("R= ? G= ? B= ? (no data)\r\n");
+			}
 			/* 一次性 dump 原始接收字节, 确认帧格式 */
 			osDelay(100);
 		}
@@ -600,7 +612,9 @@ void BsRt_task(void *argument)
 						int dg = abs((int)d.green - g_color_ambient.g);
 						int db = abs((int)d.blue  - g_color_ambient.b);
 						if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
-						TT_SetColor(slot, Color_Judge(&d));
+						Color_TypeDef c = Color_Judge(&d);
+						TT_SetColor(slot, c);
+						printf("[COLLECT] slot=%d, color=%s\r\n", slot, Color_ToString(c));
 					}
 					else {
 						/* 识别完4个槽位后, 剩余最后一个颜色自动记录到槽位5 */
@@ -614,6 +628,9 @@ void BsRt_task(void *argument)
 						}
 						if (missing != COLOR_UNKNOWN) {
 							TT_SetColor(4, missing);
+							printf("[COLLECT] slot=5, color=%s\r\n", Color_ToString(missing));
+						} else {
+							printf("[COLLECT] slot=5, color=UNKNOWN (no missing found)\r\n");
 						}
 					}
 
@@ -790,7 +807,7 @@ void QR_TASK(void *argument)
   		else
   		{
   			QR_result=Qr_Get();
-  			SetQR(QR_result);
+  			SetQR(QR_result - 1);   /* QR号从1起, T1下标从0起 */
   		}
   		task_send(Event_Navigation);
   	}
@@ -809,33 +826,33 @@ void QR_TASK(void *argument)
 /* USER CODE END Header_IMU_FUCTION */
 void IMU_FUCTION(void *argument)
 {
-  /* USER CODE BEGIN IMU_FUCTION */
+	/* USER CODE BEGIN IMU_FUCTION */
 	EulerAngle e ;
 	AngleCtrl angle_ctrl;
 	Angle_Init(&angle_ctrl);
 
 
-  for(;;)
-  {
-    // if (Flag_TBOFdata) {
-    //   Flag_TBOFdata = 0;
-    //   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
-    //     TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
-    // }
-  	// MahonyAHRS_Update(0.01f);                      // dt = 5ms
-  	// siyuan_imu_task();
+	for(;;)
+	{
+		// if (Flag_TBOFdata) {
+		//   Flag_TBOFdata = 0;
+		//   printf("X=%.2f Y=%.2f Yaw=%.2f Gz=%.2f\r\n",
+		//     TB_position.xdata, TB_position.ydata, imu_yaw, imu_gz);
+		// }
+		// MahonyAHRS_Update(0.01f);                      // dt = 5ms
+		// siyuan_imu_task();
 
-  	/* HWT101零点校准 */
-  	 //printf("Yaw=%.2f\r\n",HWT101_GetZeroYaw());
-  	// Angle_UpdateTarget(&angle_ctrl, 0.0f);
-  	// AngleLoop_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
-  	// Angle_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
-  	// MecanumResult motor = Mecanum_Calc(0.0f, angle_ctrl.cmd_w);
-  	// Send_commandmotor(&motor);
+		/* HWT101零点校准 */
+		//printf("Yaw=%.2f\r\n",HWT101_GetZeroYaw());
+		// Angle_UpdateTarget(&angle_ctrl, 0.0f);
+		// AngleLoop_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+		// Angle_Update(&angle_ctrl, HWT101_GetZeroYaw(), g_hwt101_gyro_z);
+		// MecanumResult motor = Mecanum_Calc(0.0f, angle_ctrl.cmd_w);
+		// Send_commandmotor(&motor);
 
 
-  	// e = MahonyAHRS_GetEuler_deg();
-    osDelay(10);
-  }
-  /* USER CODE END IMU_FUCTION */
+		// e = MahonyAHRS_GetEuler_deg();
+		osDelay(10);
+	}
+	/* USER CODE END IMU_FUCTION */
 }

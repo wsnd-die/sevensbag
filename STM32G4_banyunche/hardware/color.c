@@ -225,10 +225,10 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
             return (Color_TypeDef)i;
     }
 
-    if (r >= 250 && g >= 250 && b >= 250) return COLOR_WHITE;
-    if (b >= r && b >= g && r >= 115)      return COLOR_BLUE;
-    if (r >= g && r >= b && b >= 200)      return COLOR_RED;
-    if (g >= r && g >= b && r >= 130)      return COLOR_GREEN;
+    if (r >= 150 && g >= 150 && b >= 150) return COLOR_WHITE;
+    if (b >= r && b >= g && b >= 90)      return COLOR_BLUE;
+    if (r >= g && r >= b && r >= 90)      return COLOR_RED;
+    if (g >= r && g >= b && g >= 90)      return COLOR_GREEN;
     return COLOR_BLACK;
 }
 

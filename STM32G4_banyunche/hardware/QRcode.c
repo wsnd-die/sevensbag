@@ -78,10 +78,12 @@ uint8_t  QR_deel(void)
     if (k==0)
     {
         Jang_Num=result-1;
+        k = 1;                       /* 第一次扫码 → 奖杯 */
     }
     else
     {
         Yan_Num=result-1;
+        k = 0;                       /* 第二次扫码 → 物料 */
     }
 
     uint8_t ret = result;
