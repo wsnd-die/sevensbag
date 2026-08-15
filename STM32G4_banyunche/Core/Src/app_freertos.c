@@ -273,13 +273,30 @@ void NLF_TASK(void *argument)
 
 		/* 读取槽slot颜色(转盘静止): 带重试上限, 读不出不阻塞 */
 		c = COLOR_UNKNOWN;
-		for (uint16_t tries = 0; tries < 10; tries++) {
+		uint8_t color_counts[COLOR_COUNT] = {0};
+		for (uint16_t tries = 0; tries < 15; tries++) {
 			if (Color_ReadData(&d) != HAL_OK) { osDelay(10); continue; }
-			c = Color_Judge(&d);
-			if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
-				break;
+			Color_TypeDef sample = Color_Judge(&d);
+			if (tries >= 5 &&
+			    sample != COLOR_UNKNOWN &&
+			    sample < COLOR_COUNT &&
+			    !seen[sample]) {
+				color_counts[sample]++;
+			}
 			osDelay(10);
 		}
+		uint8_t best_count = 0;
+		uint8_t tie = 0;
+		for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
+			if (color_counts[cc] > best_count) {
+				best_count = color_counts[cc];
+				c = cc;
+				tie = 0;
+			} else if (color_counts[cc] == best_count && best_count > 0) {
+				tie = 1;
+			}
+		}
+		if (tie) c = COLOR_UNKNOWN;
 		if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c]) {
 			seen[c] = 1;
 			TT_SetColor(slot - 1, c);   /* 槽slot → 索引slot-1 */
@@ -672,13 +689,30 @@ void BsRt_task(void *argument)
 
 					/* 读取槽slot颜色(转盘静止): 带重试上限, 读不出不阻塞 */
 					c = COLOR_UNKNOWN;
-					for (uint16_t tries = 0; tries < 10; tries++) {
+					uint8_t color_counts[COLOR_COUNT] = {0};
+					for (uint16_t tries = 0; tries < 6; tries++) {
 						if (Color_ReadData(&d) != HAL_OK) { osDelay(10); continue; }
-						c = Color_Judge(&d);
-						if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
-							break;
+						Color_TypeDef sample = Color_Judge(&d);
+						if (tries >= 2 &&
+						    sample != COLOR_UNKNOWN &&
+						    sample < COLOR_COUNT &&
+						    !seen[sample]) {
+							color_counts[sample]++;
+						}
 						osDelay(10);
 					}
+					uint8_t best_count = 0;
+					uint8_t tie = 0;
+					for (Color_TypeDef cc = COLOR_RED; cc < COLOR_COUNT; cc++) {
+						if (color_counts[cc] > best_count) {
+							best_count = color_counts[cc];
+							c = cc;
+							tie = 0;
+						} else if (color_counts[cc] == best_count && best_count > 0) {
+							tie = 1;
+						}
+					}
+					if (tie) c = COLOR_UNKNOWN;
 					if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c]) {
 						seen[c] = 1;
 						TT_SetColor(slot - 1, c);   /* 槽slot → 索引slot-1 */
@@ -689,7 +723,7 @@ void BsRt_task(void *argument)
 					}
 				}
 
-				osDelay(150);
+				osDelay(190);
 				g_color_collect_done = 1;
 				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
 
