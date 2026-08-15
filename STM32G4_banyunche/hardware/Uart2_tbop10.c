@@ -12,6 +12,9 @@ volatile uint8_t g_uart2_trigger_advance = 0;   /* UART2 收到 'T' → 手动�
 volatile uint8_t g_uart2_color_ready = 0;
 uint8_t g_uart2_color_l, g_uart2_color_l_mean, g_uart2_color_a, g_uart2_color_b;
 
+volatile uint8_t g_uart2_gy33_ready = 0;
+uint8_t g_uart2_gy33_r, g_uart2_gy33_g, g_uart2_gy33_b;
+
 #if LEGACY_USART2_ODOM_ENABLE
 static void UART2_ScanColorFrame(const uint8_t *data, uint16_t len)
 {
@@ -59,6 +62,24 @@ static void UART2_ScanCmd(const uint8_t *data, uint16_t len)
     for (uint16_t i = 0; i < len; i++) {
         if (data[i] == 'T') {           /* 0x54 */
             g_uart2_trigger_advance = 1;
+        }
+    }
+}
+
+static void UART2_ScanGY33Frame(const uint8_t *data, uint16_t len)
+{
+    for (uint16_t i = 0; i + 7 < len; i++) {
+        if (data[i] == 0x5A && data[i + 1] == 0x5A &&
+            data[i + 2] == 0x45 && data[i + 3] == 0x03) {
+            uint8_t chk = (uint8_t)(data[i] + data[i + 1] + data[i + 2] +
+                                    data[i + 3] + data[i + 4] + data[i + 5] +
+                                    data[i + 6]);
+            if (chk == data[i + 7]) {
+                g_uart2_gy33_r = data[i + 4];
+                g_uart2_gy33_g = data[i + 5];
+                g_uart2_gy33_b = data[i + 6];
+                g_uart2_gy33_ready = 1;
+            }
         }
     }
 }
@@ -131,6 +152,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     if (huart->Instance == USART2) {
         /* 扫描 OpenMV 颜色帧 AA L A B DD */
         UART2_ScanColorFrame(dma_rx_buf, Size);
+        UART2_ScanGY33Frame(dma_rx_buf, Size);
         /* 扫描二维码数字串 (扫码模块) */
         UART2_ScanQR(dma_rx_buf, Size);
         /* 检测 'T' 命令 → 手动触发进入下一个任务 */
