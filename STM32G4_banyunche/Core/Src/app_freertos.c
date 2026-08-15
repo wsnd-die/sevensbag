@@ -233,7 +233,11 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_Navigation);
+	//task_send(Event_Navigation);
+
+
+
+
 	// BlockBasic_LiftTo(UP,44);
 	BlockBasic_TurntableTo(1);
 	osDelay(500);
@@ -451,6 +455,7 @@ void Color_task(void *argument)
 		printf("[CALIB] Saved to Flash\r\n");
 		for (;;) { osDelay(1000); }
 	}
+
 #else
 	{
 		// uint8_t raw_dumped = 0;
@@ -489,7 +494,7 @@ void Color_task(void *argument)
 
   /* USER CODE END Color_task */
 }
-
+  
 /* USER CODE BEGIN Header_BsRt_task */
 /**
 * @brief Function implementing the BsRtFunion thread.
@@ -665,12 +670,13 @@ void OLED_TASK(void *argument)
 {
 	World_Dir_t position;
   /* USER CODE BEGIN OLED_TASK */
-
+	//Emm_V5_Vel_Control(1,1,30,30,0);
+	Nav_MoveForward(0.5);
   for(;;)
   {
 
   	position=World_position_get();
-  	// printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
+  	 printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 		osDelay(20);
   }
@@ -687,7 +693,8 @@ void OLED_TASK(void *argument)
 /* USER CODE END Header_FC_TASK */
 void FC_TASK(void *argument)
 {
-  /* USER CODE BEGIN FC_TASK */
+
+    /* USER CODE BEGIN FC_TASK */
 	/*
 	 *角度控制任务
 	 *  g_angle_ctrl_enable = 1 时使能:

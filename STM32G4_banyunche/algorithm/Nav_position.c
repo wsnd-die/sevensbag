@@ -21,6 +21,8 @@ World_Dir_t World_position_get(void)
     if (!Mecanum_Read_AllPositions(&enc, 20)) return World_position;
     if (first) { first = 0; prev = enc; return World_position; }
 
+
+
     /* 麦轮正解 */
     d_fwd  = (float)(enc.fl - prev.fl + enc.fr - prev.fr +
                      enc.rl - prev.rl + enc.rr - prev.rr) / 4.0f;

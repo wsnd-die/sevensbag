@@ -196,6 +196,7 @@ uint8_t Mecanum_Read_Speed(uint8_t id, int16_t *rpm, uint32_t timeout_ms)
 uint8_t Mecanum_Read_Position(uint8_t id, int32_t *pos, uint32_t timeout_ms)
 {
     uint8_t cmd[3] = {id, 0x36, 0x6B};  // S_CPOS
+    uint32_t Pos_midil;
     uint32_t start;
 
     if (pos == NULL) return 0;
@@ -217,10 +218,17 @@ uint8_t Mecanum_Read_Position(uint8_t id, int32_t *pos, uint32_t timeout_ms)
                 can_rx_data[0] == 0x36 &&
                 can_rx_data[6] == 0x6B)
             {
-                *pos = (int32_t)((can_rx_data[2] << 24) |
-                                 (can_rx_data[3] << 16) |
-                                 (can_rx_data[4] << 8)  |
-                                 (can_rx_data[5] << 0));
+                Pos_midil = ((uint32_t)can_rx_data[2] << 24) |
+                                 ((uint32_t)can_rx_data[3] << 16) |
+                                 ((uint32_t)can_rx_data[4] << 8)  |
+                                 ((uint32_t)can_rx_data[5] << 0);
+                if (can_rx_data[1]==0x01) {
+                    *pos=(int32_t)Pos_midil;
+                    *pos=-(*pos);
+                }
+                else if (can_rx_data[1]==0x00) {
+                    *pos=(int32_t)Pos_midil;
+                }
                 return 1;
             }
         }
