@@ -67,7 +67,7 @@ uint8_t  g_waypoint_count = 13;
  * ============================================================ */
 
 /* ---- 目标点设计坐标 (世界系, m) ---- */
-#define CALIB_A_X        (-0.889f)     /* a点设计值 */
+#define CALIB_A_X        (-0.869f)     /* a点设计值 */
 #define CALIB_A_Y        (-0.556f)
 #define CALIB_YAJUN_X    ( 0.485f)     /* 亚军点设计值 */
 #define CALIB_YAJUN_Y    ( 0.83f)
@@ -229,11 +229,11 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
             g_angle_target_yaw = target_deg;
             g_angle_ctrl_enable = 1;          /* 打开 FC_TASK 角度环 */
 
-            while (guard++ < 150) {           /* 超时1.5s, 防角度环异常卡死 */
+            while (guard++ < 100) {           /* 超时1s, 防角度环异常卡死 */
                 err = target_deg - siyuan_yaw * RAD_TO_DEG;
                 while (err >  180.0f) err -= 360.0f;
                 while (err < -180.0f) err += 360.0f;
-                if (fabsf(err) <= 2.0f) break;
+                if (fabsf(err) <= 4.0f) break;   /* 与第一段一致; FC_TASK 容差已收紧到1°, 实际能修到更小 */
                 osDelay(10);
             }
 

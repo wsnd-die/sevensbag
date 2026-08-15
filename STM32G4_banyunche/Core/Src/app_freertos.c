@@ -564,7 +564,7 @@ void BsRt_task(void *argument)
 				}
 
 				/* 必触发锁死: 物块5已进入槽5(或等超时后强制收尾), 锁死转盘 */
-				osDelay(230);
+				osDelay(170);
 				Servo_Angle(333.0f);
 
 				/* 槽5(索引4)颜色 = 全集 - 已读4种 */
@@ -676,7 +676,7 @@ void OLED_TASK(void *argument)
   {
 
   	position=World_position_get();
-  	printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
+  	// printf("xyyaw:%2f,%2f,%2f\r\n",position.x,position.y,position.yaw);
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
 		osDelay(20);
   }
