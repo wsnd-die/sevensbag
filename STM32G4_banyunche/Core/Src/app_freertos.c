@@ -393,7 +393,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
   		Trace_LineFollow();
-	osDelay(150);
+	osDelay(10);
   		if (g_color_collect_done==1)
   		{
   			task_send(Event_Navigation);

@@ -3,11 +3,13 @@
  * @brief 循迹底盘控制 — 8路灰度传感器 + 麦轮
  *        灰度误差 err → 角速度 w → Mecanum_Calc → 电机
  *
- * @note  原方案为 K230 视觉 + 串级 PID(位置环→角度环)，已注释保留。
- *        现改用 8 路灰度传感器：
- *          引脚: PA4 = GRAY_CLK (CLK 输出), PB7 = GRAY_DAT (DAT 输入, 上拉)
- *          误差: 按《8路循迹模块》Track_Err 映射表由灰度字节计算
- *          控制: err × 增益 → 角速度 w (与差速小车左慢右快的等效转向)
+ * @note  2026-08 重构(修复循迹左右大幅晃动):
+ *          - 误差改为 8 路加权质心(连续、单调自洽), 替代离散查表
+ *          - 控制改为 低通 + PD, 消除原 bang-bang(开关式) 振荡
+ *          - 丢线(全白/全黑)时保持上次误差一段时间, 避免假对中导致满打
+ *
+ * 原方案(已弃): K230 视觉 + 串级 PID(位置环→角度环), 已注释保留。
+ * 引脚: PA4 = GRAY_CLK (CLK 输出), PB7 = GRAY_DAT (DAT 输入, 上拉)
  */
 
 #include "Common_used.h"
@@ -23,14 +25,11 @@
 
 float g_trace_v      = 0.0f;
 float g_trace_w      = 0.0f;
-float g_trace_angle  = 0.0f;   /* 现为 8 路灰度误差 err */
+float g_trace_angle  = 0.0f;   /* 现为 8 路灰度质心误差 err */
 float g_trace_posx   = 0.0f;   /* 现为 8 路灰度原始值 TrackN */
 float g_trace_target = 0.0f;   /* 目标(恒为 0) */
 
 /* ======================== 8路灰度传感器驱动 ========================
- * 移植自《8路循迹模块》Hardware/Track.c (STM32F1, 标准库)
- *   - 原代码: Track_DAT=PA4(输入), Track_SCL=PA5(输出)
- *   - 本车接线: PA4 = CLK 输出, PB7 = DAT 输入(上拉)
  * 时序(与原件一致): CLK 拉低 → 读 DAT → CLK 拉高 → 延时 6us, 重复 8 次取回 1 字节。
  * 说明: 时序为电平保持型, 期间即使被中断打断也不会错位, 故无需关中断。
  * ======================== */
@@ -41,7 +40,6 @@ float g_trace_target = 0.0f;   /* 目标(恒为 0) */
 #define GRAY_DAT_PORT   GPIOB
 
 static uint8_t s_track_init = 0;   /* 灰度 GPIO 是否已初始化 */
-static uint8_t s_track_data = 0;   /* 滤波后的灰度字节 */
 
 /* ---- 微秒延时 (CPU 周期循环, 与 sw_uart.c 同款, 不受优化等级影响) ---- */
 static void Trace_DelayUs(uint32_t us)
@@ -94,13 +92,16 @@ static uint8_t Trace_Gray_ReadBit(void)
     return bit;
 }
 
-/* ---- 读取 8 路灰度 (含均值滤波, 与 Read_Track_DATA 一致) ---- */
+/* ---- 读取 8 路灰度原始字节 ----
+ * 不再做字节均值滤波: 对字节求平均会得到查表表外的"假对中"值
+ * (如 0xE7 与 0xCF 平均 → 0xDB), 反而放大开关式振荡。
+ * 平滑交给控制环节的误差低通 (Trace_LineFollow)。
+ */
 void Trace_Gray_ReadData(uint8_t *data)
 {
     uint8_t n = 0;
     uint8_t raw[8] = {0};
     uint8_t current = 0;
-    static uint8_t last_track = 0;   /* 上一次的灰度原始值 */
 
     for (n = 0; n < 8; n++) {
         raw[n] = Trace_Gray_ReadBit();   /* 读回 1 位 */
@@ -108,69 +109,88 @@ void Trace_Gray_ReadData(uint8_t *data)
     /* 8 位合并为 1 字节 (raw[7] 为最低位) */
     current = raw[7] + raw[6]*2 + raw[5]*4 + raw[4]*8 +
               raw[3]*16 + raw[2]*32 + raw[1]*64 + raw[0]*128;
-
-    /* 简单均值滤波 */
-    s_track_data = (uint8_t)((current + last_track) / 2);
-    last_track = current;
-    if (data) *data = s_track_data;
+    if (data) *data = current;
 }
 
-/* ---- 灰度误差映射 (与 Track_Err 表一致) ---- */
-float Trace_Gray_Error(void)
+/* ---- 8路加权质心误差 ----
+ * 每个传感器按物理位置赋权重, 传感器3/4之间为0 (与 0xE7=对中 的语义一致):
+ *    传感器:  0    1    2    3    4    5    6    7
+ *    权重:   -7   -5   -3   -1   +1   +3   +5   +7      (左 - / 右 +)
+ * 对压线传感器(bit=0)求位置加权平均 → 连续误差。
+ * 相比原离散查表(手工标定、数值互相矛盾, 如 0xbf→3.5 而 0x7f→7.0),
+ * 质心误差单调自洽, 不会出现"0→满幅"的跳变。
+ * 返回范围约 ±7。全白(0xFF)/全黑(0x00)由调用方单独处理。
+ */
+static float Trace_Gray_Centroid(uint8_t data)
 {
-    float err = 0.0f;
-    switch (s_track_data) {
-        case 0xe7: err = 0.0f;  break;      /* 中间 */
-        case 0xcf: err = 3.5f;  break;      /* 右侧小偏差 */
-        case 0x9f: err = 5.0f;  break;      /* 右侧中等偏差 */
-        case 0x3f: err = 6.0f;  break;      /* 右侧较大偏差 */
-        case 0xf3: err = -3.5f; break;      /* 左侧小偏差 */
-        case 0xf9: err = -5.0f; break;      /* 左侧中等偏差 */
-        case 0xfc: err = -6.0f; break;      /* 左侧较大偏差 */
-        case 0xef: err = 2.0f;  break;      /* 右侧极微偏差 */
-        case 0xdf: err = 3.0f;  break;      /* 右侧微小偏差 */
-        case 0xbf: err = 3.5f;  break;      /* 右侧微小偏差 */
-        case 0x7f: err = 7.0f;  break;      /* 右侧极限偏差 */
-        case 0xf7: err = -2.0f; break;      /* 左侧极微偏差 */
-        case 0xfb: err = -3.0f; break;      /* 左侧微小偏差 */
-        case 0xfd: err = -4.5f; break;      /* 左侧较大偏差 */
-        case 0xfe: err = -7.0f; break;      /* 左侧极限偏差 */
-        case 0x1f: err = 8.0f;  break;      /* 右侧极限偏差 */
-        case 0xf8: err = -3.0f; break;      /* 左侧微小偏差 */
-        case 0x8f: err = 9.0f;  break;      /* 右侧极限偏差 */
-        default:   err = 0.0f;  break;      /* 未识别 / 全白(丢线) / 全黑 */
+    static const float s_pos[8] = { -7.0f, -5.0f, -3.0f, -1.0f,
+                                    +1.0f, +3.0f, +5.0f, +7.0f };
+    float sum = 0.0f;
+    uint8_t cnt = 0;
+    uint8_t i;
+
+    for (i = 0; i < 8; i++) {
+        if (!(data & (1U << i))) {      /* bit=0 → 该传感器压在线上 */
+            sum += s_pos[i];
+            cnt++;
+        }
     }
-    return err;
+    if (cnt == 0U) return 0.0f;         /* 全白: 丢线, 由调用方处理 */
+    if (cnt >= 7U) return 0.0f;         /* 全黑/大面积压线: 视为无效 */
+    return sum / (float)cnt;
 }
 
 /* ======================== 循线跟随主函数 ======================== */
 
 void Trace_LineFollow(void)
 {
-    float v, w;
     MecanumResult motor;
     uint8_t track = 0;
-    float err;
+    float err_raw = 0.0f;
+    float err     = 0.0f;          /* 低通后的误差 */
+    float w, v;
+    static float   s_err_f     = 0.0f;  /* 误差低通值 */
+    static float   s_err_prev  = 0.0f;  /* 上一周期误差 (PD 微分) */
+    static uint8_t s_lost_cnt  = 0;     /* 连续丢线周期计数 */
+    static uint32_t s_dbg_cnt  = 0;
 
     /* ---- 0. 首次调用时初始化灰度 GPIO ---- */
     Trace_Gray_Init();
 
-    /* ---- 1. 读取 8 路灰度 + 计算误差 ---- */
+    /* ---- 1. 读取 8 路灰度 ---- */
     Trace_Gray_ReadData(&track);
-    err = Trace_Gray_Error();
 
-    /* ---- 2. 误差 → 角速度 w ----
-     * 原 K230 方案为串级 PID:
-     *   位置环: target_angle = PID_calc(&g_pid_pos, k230_posx, 0.0f);
-     *   角度环: w = PID_calc(&g_pid_angle, k230_angle, target_angle);
-     * 现改为直接比例: 误差>0(线在右) → 左轮慢/右轮快(等效差速小车), 即 w>0。
-     * 若实车转向与期望相反, 将 GRAY_ERR_TO_W_GAIN 取负即可。
-     */
-    w = err * GRAY_ERR_TO_W_GAIN;
+    /* ---- 2. 计算误差(质心) + 低通 ----
+     * 丢线(全白 0xFF)或全黑(0x00): 保持上次误差一小段时间, 避免
+     * "假对中 → 停止修正 → 继续漂 → 突然满打" 的开关振荡;
+     * 超时后误差归零, 车恢复直行。 */
+    if (track == 0xFFU || track == 0x00U) {
+        if (s_lost_cnt < GRAY_LOST_HOLD_CYCLES) {
+            s_lost_cnt++;
+            err = s_err_f;               /* 保持上次误差 */
+        } else {
+            s_err_f    = 0.0f;
+            s_err_prev = 0.0f;
+            err        = 0.0f;
+        }
+    } else {
+        s_lost_cnt = 0;
+        err_raw = Trace_Gray_Centroid(track);
+        s_err_f += GRAY_ERR_LP * (err_raw - s_err_f);   /* 一阶低通 */
+        err = s_err_f;
+    }
+
+    /* ---- 3. 低通误差 → PD 角速度 ----
+     *   w = KP*err + KD*(err - err_prev)   (KD 按 ~10ms 周期标定)
+     *   P: 小误差成比例修正, 消除原满幅开关;
+     *   D: 误差增大时提前补转, 误差回落时抑制过冲。
+     * 若实车转向与期望相反, 将 GRAY_P_KP 取负即可。 */
+    w = GRAY_P_KP * err + GRAY_P_KD * (err - s_err_prev);
+    s_err_prev = err;
     if (w >  TRACE_W_MAX) w =  TRACE_W_MAX;
     if (w < -TRACE_W_MAX) w = -TRACE_W_MAX;
 
-    /* ---- 3. 速度自适应: 误差大时减速 ---- */
+    /* ---- 4. 速度自适应: 误差大时减速 ---- */
     v = TRACE_BASE_SPEED;
     {
         float slow_level = fabsf(err) / GRAY_ERR_MAX;
@@ -182,19 +202,22 @@ void Trace_LineFollow(void)
         v = v_smooth;
     }
 
-    /* ---- 4. 保存供打印 ---- */
+    /* ---- 5. 保存供打印 ---- */
     g_trace_v      = v;
     g_trace_w      = w;
     g_trace_angle  = err;
     g_trace_posx   = (float)track;
     g_trace_target = 0.0f;
 
-    /* ---- 5. 麦轮解算 + 发送 ---- */
+    /* ---- 6. 麦轮解算 + 发送 ----
+     * 调试打印降频到每 20 周期一次(~200ms), 避免阻塞控制周期。 */
     motor = Mecanum_Calc(v, w);
-    /* ---- 5.1 实时打印巡线状态 ---- */
-    printf("[TRACE] v=%.3f w=%.3f err=%.2f track=0x%02X | FL=%u FR=%u RL=%u RR=%u\r\n",
-           g_trace_v, g_trace_w, g_trace_angle, (uint8_t)g_trace_posx,
-           motor.fl_speed, motor.fr_speed, motor.rl_speed, motor.rr_speed);
+    if (++s_dbg_cnt >= 20U) {
+        s_dbg_cnt = 0;
+        printf("[TRACE] v=%.3f w=%.3f err=%.2f track=0x%02X | FL=%u FR=%u RL=%u RR=%u\r\n",
+               g_trace_v, g_trace_w, g_trace_angle, (uint8_t)g_trace_posx,
+               motor.fl_speed, motor.fr_speed, motor.rl_speed, motor.rr_speed);
+    }
     Send_commandmotor(&motor);
 }
 
@@ -202,7 +225,7 @@ void Trace_LineTask(void) {
 
     while (1) {
         Trace_LineFollow();
-        osDelay(20);
+        osDelay(10);            /* 20ms→10ms, 提高控制带宽 */
     }
 
 }
