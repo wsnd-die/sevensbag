@@ -5,7 +5,7 @@
 #include "Common_used.h"
 #include "collect_ir.h"
 
-static bool ir_last = true;
+static bool ir_last = false;   /* 上一采样是否遮挡 (true=遮光) */
 
 void IR_Init(void)
 {
@@ -35,14 +35,20 @@ bool IR_ObjectPresent(void)
 bool IR_ObjectEntered(void)
 {
     bool now = IR_ObjectPresent();
+
+    /* 防抖: 检测到遮挡(电平0)后 5ms 再确认, 滤掉沿抖动 */
     if (now && !ir_last) {
-        /* 防抖: 检测到进入后等 20ms 再确认, 滤掉沿上的抖动 */
         osDelay(5);
         now = IR_ObjectPresent();
+        if (!now) return false;   /* 抖动, 未真正遮挡 */
     }
-    bool edge = (now && !ir_last);  /* 物体进入边沿 (自动复位) */
+
+    /* 完全进入: 电平先变0(遮挡) 再变1(恢复) → 物体已完全穿过红外对射。
+     * 与原来的"遮挡边沿"不同: 边沿在物体刚进就开始返回, 此时可能还在下落;
+     * 这里等电平回来才返回, 表示物体已完全落入槽位, 上层可立即旋转无需延时。 */
+    bool fully_in = (ir_last && !now);
     ir_last = now;
-    return edge;
+    return fully_in;
 }
 
 bool Collect_WaitEnter(void)

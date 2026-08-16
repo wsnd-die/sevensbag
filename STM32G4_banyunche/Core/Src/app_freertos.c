@@ -29,6 +29,10 @@
 #ifndef LEGACY_USART1_HOST_ENABLE
 #define LEGACY_USART1_HOST_ENABLE 0
 #endif
+/* 灰度循迹开关: 1=左循迹用灰度传感器(PA4 CLK / PA5 DAT), 0=用 K230 摄像头 */
+#ifndef GRAY_TRACE_ENABLE
+#define GRAY_TRACE_ENABLE 1
+#endif
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,6 +48,12 @@ volatile TaskCommand_t   g_last_cmd;
 volatile uint8_t         g_color_collect_done = 0;  /* 0=未完成, 1=5个槽已收集完 */
 volatile uint8_t         g_trophy_done = 0;         /* 0=未完成, 1=3个奖杯槽已收集完 */
 
+/* --- 颜色读取握手: BsRt_task 检测到物块到位 → 置 g_color_req 请求读色,
+ *    Color_task 读到有效色写槽位 → 清 g_color_req 应答 --- */
+volatile uint8_t g_color_req      = 0;   /* 1=有读色请求待处理 */
+volatile uint8_t g_color_req_slot = 0;   /* 待读槽索引 (0~3), 配合 g_color_req */
+static uint8_t   s_seen[COLOR_COUNT];   /* 已读颜色去重标记 (收集阶段共享) */
+
 /* --- 角度控制任务 (FC_TASK) --- */
 volatile uint8_t g_angle_ctrl_enable = 0;    /* 1=使能角度控制, 0=停止 */
 volatile float
@@ -52,6 +62,7 @@ g_angle_target_yaw   = 90.0f; /* 目标角度 (deg), 固定值可改 */
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+GrayTrace_t g_gray_trace;   /* 灰度循迹控制器 (PA4 CLK / PA5 DAT) */
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -230,7 +241,7 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_Navigation);
+	task_send(Event_LinFolL);
 	// BlockBasic_LiftTo(UP,44);
 	// Nav_MoveForward(0.5);
 	BlockBasic_TurntableTo(1);
@@ -261,9 +272,29 @@ void NLF_TASK(void *argument)
 else if (g_last_cmd.Mode==Event_LinFolL)
 {
 	g_angle_ctrl_enable = 0;   /* 循迹不用角度闭环, 关闭 */
+#if GRAY_TRACE_ENABLE
+	GrayTrace_Update(&g_gray_trace);   /* 灰度循迹 (PA4 CLK / PA5 DAT) */
+	/* 串口打印 digital (每 100ms), 便于调灰度读取/极性/方向 */
+	{
+		static uint32_t s_gray_print = 0U;
+		uint32_t now = HAL_GetTick();
+		if (now - s_gray_print >= 100U) {
+			uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
+			s_gray_print = now;
+			printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c]\r\n",
+			       d,
+			       (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
+			       (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
+			       (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
+			       (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
+		}
+	}
+#else
+	Trace_SetSide(0);          /* 左循迹: 角度环用 ANGLE_KP/KI/KD */
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
   		Trace_LineFollow();
+#endif
   		if (g_color_collect_done==1)
   		{
   			task_send(Event_Navigation);
@@ -283,6 +314,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   	else if (g_last_cmd.Mode==Event_LinFolR)
   	{
   		g_angle_ctrl_enable = 0;   /* 循迹不用角度闭环, 关闭 */
+  		Trace_SetSide(1);          /* 右循迹: 角度环用 ANGLE_KP_R/KI_R/KD_R */
   		K230_RequestMode(K230_MODE_LINE);
   		K230_ApplyMode();
   		Trace_LineFollow();
@@ -341,7 +373,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
-  						Place('O',28);
+  						Place('O',31);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
@@ -388,7 +420,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (g_circle_dir=='O')
   					{
   						printf("[TASK] PlaceDown third done\r\n");
-  						Place('O',24);
+  						Place('O',21);
   						i++;
   						flag_finish=false;
   						task_send(Event_Navigation);
@@ -459,37 +491,57 @@ void Color_task(void *argument)
 	}
 #else
 	{
-		uint8_t raw_dumped = 0;
+		// uint8_t raw_dumped = 0;
+		// for (;;) {
+		// 	Color_DataTypeDef d;
+		// 	if (Color_ReadData(&d) == HAL_OK) {
+		// 		printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
+		// 			   d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
+		// 			   (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+		// 			   IR_ObjectPresent());
+		// 	} else {
+		// 		printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
+		// 			   (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+		// 			   IR_ObjectPresent());
+		// 	}
+		// 	if (!raw_dumped && dbg_rx_cb > 0) {
+		// 		raw_dumped = 1;
+		// 		printf("raw: ");
+		// 		for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
+		// 			printf("%02X ", dma_rx_buf[i]);
+		// 		}
+		// 		printf("\r\n");
+		// 	}
+		// 	// /* 调试: 打印5个槽的颜色, 验证槽位映射是否正确 */
+		// 	printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
+		// 		   Color_ToString(ColorAtSlot(0)),
+		// 		   Color_ToString(ColorAtSlot(1)),
+		// 		   Color_ToString(ColorAtSlot(2)),
+		// 		   Color_ToString(ColorAtSlot(3)),
+		// 		   Color_ToString(ColorAtSlot(4)));
+		// 	osDelay(1000);
+		// }
 		for (;;) {
-			Color_DataTypeDef d;
-			if (Color_ReadData(&d) == HAL_OK) {
-				printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
-				       d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
-				       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
-				       IR_ObjectPresent());
-			} else {
-				printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
-				       (unsigned long)dbg_rx_cb, (int)huart2.RxState,
-				       IR_ObjectPresent());
-			}
-			/* 一次性 dump 原始接收字节, 确认帧格式 */
-			if (!raw_dumped && dbg_rx_cb > 0) {
-				raw_dumped = 1;
-				printf("raw: ");
-				for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
-					printf("%02X ", dma_rx_buf[i]);
+			if (g_color_req) {
+				uint8_t slot = g_color_req_slot;   /* 先取槽, 防握手期被改 */
+				Color_TypeDef c = COLOR_UNKNOWN;
+
+				/* 读取槽slot颜色(转盘静止): 带重试上限(约5s), 读不出不阻塞 */
+				for (uint16_t tries = 0; tries < 50; tries++) {
+					c = Collect_ReadColor();
+					if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !s_seen[c])
+						break;
+					osDelay(10);
 				}
-				printf("\r\n");
+				if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !s_seen[c]) {
+					s_seen[c] = 1;
+					TT_SetColor(slot, c);      /* 槽索引 0~3 直接写 */
+				}
+				g_color_req = 0;               /* 读色完成应答 */
 			}
-			// /* 调试: 打印5个槽的颜色, 验证槽位映射是否正确 */
-			printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
-				   Color_ToString(ColorAtSlot(0)),
-				   Color_ToString(ColorAtSlot(1)),
-				   Color_ToString(ColorAtSlot(2)),
-				   Color_ToString(ColorAtSlot(3)),
-				   Color_ToString(ColorAtSlot(4)));
-			osDelay(300);
+			osDelay(5);
 		}
+
 	}
 #endif
 
@@ -510,9 +562,10 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
-	Servo_SetAngle(40);
+	Servo_SetAngle(43);
 	BlockBasic_TurntableTo(1);
 	IR_Init();
+	GrayTrace_Init(&g_gray_trace);   /* 灰度循迹控制器初始化 (PA4 CLK / PA5 DAT) */
 	osDelay(1000);
 	// BlockBasic_TurntableTo(1);
 	// BlockBasic_LiftTo(UP,20);
@@ -531,44 +584,38 @@ void BsRt_task(void *argument)
 				g_color_collect_done = 0;
 				/* 物理: 转盘初始位置1, 传感器对准槽2
 				 * 物块进入落当前槽 → 先转一格让该槽到传感器下 → 再读色
-				 * 读槽1~4, 槽5(转到位置1行程不够)读不到 → 排除法补槽5 */
-				uint8_t seen[COLOR_COUNT] = {0};   /* 已读到的颜色标记 */
+				 * 读槽1~4, 槽5(转到位置1行程不够)读不到 → 排除法补槽5
+				 * 读色交给 Color_task: 置 g_color_req 请求 → 等应答 */
+				for (uint8_t i = 0; i < COLOR_COUNT; i++) s_seen[i] = 0;   /* 清已读颜色标记 */
 				Color_TypeDef c;
 				uint8_t slot;
 
+				g_color_req = 0;				/* 清残余请求 */
+				Collect_WaitEnter();			/* 物块1完全进入槽1 (IR 脉冲0→1) */
+				BlockBasic_TurntableTo(2);		/* 槽1 → 传感器下 (已完全进入, 无需落稳延时) */
 
-				Collect_WaitEnter();			/* 物块1进入槽1 */
-				osDelay(200);
-				BlockBasic_TurntableTo(2);		/* 槽1 → 传感器下 */
 
 				for (slot = 1; slot <= 4; slot++) {
-						while (!IR_ObjectEntered()) osDelay(5);
+					while (!IR_ObjectEntered()) osDelay(5);   /* 等物块完全进入 (IR 脉冲0→1) */
 
-					/* 读取槽slot颜色(转盘静止): 带重试上限(约5s), 读不出不阻塞 */
-					c = COLOR_UNKNOWN;
-					for (uint16_t tries = 0; tries < 50; tries++) {
-						c = Collect_ReadColor();
-						if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c])
-							break;
-						osDelay(10);
-					}
-					if (c != COLOR_UNKNOWN && c < COLOR_COUNT && !seen[c]) {
-						seen[c] = 1;
-						TT_SetColor(slot - 1, c);	/* 槽slot → 索引slot-1 */
-					}
+					/* 请求 Color_task 读当前槽颜色 (槽slot → 索引slot-1),
+					 * 必须等读完再转盘, 否则读色时槽位已移动 */
+					g_color_req_slot = slot - 1;
+					g_color_req = 1;
+					while (g_color_req) osDelay(5);   /* 等 Color_task 读色完成 */
+
 					if (slot < 4) {
-						osDelay(200);		/* 等物块slot+1落稳 */
-						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 */
+						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 (直接转, 无需落稳延时) */
 					}
 				}
 
-				/* 必触发锁死: 物块5已进入槽5(或等超时后强制收尾), 锁死转盘 */
+				/* 必触发锁死: 物块5已完全进入槽5, 锁死转盘; 槽5颜色由排除法补 */
 				osDelay(170);
 				Servo_Angle(333.0f);
 
 				/* 槽5(索引4)颜色 = 全集 - 已读4种 */
 				for (c = COLOR_RED; c < COLOR_COUNT; c++) {
-					if (!seen[c]) { TT_SetColor(4, c); break; }
+					if (!s_seen[c]) { TT_SetColor(4, c); break; }
 				}
 
 				K=1;
@@ -673,10 +720,37 @@ void OLED_TASK(void *argument)
 
   for(;;)
   {
-
+  	uint8_t raw_dumped = 0;
   	position=World_position_get();
   	// printf("xyyawixiy:%2f,%2f,%2f,%.2f,%.2f\r\n",position.x,position.y,position.yaw,g_ins.x,g_ins.y);
   	// printf("yaw:%.1f\n",siyuan_yaw*RAD_TO_DEG);
+  		// printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
+  		// 	   Color_ToString(ColorAtSlot(0)),
+  		// 	   Color_ToString(ColorAtSlot(1)),
+  		// 	   Color_ToString(ColorAtSlot(2)),
+  		// 	   Color_ToString(ColorAtSlot(3)),
+  		// 	   Color_ToString(ColorAtSlot(4)));
+
+  		// Color_DataTypeDef d;
+  		// if (Color_ReadData(&d) == HAL_OK) {
+  		// 	printf("R=%3d G=%3d B=%3d -> %s (cb=%lu, rxState=%d, IR=%d)\r\n",
+  		// 		   d.red, d.green, d.blue, Color_ToString(Color_Judge(&d)),
+  		// 		   (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+  		// 		   IR_ObjectPresent());
+  		// } else {
+  		// 	printf("R= ? G= ? B= ? (no data, cb=%lu, rxState=%d, IR=%d)\r\n",
+  		// 		   (unsigned long)dbg_rx_cb, (int)huart2.RxState,
+  		// 		   IR_ObjectPresent());
+  		// }
+  		// if (!raw_dumped && dbg_rx_cb > 0) {
+  		// 	raw_dumped = 1;
+  		// 	printf("raw: ");
+  		// 	for (uint8_t i = 0; i < DMA_RX_BUF_SIZE; i++) {
+  		// 		printf("%02X ", dma_rx_buf[i]);
+  		// 	}
+  		// 	printf("\r\n");
+  		// }
+  		// osDelay(100);
 		osDelay(20);
   }
 
@@ -742,6 +816,7 @@ void QR_TASK(void *argument)
 {
   /* USER CODE BEGIN QR_TASK */
 	uint8_t QR_result=0,i=0;
+	uint32_t s_last_print=0;
 	// SystemMode_t  QR_after[2]={Event_LinFolR,Event_Navigation};
   /* Infinite loop */
   for(;;)
@@ -755,8 +830,22 @@ void QR_TASK(void *argument)
   		SetQR(QR_result);
   		task_send(Event_Navigation);
   	}
+	  {
+  		uint32_t now = HAL_GetTick();
+  		if (now - s_last_print >= 100U) {
+  			Grayscale_Update(&g_gray_trace.sensor);   /* 必须触发串行读取 */
+  			uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
+  			s_last_print = now;
+  			printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c] \r\n",
+					 d,
+					 (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
+					 (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
+					 (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
+					 (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
+	  }
+	  }
 
-    osDelay(10);
+    osDelay(100);
   }
   /* USER CODE END QR_TASK */
 }

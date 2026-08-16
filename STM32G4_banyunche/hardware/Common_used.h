@@ -98,6 +98,8 @@
 #include "NavigationMecanum.h"
 #include "block_basic.h"
 #include "Nav_position.h"
+#include "grayscale.h"
+#include "GrayTrace.h"
 /* ============================================================
  * 7. 项目全局宏定义
  * ============================================================ */

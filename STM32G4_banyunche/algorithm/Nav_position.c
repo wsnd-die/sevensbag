@@ -107,13 +107,13 @@ void Ins_Update(void)
     siyuan_get_quat(q);
     {
         float w=q[0], x=q[1], y=q[2], z=q[3];
-        aw[0] = (1.0f-2.0f*(y*y+z*z))*ab[0] + 2.0f*(x*y-w*z)*ab[1] + 2.0f*(x*z+w*y)*ab[2];
-        aw[1] = 2.0f*(x*y+w*z)*ab[0] + (1.0f-2.0f*(x*x+z*z))*ab[1] + 2.0f*(y*z-w*x)*ab[2];
+        aw[1] = (1.0f-2.0f*(y*y+z*z))*ab[0] + 2.0f*(x*y-w*z)*ab[1] + 2.0f*(x*z+w*y)*ab[2];
+        aw[0] = 2.0f*(x*y+w*z)*ab[0] + (1.0f-2.0f*(x*x+z*z))*ab[1] + 2.0f*(y*z-w*x)*ab[2];
         aw[2] = 2.0f*(x*z-w*y)*ab[0] + 2.0f*(y*z+w*x)*ab[1] + (1.0f-2.0f*(x*x+y*y))*ab[2];
     }
     /* g → m/s², 并扣除重力 (世界系 Z 向上, 静止时测得 +1g) */
-    aw[0] *= INS_G;
     aw[1] *= INS_G;
+    aw[0] *= INS_G;
     aw[2]  = aw[2] * INS_G - INS_G;
 
     /* ---- 4. 静止判定: 加速度模长≈1g 且陀螺≈0 且持续 N 帧 ---- */
@@ -128,8 +128,8 @@ void Ins_Update(void)
 
     /* ---- 5. 静止时: 在线学习水平零偏 + 泄放速度 ---- */
     if (g_ins.stationary) {
-        g_ins.bias_x += INS_BIAS_LPF * (aw[0] - g_ins.bias_x);
-        g_ins.bias_y += INS_BIAS_LPF * (aw[1] - g_ins.bias_y);
+        g_ins.bias_x += INS_BIAS_LPF * (aw[1] - g_ins.bias_x);
+        g_ins.bias_y += INS_BIAS_LPF * (aw[0] - g_ins.bias_y);
         float k = 1.0f - INS_LEAK_RATE * dt;
         if (k < 0.0f) k = 0.0f;
         g_ins.vx *= k;
@@ -137,11 +137,11 @@ void Ins_Update(void)
     }
 
     /* ---- 6. 扣零偏 + 积分: a→v→p (只跟踪水平面 x/y) ---- */
-    aw[0] -= g_ins.bias_x;
-    aw[1] -= g_ins.bias_y;
+    aw[1] -= g_ins.bias_x;
+    aw[0] -= g_ins.bias_y;
 
-    g_ins.vx -= aw[0] * dt;
-    g_ins.vy += aw[1] * dt;
+    g_ins.vx -= aw[1] * dt;
+    g_ins.vy += aw[0] * dt;
     g_ins.x  -= g_ins.vx * dt;
     g_ins.y  += g_ins.vy * dt;
 }

@@ -26,7 +26,7 @@ extern "C" {
 
 /* 丝杆每上升 1mm 需要的 EMM 位置模式脉冲数。 */
 #define BLOCK_STEPPER_PULSE_PER_MM       1600.0f
-#define BLOCK_LIFT_MAX_MM                68.0f   /* 丝杆最大行程 (mm) */
+#define BLOCK_LIFT_MAX_MM                70.0f   /* 丝杆最大行程 (mm) */
 
 
 #define BLOCK_SERVO_DEG              360.0f
@@ -45,8 +45,8 @@ extern "C" {
 /* 转盘位置编号从 1 开始，合法范围为 1~5。 */
 #define BLOCK_TURNTABLE_FIRST_POS        1u
 #define BLOCK_TURNTABLE_POS_COUNT        5u
-#define BLOCK_TURNTABLE_HOME_DEG         5.0f
-#define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_DEG / BLOCK_TURNTABLE_POS_COUNT-0.1)
+#define BLOCK_TURNTABLE_HOME_DEG         1.0f
+#define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_DEG / BLOCK_TURNTABLE_POS_COUNT-0.05)
 /* 单次最大角度步长。分段移动用于降低 360 度位置舵机自动走最短路径的风险。 */
 #define BLOCK_TURNTABLE_STEP_LIMIT_DEG   60.0f
 #define BLOCK_TURNTABLE_STEP_DELAY_MS    80u
