@@ -14,11 +14,11 @@ extern "C" {
 #include <stdint.h>
 
 /* ======================== 8路灰度循迹参数 ======================== */
-#define GRAY_ERR_TO_W_GAIN   0.08f    /* 误差 → 角速度 w (rad/s) */
+#define GRAY_ERR_TO_W_GAIN   0.9f    /* 误差 → 角速度 w (rad/s) */
 #define GRAY_ERR_MAX         9.0f     /* 误差量程 (Track_Err 最大输出) */
 
 /* ======================== 共用 ======================== */
-#define TRACE_BASE_SPEED   0.65f   /* 基础线速度 (m/s) */
+#define TRACE_BASE_SPEED   0.5f   /* 基础线速度 (m/s) */
 #define TRACE_W_MAX        0.95f   /* 最大角速度 (rad/s) */
 
 /* 原 K230 串级 PID 参数(已废弃保留)：

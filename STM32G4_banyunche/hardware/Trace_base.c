@@ -192,9 +192,9 @@ void Trace_LineFollow(void)
     /* ---- 5. 麦轮解算 + 发送 ---- */
     motor = Mecanum_Calc(v, w);
     /* ---- 5.1 实时打印巡线状态 ---- */
-    // printf("[TRACE] v=%.3f w=%.3f err=%.2f track=0x%02X | FL=%u FR=%u RL=%u RR=%u\r\n",
-    //        g_trace_v, g_trace_w, g_trace_angle, (uint8_t)g_trace_posx,
-    //        motor.fl_speed, motor.fr_speed, motor.rl_speed, motor.rr_speed);
+    printf("[TRACE] v=%.3f w=%.3f err=%.2f track=0x%02X | FL=%u FR=%u RL=%u RR=%u\r\n",
+           g_trace_v, g_trace_w, g_trace_angle, (uint8_t)g_trace_posx,
+           motor.fl_speed, motor.fr_speed, motor.rl_speed, motor.rr_speed);
     Send_commandmotor(&motor);
 }
 

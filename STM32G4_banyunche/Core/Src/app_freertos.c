@@ -249,17 +249,7 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	Trace_LineFollow();
-	osDelay(150);
-	if (g_color_collect_done==1)
-	{
-		task_send(Event_Navigation);
-		Mecanum_StopAll();
-		printf("[TASK] LinFolL done\r\n");
-		K230_RequestMode(K230_MODE_CIRCLE);
-		K230_ApplyMode();
-	}
-	osDelay(10);
+	Trace_LineTask();
 
 	// Color_Init();
 	// Color_SetLedLevel(5);
