@@ -28,6 +28,29 @@ static uint8_t g_pid_inited = 0;
 static uint8_t s_start = 0;
 static uint32_t s_start_tick = 0;
 static float s_w_last = 0.0f;
+static uint8_t s_side = 0;   /* 当前循迹方向: 0=左, 1=右 */
+
+/**
+ * @brief 设置循迹方向。左/右循迹角度环 PID 参数不同 (ANGLE_KP vs ANGLE_KP_R),
+ *        切换方向时强制 PID 用新参数重新初始化, 并清掉旧方向的状态。
+ * @note  该函数会被主循环每 10ms 调用一次, 必须只在方向"变化"时才重置 PID,
+ *        否则会每周期清空 PID 状态 + 缓启动, 导致角度环失效、车卡在原地。
+ */
+void Trace_SetSide(uint8_t side)
+{
+    uint8_t new_side = (side != 0u) ? 1u : 0u;
+
+    if (s_side == new_side) {
+        return;              /* 方向未变: 保持 PID 连续运行, 不重置 */
+    }
+    s_side = new_side;
+    g_pid_inited = 0;        /* 下次 Trace_LineFollow_PID 用新参数重新初始化 */
+    PID_clear(&g_pid_angle);
+    PID_clear(&g_pid_pos);
+    s_start = 0;
+    s_start_tick = 0;
+    s_w_last = 0.0f;
+}
 
 void Trace_LineFollow_PID(void)
 {
@@ -43,10 +66,14 @@ void Trace_LineFollow_PID(void)
 
     /* ---- 2. PID 初始化 ---- */
     if (!g_pid_inited) {
+        /* 角度环: 左/右循迹用不同参数 (s_side=1 为右), 调参 override 时用调参值 */
+        const float a_kp = s_side ? ANGLE_KP_R : ANGLE_KP;
+        const float a_ki = s_side ? ANGLE_KI_R : ANGLE_KI;
+        const float a_kd = s_side ? ANGLE_KD_R : ANGLE_KD;
         const fp32 ak[3] = {
-            g_tune_control_override ? g_tune_angle_kp : ANGLE_KP,
-            g_tune_control_override ? g_tune_angle_ki : ANGLE_KI,
-            g_tune_control_override ? g_tune_angle_kd : ANGLE_KD
+            g_tune_control_override ? g_tune_angle_kp : a_kp,
+            g_tune_control_override ? g_tune_angle_ki : a_ki,
+            g_tune_control_override ? g_tune_angle_kd : a_kd
         };
         const fp32 pk[3] = {
             g_tune_control_override ? g_tune_pos_kp : POS_KP,

@@ -94,6 +94,8 @@ set(USER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/Send_motor.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/QRcode.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/trace_tune.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/hardware/grayscale.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/app/GrayTrace.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/hardware/sw_uart.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/hardware/wit_protocol.c"
         "algorithm/ahrs_mahony.c"
