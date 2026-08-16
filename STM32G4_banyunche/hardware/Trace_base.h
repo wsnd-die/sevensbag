@@ -20,13 +20,13 @@ extern "C" {
 #define ANGLE_KD      0.0f     /* 外环 D (作用于位置环) */
 #define ANGLE_OUT_MAX  100.0f   /* 外环输出限幅 (目标角度, deg) */
 /* ======================== 内环: 角度 → 角速度 ======================== */
-#define POS_KP        0.13f    /* 内环 P (作用于角度环) */
+#define POS_KP        0.15f    /* 内环 P (作用于角度环) */
 #define POS_KI        0.0f   /* 内环 I (作用于角度环) */
 #define POS_KD        0.0f    /* 内环 D (作用于角度环) */
 #define POS_INTEGRAL_MAX  10.0f /* 内环积分限幅 */
 
 /* ======================== 共用 ======================== */
-#define TRACE_BASE_SPEED   0.75f   /* 基础线速度 (m/s) */
+#define TRACE_BASE_SPEED   0.65f   /* 基础线速度 (m/s) */
 #define TRACE_W_MAX        0.95f    /* 最大角速度 (rad/s) */
 #define TRACE_CURVE_OUTER_GAIN     0.0f
 #define TRACE_CURVE_OUTER_MAX_DEG  0.0f
