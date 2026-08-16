@@ -276,18 +276,18 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 	GrayTrace_Update(&g_gray_trace);   /* 灰度循迹 (PA4 CLK / PA5 DAT) */
 	/* 串口打印 digital (每 100ms), 便于调灰度读取/极性/方向 */
 	{
-		static uint32_t s_gray_print = 0U;
-		uint32_t now = HAL_GetTick();
-		if (now - s_gray_print >= 100U) {
-			uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
-			s_gray_print = now;
-			printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c]\r\n",
-			       d,
-			       (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
-			       (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
-			       (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
-			       (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
-		}
+	// 	static uint32_t s_gray_print = 0U;
+	// 	uint32_t now = HAL_GetTick();
+	// 	if (now - s_gray_print >= 100U) {
+	// 		uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
+	// 		s_gray_print = now;
+	// 		printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c]\r\n",
+	// 		       d,
+	// 		       (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
+	// 		       (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
+	// 		       (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
+	// 		       (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
+	// 	}
 	}
 #else
 	Trace_SetSide(0);          /* 左循迹: 角度环用 ANGLE_KP/KI/KD */
@@ -833,7 +833,7 @@ void QR_TASK(void *argument)
 	  {
   		uint32_t now = HAL_GetTick();
   		if (now - s_last_print >= 100U) {
-  			Grayscale_Update(&g_gray_trace.sensor);   /* 必须触发串行读取 */
+  			//Grayscale_Update(&g_gray_trace.sensor);   /* 必须触发串行读取 */
   			uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
   			s_last_print = now;
   			printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c] \r\n",
@@ -845,7 +845,7 @@ void QR_TASK(void *argument)
 	  }
 	  }
 
-    osDelay(100);
+    osDelay(500);
   }
   /* USER CODE END QR_TASK */
 }

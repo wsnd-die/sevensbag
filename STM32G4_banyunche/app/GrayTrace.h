@@ -13,27 +13,31 @@
 #define GRAYTRACE_H
 
 #include "grayscale.h"
+#include "trace_tune.h"
 #include "pid.h"
 #include <stdint.h>
 
 /* ======================== 循迹参数 (可调) ======================== */
-#define GRAY_BASE_SPEED   0.5f     /* 基础线速度 m/s */
-#define GRAY_W_MAX        0.8f     /* 最大角速度 rad/s */
-#define GRAY_KP           0.8f     /* PID P */
+#define GRAY_BASE_SPEED   0.2f     /* 基础线速度 m/s */
+#define GRAY_BASE_SPEED   0.2f     /* 基础线速度 m/s (默认; 在线调参 #vmax 会覆盖) */
+#define GRAY_W_MAX        1.4f     /* 最大角速度 rad/s */
+#define GRAY_KP           0.2f     /* PID P */
 #define GRAY_KI           0.0f     /* PID I */
-#define GRAY_KD           0.3f     /* PID D */
-#define GRAY_ERR_MAX      52.5f    /* 偏差限幅 (与通道权重范围一致) */
+#define GRAY_KD           0.0f     /* PID D */
+#define GRAY_ERR_MAX      47.55f    /* 偏差限幅 (与通道权重范围一致) */
+#define GRAY_W_ALPHA      0.3f     /* 角速度一阶低通滤波系数 (0~1, 越小越平滑/响应越慢) */
 
 /* 8 通道权重: 通道0(最左) = -52.5, 通道7(最右) = +52.5 (同参考) */
-#define GRAY_CH_WEIGHTS \
-    { -52.5f, -37.5f, -22.5f, -7.5f, 7.5f, 22.5f, 37.5f, 52.5f }
+#define GRAY_CH_WEIGHTS { -19.0f, -15.0f, -13.0f, -1.0f, 1.0f, 13.0f, 15.0f, 19.0f }
 
 /* ======================== 数据结构 ======================== */
 typedef struct {
     Grayscale_Sensor_t sensor;   /* 灰度传感器状态 */
-    pid_type_def       pid;      /* 项目 PID 库控制器 */
+    float              last_error; /* 上一帧真实偏差 (丢线时保持用; 勿用 pid.error[1], 那是负值) */
+    float              w_smooth;   /* 角速度一阶低通滤波后的输出值 */
     uint8_t            inited;
 } GrayTrace_t;
+
 
 /* ======================== API ======================== */
 void GrayTrace_Init(GrayTrace_t *gt);            /* 初始化 GPIO + PID */

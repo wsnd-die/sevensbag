@@ -42,7 +42,7 @@ void Grayscale_Init(Grayscale_Sensor_t *sensor)
     HAL_GPIO_Init(GRAY_DAT_GPIO_Port, &g);
 
     /* CLK 空闲拉高 */
-    HAL_GPIO_WritePin(GRAY_CLK_GPIO_Port, GRAY_CLK_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GRAY_CLK_GPIO_Port, GRAY_CLK_Pin, GPIO_PIN_RESET);
 
     if (sensor) {
         sensor->digital = 0U;
@@ -60,6 +60,9 @@ static uint8_t Grayscale_Serial_Read(void)
     uint8_t i;
 
     for (i = 0U; i < 8U; i++) {
+        HAL_GPIO_WritePin(GRAY_CLK_GPIO_Port, GRAY_CLK_Pin, GPIO_PIN_SET);
+        grayscale_delay_us(GRAY_CLK_HALF_PERIOD_US);
+
         HAL_GPIO_WritePin(GRAY_CLK_GPIO_Port, GRAY_CLK_Pin, GPIO_PIN_RESET);
         grayscale_delay_us(GRAY_CLK_HALF_PERIOD_US);
 
@@ -67,8 +70,8 @@ static uint8_t Grayscale_Serial_Read(void)
             data |= (uint8_t)(1U << i);
         }
 
-        HAL_GPIO_WritePin(GRAY_CLK_GPIO_Port, GRAY_CLK_Pin, GPIO_PIN_SET);
-        grayscale_delay_us(GRAY_CLK_HALF_PERIOD_US);
+        // HAL_GPIO_WritePin(GRAY_CLK_GPIO_Port, GRAY_CLK_Pin, GPIO_PIN_SET);
+        // grayscale_delay_us(GRAY_CLK_HALF_PERIOD_US);
     }
 
     return data;
@@ -85,6 +88,8 @@ void Grayscale_Update(Grayscale_Sensor_t *sensor)
 
     /* raw: i=0 → 通道0 → 存 Bit7 (与 follow_line 的位序一致) */
     sensor->digital = 0U;
+    //raw=~raw;
+    //sensor->digital = raw;
     for (i = 0U; i < 8U; i++) {
         if ((raw & (1U << i)) != 0U) {
             sensor->digital |= (uint8_t)(1U << (7U - i));
