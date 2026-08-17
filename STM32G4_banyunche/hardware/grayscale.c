@@ -64,7 +64,6 @@ static uint8_t Grayscale_Serial_Read(void)
         grayscale_delay_us(GRAY_CLK_HALF_PERIOD_US);
 
         HAL_GPIO_WritePin(GRAY_CLK_GPIO_Port, GRAY_CLK_Pin, GPIO_PIN_RESET);
-        grayscale_delay_us(GRAY_CLK_HALF_PERIOD_US);
 
         if (HAL_GPIO_ReadPin(GRAY_DAT_GPIO_Port, GRAY_DAT_Pin) != GPIO_PIN_RESET) {
             data |= (uint8_t)(1U << i);

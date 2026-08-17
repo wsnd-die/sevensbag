@@ -26,11 +26,11 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
     /* ---- 示例路径（可根据实际修改）---- */
 
 
-    {0.358f,    0.646f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
+    {0.388f,    0.686f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
 
-    {-0.15f,      0.18f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
+    {-0.15f,      0.15f,      -90.0f * MECANUM_DEG_TO_RAD },//物料循线点
 
-    {    -0.866f,     -0.466f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
+    {    -0.836f,     -0.466f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    -0.225f,     -0.21f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/
     {    0.343f,     -0.60f,   0.0f  * MECANUM_DEG_TO_RAD },  /*c点 */
     {    -0.2f,     -0.10f,  0.0f  * MECANUM_DEG_TO_RAD },  /*d点*/
@@ -47,7 +47,7 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
 
     {-0.513f,-0.0,0},//回家点
     {0,-0.244f,0},
-    {-1.164f,0,0},
+    {-1.064f,0,0},
 
 };
 
@@ -67,16 +67,16 @@ uint8_t  g_waypoint_count = 13;
  * ============================================================ */
 
 /* ---- 目标点设计坐标 (世界系, m) ---- */
-#define CALIB_A_X        (-0.914f)     /* a点设计值 */
-#define CALIB_A_Y        (-0.486f)
-#define CALIB_YAJUN_X    ( 0.485f)     /* 亚军点设计值 */
-#define CALIB_YAJUN_Y    ( 0.83f)
+#define CALIB_A_X        (-0.904f)     /* a点设计值 */
+#define CALIB_A_Y        (-0.466f)
+#define CALIB_YAJUN_X    ( 0.405f)     /* 亚军点设计值 */
+#define CALIB_YAJUN_Y    ( 0.98f)
 
 /* ---- 循迹终点设计坐标 (世界系, m) ---- */
-#define TRACE_END_A_X    ( 2.436f)       /* 物料循迹(LinFolL)终点设计值 */
-#define TRACE_END_A_Y    ( 0.447f)
-#define TRACE_END_YAJUN_X (2.334f)      /* 奖杯循迹(LinFolR)终点设计值 */
-#define TRACE_END_YAJUN_Y (-0.631f)
+#define TRACE_END_A_X    ( 2.436f/2)       /* 物料循迹(LinFolL)终点设计值 */
+#define TRACE_END_A_Y    ( 0.447f/2)
+#define TRACE_END_YAJUN_X (0.989f/2)      /* 奖杯循迹(LinFolR)终点设计值 */
+#define TRACE_END_YAJUN_Y (0.146f/2)
 
 /* ---- 固定偏移 = 目标点设计值 - 循迹终点设计值 ---- */
 #define CALIB_A_OFF_X    (CALIB_A_X - TRACE_END_A_X)
@@ -189,7 +189,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
             err = target_deg - siyuan_yaw * RAD_TO_DEG;
             while (err >  180.0f) err -= 360.0f;
             while (err < -180.0f) err += 360.0f;
-            if (fabsf(err) <= 4.0f) break;
+            if (fabsf(err) <= 2.0f) break;
             osDelay(10);
         }
         g_angle_ctrl_enable = 0;              /* 转完关闭, 避免与后面平移抢电机 */
@@ -223,7 +223,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         while (drift >  180.0f) drift -= 360.0f;
         while (drift < -180.0f) drift += 360.0f;
 
-        if (fabsf(drift) > 4.0f) {            /* 真实漂移超阈值才修, 避免空转 */
+        if (fabsf(drift) > 2.0f) {            /* 真实漂移超阈值才修, 避免空转 */
             float err;
 
             g_angle_target_yaw = target_deg;
@@ -233,7 +233,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
                 err = target_deg - siyuan_yaw * RAD_TO_DEG;
                 while (err >  180.0f) err -= 360.0f;
                 while (err < -180.0f) err += 360.0f;
-                if (fabsf(err) <= 4.0f) break;   /* 与第一段一致; FC_TASK 容差已收紧到1°, 实际能修到更小 */
+                if (fabsf(err) <= 2.0f) break;   /* 与第一段一致; FC_TASK 容差已收紧到1°, 实际能修到更小 */
                 osDelay(10);
             }
 
@@ -270,14 +270,14 @@ void Nav_CalibrateAfterTrace(bool is_trophy)
     World_Dir_t p = World_position_get();
 
     if (is_trophy) {
-        g_waypoints[9].x = p.x + CALIB_YAJUN_OFF_X;
-        g_waypoints[9].y = p.y + CALIB_YAJUN_OFF_Y;
+        g_waypoints[9].x = p.x/2 + CALIB_YAJUN_OFF_X;
+        g_waypoints[9].y = p.y/2 + CALIB_YAJUN_OFF_Y;
         printf("[CAL] 亚军点 <- (%.3f,%.3f) 终点=(%.3f,%.3f)\r\n",
                (double)g_waypoints[9].x, (double)g_waypoints[9].y,
                (double)p.x, (double)p.y);
     } else {
-        g_waypoints[2].x = p.x + CALIB_A_OFF_X;
-        g_waypoints[2].y = p.y + CALIB_A_OFF_Y;
+        g_waypoints[2].x = p.x/2 + CALIB_A_OFF_X;
+        g_waypoints[2].y = p.y/2 + CALIB_A_OFF_Y;
         printf("[CAL] a点 <- (%.3f,%.3f) 终点=(%.3f,%.3f)\r\n",
                (double)g_waypoints[2].x, (double)g_waypoints[2].y,
                (double)p.x, (double)p.y);

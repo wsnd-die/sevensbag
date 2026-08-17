@@ -107,6 +107,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
             HAL_UART_Receive_IT(&huart1, &qrcode_rx_byte, 1);
             return;
         }
+        /* GrayTrace 灰度循迹调参 ('$' 行): $egain / $ffgain / $get */
+        if (GrayTrace_Tune_OnByte(qrcode_rx_byte)) {
+            HAL_UART_Receive_IT(&huart1, &qrcode_rx_byte, 1);
+            return;
+        }
         if (qrcode_rx_len >= QRCODE_RX_BUF_SIZE) {
             qrcode_rx_len = 0;
         }

@@ -31,7 +31,7 @@
 #endif
 /* 灰度循迹开关: 1=左循迹用灰度传感器(PA4 CLK / PA5 DAT), 0=用 K230 摄像头 */
 #ifndef GRAY_TRACE_ENABLE
-#define GRAY_TRACE_ENABLE 1
+#define GRAY_TRACE_ENABLE 0
 #endif
 /* USER CODE END PD */
 
@@ -227,8 +227,9 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
-	 SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolL,Event_FindCircle,Event_QRCode,Event_LinFolR,Event_PlaceDown};
-	 // SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
+	SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolL,Event_FindCircle,Event_QRCode,Event_LinFolR,Event_PlaceDown};
+	  // SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown};
+	// uint8_t NavafterNum[6]={1,1,3};
 	 uint8_t NavafterNum[6]={1,1,5,1,1,3};
 	//SystemMode_t Navafter_mode[4]={Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
 	// uint8_t NavafterNum[4]={2,1,1,5};
@@ -241,7 +242,7 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINE);
 	K230_ApplyMode();
-	task_send(Event_LinFolL);
+	task_send(Event_Navigation);
 	// BlockBasic_LiftTo(UP,44);
 	// Nav_MoveForward(0.5);
 	BlockBasic_TurntableTo(1);
@@ -351,6 +352,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 					printf("[TASK] LIFT servo");
 					// Servo_SetAngle(125);
 				}
+				World_Reset();                    /* 放置完物块: 清零里程计, 奖杯段从0重新记 */
 				task_send(Event_Navigation);
 			}
 			}
@@ -562,7 +564,7 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
-	Servo_SetAngle(43);
+	Servo_SetAngle(41);
 	BlockBasic_TurntableTo(1);
 	IR_Init();
 	GrayTrace_Init(&g_gray_trace);   /* 灰度循迹控制器初始化 (PA4 CLK / PA5 DAT) */
@@ -602,7 +604,7 @@ void BsRt_task(void *argument)
 					 * 必须等读完再转盘, 否则读色时槽位已移动 */
 					g_color_req_slot = slot - 1;
 					g_color_req = 1;
-					while (g_color_req) osDelay(5);   /* 等 Color_task 读色完成 */
+					// while (g_color_req) osDelay(3);   /* 等 Color_task 读色完成 */
 
 					if (slot < 4) {
 						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 (直接转, 无需落稳延时) */
@@ -610,7 +612,7 @@ void BsRt_task(void *argument)
 				}
 
 				/* 必触发锁死: 物块5已完全进入槽5, 锁死转盘; 槽5颜色由排除法补 */
-				osDelay(170);
+				osDelay(200);
 				Servo_Angle(333.0f);
 
 				/* 槽5(索引4)颜色 = 全集 - 已读4种 */
@@ -626,15 +628,13 @@ void BsRt_task(void *argument)
 				g_trophy_done = 0;
 				BlockBasic_TurntableTo(1);
 				for (uint8_t slot = 1; slot <= 3; slot++) {
-					Collect_WaitObject();
+					Collect_WaitEnter();
 					if (slot < 3) {
-						osDelay(200);
-
 						BlockBasic_TurntableTo(slot + 1);
 					}
 				}
 				K=0;
-					osDelay(200);
+				// osDelay(170);
 				Servo_Angle(180.0f);
 				BlockBasic_LiftTo(UP, 48);
 				g_trophy_done = 1;
@@ -830,20 +830,26 @@ void QR_TASK(void *argument)
   		SetQR(QR_result);
   		task_send(Event_Navigation);
   	}
-	  {
-  		uint32_t now = HAL_GetTick();
-  		if (now - s_last_print >= 100U) {
-  			//Grayscale_Update(&g_gray_trace.sensor);   /* 必须触发串行读取 */
-  			uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
-  			s_last_print = now;
-  			printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c] \r\n",
-					 d,
-					 (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
-					 (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
-					 (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
-					 (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
-	  }
-	  }
+  		printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
+  			   Color_ToString(ColorAtSlot(0)),
+  			   Color_ToString(ColorAtSlot(1)),
+  			   Color_ToString(ColorAtSlot(2)),
+  			   Color_ToString(ColorAtSlot(3)),
+  			   Color_ToString(ColorAtSlot(4)));
+	  // {
+  	// 	uint32_t now = HAL_GetTick();
+  	// 	if (now - s_last_print >= 100U) {
+  	// 		//Grayscale_Update(&g_gray_trace.sensor);   /* 必须触发串行读取 */
+  	// 		uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
+  	// 		s_last_print = now;
+  	// 		printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c] \r\n",
+			// 		 d,
+			// 		 (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
+			// 		 (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
+			// 		 (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
+			// 		 (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
+	  // }
+	  // }
 
     osDelay(500);
   }

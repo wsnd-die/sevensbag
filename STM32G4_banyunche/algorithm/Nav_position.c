@@ -6,6 +6,27 @@
 /* 当前里程计位姿（世界坐标 m / rad），上电原点 (0,0,0) */
 World_Dir_t World_position = {0.0f, 0.0f, 0.0f};
 
+/* 清零请求: 置 1 后下次 World_position_get 以当前编码器为基准重设起点 */
+static volatile uint8_t s_world_reset = 0U;
+
+/**
+ * @brief 清零里程计并重新起算 (放完 5 物块后调用, 奖杯段从 0 重新记)
+ *        同时把 4 个电机驱动的编码器计数值清零, 使直接读编码器也是 0
+ */
+void World_Reset(void)
+{
+    /* 电机驱动编码器归零 (地址同 Mecanum_Read_AllPositions: 1~4) */
+    Emm_V5_Reset_CurPos_To_Zero(1);
+    Emm_V5_Reset_CurPos_To_Zero(2);
+    Emm_V5_Reset_CurPos_To_Zero(3);
+    Emm_V5_Reset_CurPos_To_Zero(4);
+
+    World_position.x = 0.0f;
+    World_position.y = 0.0f;
+    /* yaw 由 IMU 实时给, 不归零 */
+    s_world_reset = 1U;   /* 下次读取以当前编码器为基准, 不跨清零点累积 */
+}
+
 /**
  * @brief 增量式编码器里程计
  * @return 当前世界位姿（同时更新全局 World_position）
@@ -19,6 +40,13 @@ World_Dir_t World_position_get(void)
     float yaw = siyuan_yaw;             /* IMU 实测航向 rad */
 
     if (!Mecanum_Read_AllPositions(&enc, 20)) return World_position;
+
+    /* 清零后: 以当前编码器为基准重新起算, 不跨清零点累积 */
+    if (s_world_reset) {
+        prev = enc;
+        s_world_reset = 0U;
+        return World_position;
+    }
     if (first) { first = 0; prev = enc; return World_position; }
 
     /* 麦轮正解 */

@@ -15,6 +15,13 @@ extern World_Dir_t World_position;
  */
 World_Dir_t World_position_get(void);
 
+/**
+ * @brief 清零编码器里程计并重新起算
+ * @note  放完 5 物块 / 奖杯段分界时调用: 只清 World_position;
+ *        下次 World_position_get 以当前编码器为基准重设起点, 不跨清零边界累积。
+ */
+void World_Reset(void);
+
 /* ============================================================
  * 惯导 (INS) — 纯 IMU 加速度积分推位
  *
