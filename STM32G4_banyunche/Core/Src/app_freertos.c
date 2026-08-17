@@ -757,7 +757,7 @@ void BsRt_task(void *argument)
 				}
 
 				while (!IR_ObjectEntered()) osDelay(5);
-				osDelay(120);
+				osDelay(150);
 				while (g_color_req) osDelay(5);
 				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
 				osDelay(500);
