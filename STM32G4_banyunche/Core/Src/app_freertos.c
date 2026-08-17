@@ -420,6 +420,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   		K230_ApplyMode();
 
   		Trace_LineFollow();
+  		osDelay(150);
         if (g_trophy_done==1)
         {
 	        task_send(Event_Navigation);
@@ -479,10 +480,15 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						// osDelay(500);
   						flag_finish=true;
   					}
-					  BlockBasic_TurntableTo(Slop_dirjang(champion));
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
+  						/* 找到圆后再转盘到对应槽位; 转盘失败则不放置, 防呆 */
+  						if (BlockBasic_TurntableTo(Slop_dirjang(champion)) != BLOCK_OK) {
+  							printf("[TASK] PlaceDown champion: turntable slot fail\r\n");
+  							break;
+  						}
+  						osDelay(500);   /* 等舵机转到位 */
   						/* HEIGHT_CHANGE: podium champion place arm height via Place(height=3). */
   						Place('O', 5);
   						BlockBasic_DualArmSetPos(4);
@@ -505,7 +511,6 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 					{
 						/* HEIGHT_CHANGE: podium second-place pre-place arm height. */
 						BlockBasic_DualArmSetPos(7);
-  						BlockBasic_TurntableTo(Slop_dirjang(second_place));
   						// osDelay(500);
   						flag_finish=true;
   					}
@@ -513,6 +518,12 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (g_circle_dir=='O')
   					{
   						//osDelay(100);
+  						/* 找到圆后再转盘到对应槽位; 转盘失败则不放置, 防呆 */
+  						if (BlockBasic_TurntableTo(Slop_dirjang(second_place)) != BLOCK_OK) {
+  							printf("[TASK] PlaceDown second: turntable slot fail\r\n");
+  							break;
+  						}
+  						osDelay(500);   /* 等舵机转到位 */
   						/* HEIGHT_CHANGE: podium second-place place arm height via Place(height=5). */
   						Place('O', 3);
   						printf("[TASK] PlaceDown second done\r\n");
@@ -535,14 +546,18 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					{
 						/* HEIGHT_CHANGE: podium third-place pre-place arm height. */
 						BlockBasic_DualArmSetPos(6);
-  						BlockBasic_TurntableTo(Slop_dirjang(third_place));
-  						osDelay(500);
   						//加入奖杯转盘放置逻辑（已加）
   						flag_finish=true;
   					}
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{
+  						/* 找到圆后再转盘到对应槽位; 转盘失败则不放置, 防呆 */
+  						if (BlockBasic_TurntableTo(Slop_dirjang(third_place)) != BLOCK_OK) {
+  							printf("[TASK] PlaceDown third: turntable slot fail\r\n");
+  							break;
+  						}
+  						osDelay(500);   /* 等舵机转到位 */
   						/* HEIGHT_CHANGE: podium third-place place arm height via Place(height=2). */
   						Place('O', 2);
   						printf("[TASK] PlaceDown third done\r\n");
@@ -759,11 +774,15 @@ void BsRt_task(void *argument)
 				while (!IR_ObjectEntered()) osDelay(5);
 				osDelay(120);
 				while (g_color_req) osDelay(5);
-				BlockBasic_TurntableRotate(45.0f);   /* 收集完5个物料后, 转盘再旋转45度 */
+				BlockBasic_TurntableTo(1);   /* 槽5转到颜色传感器下(位置1), 读第5个槽颜色 */
 				osDelay(500);
 				g_color_req_slot = 4;
 				g_color_req = 1;
 				while (g_color_req) osDelay(5);
+
+				/* 读色完成, 转盘再转45°卡位: 槽1不再正对入口, 物料行驶中不会滑出 */
+				BlockBasic_TurntableRotate(36.0f);
+				osDelay(500);
 
 				uint8_t unknown_count = 0;
 				uint8_t unknown_slot = 0;
@@ -810,7 +829,7 @@ void BsRt_task(void *argument)
 					// int db = abs((int)d.blue  - g_color_ambient.b);
 					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
 					if (slot < 4) {
-						osDelay(220);
+						osDelay(250);
 						BlockBasic_TurntableTo(slot+1);
 					}
 				}

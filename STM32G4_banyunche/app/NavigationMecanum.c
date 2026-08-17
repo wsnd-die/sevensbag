@@ -25,7 +25,7 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 
 
     {-0.27f,    0.68f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
-    {0.08f,      0.0f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
+    {0.08f,      -0.2f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
     {     0.0f,     -1.12f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：再向左平移 */
 	  {    -0.6f,      0.0f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：先0度前进 */
     {    -0.15f,    -0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
@@ -225,6 +225,19 @@ bool Nav_FeDuanPoint() {
     if (idx == 8U) {
         Nav_TurnToDeg(0.0f);
         Self_Dir.yaw = 0.0f;
+    }
+
+    /* 奖杯二维码点(g_waypoints[0]): 拆成先走x再走y两步, 避免斜向移动漂移/偏航。
+     * 第1步只走x, 第2步只走y; 每步结束 Nav_MoveBody 内部都会回正航向到 0°。 */
+    if (idx == 0U) {
+        if (!Nav_MoveBody(g_waypoints[0].x, 0.0f, 0.0f)) {          /* 第1步: 只走x */
+            return false;
+        }
+        if (!Nav_MoveBody(0.0f, g_waypoints[0].y, g_waypoints[0].yaw)) {  /* 第2步: 只走y */
+            return false;
+        }
+        PontIntex++;
+        return true;
     }
 
     if (!Nav_MoveBody(g_waypoints[idx].x,

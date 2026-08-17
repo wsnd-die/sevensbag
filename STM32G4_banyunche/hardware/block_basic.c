@@ -284,7 +284,7 @@ void Place(char dir,uint16_t height)
     {
 
         /* 前进 0.05 m（车体坐标：+X 为前进） */
-        if (Mecanum_CalculateMove(&Place_config, 0.0f, -0.074f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, 0.0f, -0.072f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
