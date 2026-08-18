@@ -77,9 +77,9 @@ void Hal_starte()
 
 		/* 180-degree servos: 500~2500 us maps to 0~180 degrees. */
 		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,
-				(uint32_t)(81.0f / 180.0f * 2000.0f + 500.0f + 0.5f));
+				(uint32_t)(150.0f / 180.0f * 2000.0f + 500.0f + 0.5f));
 		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3,
-				(uint32_t)(89.0f / 180.0f * 2000.0f + 500.0f + 0.5f));
+				(uint32_t)(18.0f / 180.0f * 2000.0f + 500.0f + 0.5f));
 
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);//?????????
 		HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
