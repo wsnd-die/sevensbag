@@ -751,9 +751,8 @@ void BsRt_task(void *argument)
 #if TURNTABLE_COLOR_TEST_ONLY
 	K = 0;
 #endif
-	osDelay(2700);
-	BlockBasic_DualArmSetPos(8);   /* 机械臂到 pos 8 */
-	osDelay(1000);
+	osDelay(500);
+	BlockBasic_DualArmSetPos(8);
 	BlockBasic_TurntableTo(1);
 	// BlockBasic_TurntableTo(1);
 	// BlockBasic_LiftTo(UP,20);
