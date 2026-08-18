@@ -883,7 +883,7 @@ void BsRt_task(void *argument)
 				for (uint8_t slot = 1; slot <= 3; slot++) {
 					/* 等红外对射检测到物体进入 */
 					while (!IR_ObjectEntered()) {
-						osDelay(10);
+						osDelay(5);
 					}
 					/* ---- 读颜色过程 (已注释) ---- */
 					// Color_DataTypeDef d;
@@ -893,7 +893,7 @@ void BsRt_task(void *argument)
 					// int db = abs((int)d.blue  - g_color_ambient.b);
 					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
 					if (slot < 4) {
-						osDelay(250);
+						osDelay(260);
 						BlockBasic_TurntableTo(slot+1);
 					}
 				}

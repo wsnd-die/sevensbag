@@ -280,7 +280,7 @@ void Trace_LineFollow(void)
         static float v_smooth = TRACE_BASE_SPEED;
 
         if (slow_level > 1.0f) slow_level = 1.0f;
-        v = TRACE_BASE_SPEED * (1.0f - 0.30f * slow_level);
+        v = TRACE_BASE_SPEED * (1.0f - 0.35f * slow_level);
         v_smooth += (v < v_smooth ? 0.55f : 0.18f) * (v - v_smooth);
         v = v_smooth;
     }
