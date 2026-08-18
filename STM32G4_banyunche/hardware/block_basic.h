@@ -113,8 +113,8 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos);
  * @note   上电后如果转盘实际位置不在 BLOCK_TURNTABLE_HOME_DEG，
  *         应先调用本函数同步软件状态。
  */
-    void Servo_Angle(float angle_deg);
-void Place(char dir,uint16_t height);
+void Servo_Angle(float angle_deg);
+void Place(char dir,float x,float y,uint16_t height);
     /*
      *
      *

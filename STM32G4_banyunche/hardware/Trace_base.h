@@ -19,22 +19,21 @@ extern "C" {
 
 /* ======================== PID 外环: 位置 → 目标角度 ======================== */
 /* 左循迹角度环 (默认) — 与右循迹分开, 走线偏置不同时分别调 */
-#define ANGLE_KP      0.03f     /* 外环 P (作用于位置环) [调参值] */
+#define ANGLE_KP      0.04f     /* 外环 P (作用于位置环) [调参值] */
 #define ANGLE_KI      0.0f     /* 外环 I */
-#define ANGLE_KD      0.01f    /* 外环 D [调参值] */
+#define ANGLE_KD      0.008f    /* 外环 D [调参值] */
 /* 右循迹角度环 — 与左循迹分开调 */
 #define ANGLE_KP_R    0.13f
 #define ANGLE_KI_R    0.0f
 #define ANGLE_KD_R    0.14f
 #define ANGLE_OUT_MAX  100.0f   /* 外环输出限幅 (目标角度, deg) */
 /* ======================== PID 内环: 角度 → 角速度 ======================== */
-#define POS_KP        0.15f    /* 内环 P (作用于角度环) [调参值] */
+#define POS_KP        0.35f    /* 内环 P (作用于角度环) [调参值] */
 #define POS_KI        0.0f   /* 内环 I */
-#define POS_KD        0.13f   /* 内环 D [调参值] */
+#define POS_KD        0.1f   /* 内环 D [调参值] */
 #define POS_INTEGRAL_MAX  10.0f /* 内环积分限幅 */
-//# pid akp=0.2100 aki=0.0000 akd=0.0180 pkp=0.3200 pki=0.0000 pkd=0.0400
 
-// # pid akp=0.2100 aki=0.0000 akd=0.2500 pkp=0.2600 pki=0.0000 pkd=0.2000
+//# pid akp=0.1100 aki=0.0000 akd=0.0000 pkp=0.3500 pki=0.0000 pkd=0.0000
 /* ======================== Stanley 参数 ======================== */
 #define STANLEY_K           0.5f   /* 横向误差增益 */
 #define WHEEL_BASE          0.25f  /* 轴距 (m) */
@@ -42,9 +41,9 @@ extern "C" {
 #define MIN_SPEED           0.1f   /* 防止除零最低速度 (m/s) */
 
 /* ======================== 共用 ======================== */
-#define TRACE_BASE_SPEED   0.5f   /* 基础线速度 (m/s) [调参值] */
-#define TRACE_W_MAX        0.8f  /* 最大角速度 (rad/s) */
-#define W_RATE_MAX 0.15;
+#define TRACE_BASE_SPEED   0.65f   /* 基础线速度 (m/s) [调参值] */
+#define TRACE_W_MAX        0.95f  /* 最大角速度 (rad/s) */
+#define W_RATE_MAX 0.1;
 
 #define SOFT_START_MS   1000U
 /* ======================== 函数声明 ======================== */

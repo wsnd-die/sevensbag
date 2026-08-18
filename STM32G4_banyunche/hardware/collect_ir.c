@@ -38,15 +38,24 @@ bool IR_ObjectEntered(void)
 
     /* 防抖: 检测到遮挡(电平0)后 5ms 再确认, 滤掉沿抖动 */
     if (now && !ir_last) {
-        osDelay(5);
+        osDelay(50);
         now = IR_ObjectPresent();
         if (!now) return false;   /* 抖动, 未真正遮挡 */
     }
 
-    /* 完全进入: 电平先变0(遮挡) 再变1(恢复) → 物体已完全穿过红外对射。
-     * 与原来的"遮挡边沿"不同: 边沿在物体刚进就开始返回, 此时可能还在下落;
-     * 这里等电平回来才返回, 表示物体已完全落入槽位, 上层可立即旋转无需延时。 */
     bool fully_in = (ir_last && !now);
+
+    /* 防抖 */
+    if (fully_in) {
+        osDelay(160);
+        now = IR_ObjectPresent();          /* 重新采样当前电平 */
+        if (now) {                         /* 恢复后又变遮挡 → 是抖动, 不算完全进入 */
+            ir_last = now;
+            return false;
+        }
+        fully_in = true;                   /* 恢复电平稳定 → 确认完全进入 */
+    }
+
     ir_last = now;
     return fully_in;
 }

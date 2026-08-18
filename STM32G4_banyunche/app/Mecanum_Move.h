@@ -22,9 +22,9 @@ extern "C" {
  * 4号：后右 RR
  */
 #define MECANUM_ADDR_FR  1U
-#define MECANUM_ADDR_RR  2U
+#define MECANUM_ADDR_RL  2U
 #define MECANUM_ADDR_FL  3U
-#define MECANUM_ADDR_RL  4U
+#define MECANUM_ADDR_RR  4U
 /**
  * @brief 麦轮底盘参数
  */

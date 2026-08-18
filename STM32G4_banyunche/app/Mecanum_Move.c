@@ -17,12 +17,12 @@
 
     /* 驱动器逻辑方向: 1=正向, 0=反向 */
     .forward_dir[MECANUM_ADDR_FR] = 0U,
-    .forward_dir[MECANUM_ADDR_RL] = 0U,
+    .forward_dir[MECANUM_ADDR_RL] = 1U,
     .forward_dir[MECANUM_ADDR_FL] = 0U,
-    .forward_dir[MECANUM_ADDR_RR] = 0U,
+    .forward_dir[MECANUM_ADDR_RR] = 1U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
-    .acceleration = 220U
+    .acceleration = 230U
 };
 
 /* ---- 内部工具函数 ---- */
@@ -507,6 +507,11 @@ bool Mecanum_ExecuteMove(
     const MecanumMove_t *move
 )
 {
+
+
+    /* 临界区 */
+
+
     uint8_t addr;
 
     if ((config == NULL) || (move == NULL)) {
@@ -520,6 +525,7 @@ bool Mecanum_ExecuteMove(
     /*
      * 四轮命令暂存，等待同步触发。
      */
+    // taskENTER_CRITICAL();
     for (addr = 1U; addr <= 4U; addr++) {
         Emm_V5_Pos_Control(
             addr,
@@ -531,15 +537,15 @@ bool Mecanum_ExecuteMove(
             false, /* raF=false：相对位置模式 */
             false  /* snF=false：多机同步 */
         );
+        osDelay(2);
 
     }
-
+    // taskEXIT_CRITICAL();
     /*
      * 地址0触发四轮同步开始。
+     * 位置模式必须触发同步: 否则 4 个电机收到位置命令后不启动, 放置/导航都不动。
      */
-   /* Emm_V5_Synchronous_motion(
-        0
-    );*/
+    Emm_V5_Synchronous_motion(0);
 
     return true;
 }

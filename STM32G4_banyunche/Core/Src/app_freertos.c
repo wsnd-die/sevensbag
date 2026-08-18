@@ -31,7 +31,7 @@
 #endif
 /* 灰度循迹开关: 1=左循迹用灰度传感器(PA4 CLK / PA5 DAT), 0=用 K230 摄像头 */
 #ifndef GRAY_TRACE_ENABLE
-#define GRAY_TRACE_ENABLE 1
+#define GRAY_TRACE_ENABLE 0
 #endif
 /* USER CODE END PD */
 
@@ -227,8 +227,9 @@ void NLF_TASK(void *argument)
 	/*
 	 *导航循线任务
 	 */
-	 SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolL,Event_FindCircle,Event_QRCode,Event_LinFolR,Event_PlaceDown};
-	 // SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
+	SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolL,Event_FindCircle,Event_QRCode,Event_LinFolR,Event_PlaceDown};
+	  // SystemMode_t Navafter_mode[6]={Event_QRCode,Event_LinFolR,Event_PlaceDown};
+	// uint8_t NavafterNum[6]={1,1,3};
 	 uint8_t NavafterNum[6]={1,1,5,1,1,3};
 	//SystemMode_t Navafter_mode[4]={Event_PlaceDown,Event_LinFolL,Event_QRCode,Event_FindCircle};
 	// uint8_t NavafterNum[4]={2,1,1,5};
@@ -239,12 +240,16 @@ void NLF_TASK(void *argument)
 	uint8_t P_Nava=0;
 	uint8_t rank[3]={second_place,champion,third_place};
 
-	K230_RequestMode(K230_MODE_LINE);
+	K230_RequestMode(K230_MODE_LINEL);
 	K230_ApplyMode();
-	task_send(Event_LinFolL);
+	task_send(Event_Navigation);
 	// BlockBasic_LiftTo(UP,44);
 	// Nav_MoveForward(0.5);
 	BlockBasic_TurntableTo(1);
+	// Emm_V5_Vel_Control(1, 0, 100, 250, 0);
+	// Emm_V5_Vel_Control(2, 0, 100, 250, 0);
+	// Emm_V5_Vel_Control(3, 0, 100, 250, 0);
+	// Emm_V5_Vel_Control(4, 0, 100, 250, 0);
 	osDelay(500);
   /* Infinite loop */
   for(;;)
@@ -276,22 +281,22 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 	GrayTrace_Update(&g_gray_trace);   /* 灰度循迹 (PA4 CLK / PA5 DAT) */
 	/* 串口打印 digital (每 100ms), 便于调灰度读取/极性/方向 */
 	{
-		static uint32_t s_gray_print = 0U;
-		uint32_t now = HAL_GetTick();
-		if (now - s_gray_print >= 100U) {
-			uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
-			s_gray_print = now;
-			printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c]\r\n",
-			       d,
-			       (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
-			       (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
-			       (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
-			       (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
-		}
+	// 	static uint32_t s_gray_print = 0U;
+	// 	uint32_t now = HAL_GetTick();
+	// 	if (now - s_gray_print >= 100U) {
+	// 		uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
+	// 		s_gray_print = now;
+	// 		printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c]\r\n",
+	// 		       d,
+	// 		       (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
+	// 		       (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
+	// 		       (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
+	// 		       (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
+	// 	}
 	}
 #else
 	Trace_SetSide(0);          /* 左循迹: 角度环用 ANGLE_KP/KI/KD */
-	K230_RequestMode(K230_MODE_LINE);
+	K230_RequestMode(K230_MODE_LINEL);
 	K230_ApplyMode();
   		Trace_LineFollow();
 #endif
@@ -315,7 +320,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   	{
   		g_angle_ctrl_enable = 0;   /* 循迹不用角度闭环, 关闭 */
   		Trace_SetSide(1);          /* 右循迹: 角度环用 ANGLE_KP_R/KI_R/KD_R */
-  		K230_RequestMode(K230_MODE_LINE);
+  		K230_RequestMode(K230_MODE_LINER);
   		K230_ApplyMode();
   		Trace_LineFollow();
         if (g_trophy_done==1)
@@ -340,17 +345,24 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 		K230_ApplyMode();
 				g_circle_speed = 1.0f;  /* 左侧快 */
 
+		if (g_circle_dir!='O')
+		{
 			Circle_Follow();
+		}
 			if (g_circle_dir=='O')
 			{
 				TT_RotateByQR();
-				Place('O',0);
+				float x = 0.0f, y = 0.0f;
+				K230_GetCirclepos(&x, &y);   /* 圆 xy → 放置补量 */
+				Place('O', x, y, 0);
+				g_circle_dir=' ';
 				printf("[TASK] FindCircle placed");
 				flag_finish = false;
 				if (TT_IsDone()) {
 					printf("[TASK] LIFT servo");
 					// Servo_SetAngle(125);
 				}
+				World_Reset();                    /* 放置完物块: 清零里程计, 奖杯段从0重新记 */
 				task_send(Event_Navigation);
 			}
 			}
@@ -370,13 +382,19 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						// osDelay(500);
   						flag_finish=true;
   					}
-  					Circle_Follow();
+  					if (g_circle_dir!='O')
+  					{
+  						Circle_Follow();
+  					}
   					if (g_circle_dir=='O')
   					{
-  						Place('O',31);
+  						float cx = 0.0f, cy = 0.0f;
+						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+						Place('O', cx, cy, 33);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
+  						g_circle_dir=' ';
   						task_send(Event_Navigation);
   						break;
   					}
@@ -392,15 +410,21 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						// osDelay(500);
   						flag_finish=true;
   					}
-  					Circle_Follow();
+  					if (g_circle_dir!='O')
+  					{
+  						Circle_Follow();
+  					}
   					if (g_circle_dir=='O')
   					{
-  						Place('O',28);
+  						float cx = 0.0f, cy = 0.0f;
+						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+						Place('O', cx, cy, 28);
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
   						BlockBasic_LiftTo(UP,48);
   						task_send(Event_Navigation);
+  						g_circle_dir=' ';
   						osDelay(800);
   						break;
   					}
@@ -411,21 +435,25 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   				{
   					if (flag_finish==false)
   					{
-  						BlockBasic_LiftTo(DOWN,16);
+  						BlockBasic_LiftTo(DOWN,14);
   						BlockBasic_TurntableTo(Slop_dirjang(third_place));
   						//加入奖杯转盘放置逻辑（已加）
   						flag_finish=true;
   					}
-  					Circle_Follow();
+  					if (g_circle_dir!='O')
+  					{
+  						Circle_Follow();
+  					}
   					if (g_circle_dir=='O')
   					{
   						printf("[TASK] PlaceDown third done\r\n");
-  						Place('O',21);
+  						float cx = 0.0f, cy = 0.0f;
+						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+						Place('O', cx, cy, 21);
   						i++;
   						flag_finish=false;
+  						g_circle_dir=' ';
   						task_send(Event_Navigation);
-  						K230_RequestMode(K230_MODE_LINE);
-  						K230_ApplyMode();
   						break;
   					}
   				}break;
@@ -562,7 +590,7 @@ void BsRt_task(void *argument)
 	 *舵机转盘任务
 	 */
 	uint8_t K = 0;//0为先走物块任务，1为先走奖杯任务
-	Servo_SetAngle(43);
+	Servo_SetAngle(41);
 	BlockBasic_TurntableTo(1);
 	IR_Init();
 	GrayTrace_Init(&g_gray_trace);   /* 灰度循迹控制器初始化 (PA4 CLK / PA5 DAT) */
@@ -602,7 +630,7 @@ void BsRt_task(void *argument)
 					 * 必须等读完再转盘, 否则读色时槽位已移动 */
 					g_color_req_slot = slot - 1;
 					g_color_req = 1;
-					while (g_color_req) osDelay(5);   /* 等 Color_task 读色完成 */
+					// while (g_color_req) osDelay(3);   /* 等 Color_task 读色完成 */
 
 					if (slot < 4) {
 						BlockBasic_TurntableTo(slot + 2);	/* 槽slot+1 → 传感器下 (直接转, 无需落稳延时) */
@@ -610,7 +638,7 @@ void BsRt_task(void *argument)
 				}
 
 				/* 必触发锁死: 物块5已完全进入槽5, 锁死转盘; 槽5颜色由排除法补 */
-				osDelay(170);
+				osDelay(200);
 				Servo_Angle(333.0f);
 
 				/* 槽5(索引4)颜色 = 全集 - 已读4种 */
@@ -626,15 +654,13 @@ void BsRt_task(void *argument)
 				g_trophy_done = 0;
 				BlockBasic_TurntableTo(1);
 				for (uint8_t slot = 1; slot <= 3; slot++) {
-					Collect_WaitObject();
+					Collect_WaitEnter();
 					if (slot < 3) {
-						osDelay(200);
-
 						BlockBasic_TurntableTo(slot + 1);
 					}
 				}
 				K=0;
-					osDelay(200);
+				// osDelay(170);
 				Servo_Angle(180.0f);
 				BlockBasic_LiftTo(UP, 48);
 				g_trophy_done = 1;
@@ -827,25 +853,31 @@ void QR_TASK(void *argument)
   		/* 每次都 SetQR: 否则 cnt 保持 0, 找圆时 TT_RotateByQR 直接 return false */
   		QR_result=Qr_Get();
   		printf("[QR] got %d\r\n", QR_result);   /* 调试: 确认扫码是否真的收到 */
-  		SetQR(QR_result);
+  		SetQR(QR_result-1);
   		task_send(Event_Navigation);
   	}
-	  {
-  		uint32_t now = HAL_GetTick();
-  		if (now - s_last_print >= 100U) {
-  			Grayscale_Update(&g_gray_trace.sensor);   /* 必须触发串行读取 */
-  			uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
-  			s_last_print = now;
-  			printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c] \r\n",
-					 d,
-					 (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
-					 (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
-					 (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
-					 (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
-	  }
-	  }
+  		// printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
+  		// 	   Color_ToString(ColorAtSlot(0)),
+  		// 	   Color_ToString(ColorAtSlot(1)),
+  		// 	   Color_ToString(ColorAtSlot(2)),
+  		// 	   Color_ToString(ColorAtSlot(3)),
+  		// 	   Color_ToString(ColorAtSlot(4)));
+	  // {
+  	// 	uint32_t now = HAL_GetTick();
+  	// 	if (now - s_last_print >= 100U) {
+  	// 		//Grayscale_Update(&g_gray_trace.sensor);   /* 必须触发串行读取 */
+  	// 		uint8_t d = Grayscale_Get_Digital(&g_gray_trace.sensor);
+  	// 		s_last_print = now;
+  	// 		printf("GRAY d=0x%02X [%c%c%c%c%c%c%c%c] \r\n",
+			// 		 d,
+			// 		 (d & 0x80) ? '0' : '_', (d & 0x40) ? '0' : '_',
+			// 		 (d & 0x20) ? '0' : '_', (d & 0x10) ? '0' : '_',
+			// 		 (d & 0x08) ? '0' : '_', (d & 0x04) ? '0' : '_',
+			// 		 (d & 0x02) ? '0' : '_', (d & 0x01) ? '0' : '_');
+	  // }
+	  // }
 
-    osDelay(100);
+    osDelay(500);
   }
   /* USER CODE END QR_TASK */
 }
