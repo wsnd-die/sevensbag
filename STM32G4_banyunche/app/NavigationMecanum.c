@@ -33,7 +33,7 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 
       {   1.11f,    -0.55f, 0.0f * MECANUM_DEG_TO_RAD },  /* 物料二维码点 */
 
-      {  0.25f,    0.25f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
+      {  0.25f,    0.30f, -90.0f * MECANUM_DEG_TO_RAD },  /* 物料寻线点 */
 
       {    0.80f,     0.30f,   0.0f  * MECANUM_DEG_TO_RAD },  /*a点*/
     {    0.15f,     0.23f,   0.0f  * MECANUM_DEG_TO_RAD },/*b点*/

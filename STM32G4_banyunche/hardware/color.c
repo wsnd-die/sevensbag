@@ -228,7 +228,7 @@ Color_TypeDef Color_Judge(const Color_DataTypeDef *data)
     if (r >= 150 && g >= 150 && b >= 150) return COLOR_WHITE;
     if (b >= r && b >= g && b >= 90)      return COLOR_BLUE;
     if (r >= g && r >= b && r >= 90)      return COLOR_RED;
-    if (g >= r && g >= b && r >= 60)      return COLOR_BLACK;
+    if (g >= r && g >= b && r >= 40 && g<=150 && b<=150)      return COLOR_BLACK;
     return COLOR_GREEN;
 }
 

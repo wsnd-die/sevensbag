@@ -782,6 +782,7 @@ void BsRt_task(void *argument)
 				g_color_collect_done = 0;
 				Color_TypeDef c;
 				uint8_t slot;
+				uint8_t slot5_in = 0;   /* 槽4稳定延时期间第5个物料是否已进入(边沿已捕获) */
 				for (uint8_t i = 0; i < COLOR_COUNT; i++) s_seen[i] = 0;
 				for (uint8_t i = 0; i < 5; i++) s_slot_color[i] = COLOR_UNKNOWN;
 				g_color_req = 0;
@@ -789,36 +790,61 @@ void BsRt_task(void *argument)
 				/* 收集流程: 物料进入当前槽 → 转盘转一格让该槽到传感器下 → 读色记录为该槽位
 				 * 物理(本车): 槽1初始在入料口、传感器对着槽5;
 					 *            故槽N到传感器下需 TurntableTo(N+1) (顺时针转一格) */
-				for (slot = 1; slot <= 4; slot++) {
-					/* 第1个物料进入槽1(后续物料进入槽slot, 转盘已在对应位置) */
-					while (!IR_ObjectEntered()) osDelay(5);
+				for (slot = 1; slot <= 5; slot++) {
+					if (slot <=4)
+					{
+						/* 第1个物料进入槽1(后续物料进入槽slot, 转盘已在对应位置) */
+						while (!IR_ObjectEntered()) osDelay(5);
 					osDelay(150);               /* 等物料落稳 */
 
 					/* 转盘转一格 → 槽slot到传感器下 (本车槽N到传感器下=位置N+1) */
 					while (g_color_req) osDelay(5);
 					BlockBasic_TurntableTo(slot + 1);
-					osDelay(500);
+
+					/* 槽4之后接第5个物料: 稳定延时期间同步轮询其进入边沿,
+						 * 否则第5个物料在延时窗口内进入时边沿会丢, 要等第6个物料才触发 */
+					if (slot == 4) {
+						for (uint8_t t = 0; t < 100; t++) {
+							if (IR_ObjectEntered()) slot5_in = 1;
+							osDelay(5);
+						}
+					} else {
+						osDelay(500);
+					}
 
 					/* 请求 Color_task 读取当前槽颜色。 */
 					g_color_req_slot = slot - 1;
 					g_color_req = 1;
+					}
+
+					if (slot == 5)
+					{
+						/* 第5个物料: 不读色, 用排除法推算并记录槽位。
+						 * 已遮光(物料在槽5)或边沿已捕获(slot5_in)则直接卡位, 否则等进入边沿。 */
+						if (!slot5_in && !IR_ObjectPresent()) {
+							while (!IR_ObjectEntered()) osDelay(5);
+						}
+						slot5_in = 0;
+					osDelay(150);                             /* 等物料落稳 */
+					while (g_color_req) osDelay(5);           /* 等槽4读色完成再动转盘 */
+					/* 槽5不转到颜色识别模块下读色: 直接转36°卡位(槽1不再正对入口, 物料行驶中不会滑出),
+					 * 槽5颜色由排除法推算并记录槽位 */
+					//osDelay(150);
+					BlockBasic_TurntableRotate(36.0f);
+					}
+
 #if TURNTABLE_COLOR_TEST_ONLY
 					while (g_color_req) osDelay(5);
 #endif
 				}
 
-				while (!IR_ObjectEntered()) osDelay(5);
-				osDelay(120);
-				while (g_color_req) osDelay(5);
-				BlockBasic_TurntableTo(1);   /* 槽5转到颜色传感器下(位置1), 读第5个槽颜色 */
-				osDelay(500);
-				g_color_req_slot = 4;
-				g_color_req = 1;
-				while (g_color_req) osDelay(5);
-
-				/* 读色完成, 转盘再转45°卡位: 槽1不再正对入口, 物料行驶中不会滑出 */
-				BlockBasic_TurntableRotate(36.0f);
-				osDelay(500);
+				// while (!IR_ObjectEntered()) osDelay(5);   /* 第5个物料进入槽5 */
+				// //osDelay(150);                             /* 等物料落稳 */
+				// //while (g_color_req) osDelay(5);           /* 等槽4读色完成再动转盘 */
+				// /* 槽5不转到颜色识别模块下读色: 直接转36°卡位(槽1不再正对入口, 物料行驶中不会滑出),
+				//  * 槽5颜色由排除法推算并记录槽位 */
+				// osDelay(150);
+				// BlockBasic_TurntableRotate(36.0f);
 
 				uint8_t unknown_count = 0;
 				uint8_t unknown_slot = 0;
