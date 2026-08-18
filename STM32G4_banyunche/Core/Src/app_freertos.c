@@ -247,19 +247,51 @@ void NLF_TASK(void *argument)
 #define FIND_CIRCLE_ONLY_TASK 0
 #if FIND_CIRCLE_ONLY_TASK
 
-	K230_RequestMode(K230_MODE_LINE);
-	K230_ApplyMode();
-	Trace_LineFollow();
-	osDelay(150);
-	if (g_color_collect_done==1)
-	{
-		task_send(Event_Navigation);
-		Mecanum_StopAll();
-		printf("[TASK] LinFolL done\r\n");
-		K230_RequestMode(K230_MODE_CIRCLE);
-		K230_ApplyMode();
-	}
-	osDelay(10);
+
+	// for (int i=1;i<=5;i++)
+	// {
+	// 	BlockBasic_TurntableTo(i);
+	// 	printf("TurntableTo %d",i);
+	// 	osDelay(1000);
+	// }
+	osDelay(3000);
+	BlockBasic_TurntableTo(3);
+	osDelay(1000);
+	BlockBasic_TurntableTo(2);
+	osDelay(1000);
+	BlockBasic_TurntableTo(1);
+	osDelay(1000);
+	BlockBasic_TurntableTo(4);
+	osDelay(1000);
+	BlockBasic_TurntableTo(5);
+	osDelay(1000);
+	 BlockBasic_TurntableTo(1);
+	// osDelay(1000);
+	// BlockBasic_TurntableTo(2);
+	// osDelay(1000);
+	// BlockBasic_TurntableTo(3);
+	// osDelay(1000);
+	// BlockBasic_TurntableTo(4);
+	// osDelay(1000);
+	// BlockBasic_TurntableTo(5);
+	// osDelay(1000);
+	// BlockBasic_TurntableTo(1);
+	// osDelay(1000);
+	// BlockBasic_TurntableTo(2);
+
+	// K230_RequestMode(K230_MODE_LINE);
+	// K230_ApplyMode();
+	// Trace_LineFollow();
+	// osDelay(150);
+	// if (g_color_collect_done==1)
+	// {
+	// 	task_send(Event_Navigation);
+	// 	Mecanum_StopAll();
+	// 	printf("[TASK] LinFolL done\r\n");
+	// 	K230_RequestMode(K230_MODE_CIRCLE);
+	// 	K230_ApplyMode();
+	// }
+	// osDelay(10);
 
 	// Color_Init();
 	// Color_SetLedLevel(5);
@@ -491,6 +523,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						osDelay(500);   /* 等舵机转到位 */
   						/* HEIGHT_CHANGE: podium champion place arm height via Place(height=3). */
   						Place('O', 5);
+  						osDelay(150);
   						BlockBasic_DualArmSetPos(4);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
@@ -733,13 +766,16 @@ void BsRt_task(void *argument)
 		    (!TURNTABLE_COLOR_TEST_ONLY &&
 		     (g_last_cmd.Mode==Event_LinFolL || g_last_cmd.Mode==Event_LinFolR)))
 		{
-
-			Color_SetLedLevel(5);
-			Color_Init();
-			osDelay(50);
 #if USE_OPENMV_COLOR == 1  /* ---- GY-33 ---- */
-			/* 收集: 红外对射检测物体进入 → 识别记录当前槽位颜色 → 转下一槽位 */
-			if (K==0) {
+			/* 收集: 红外对射检测物体进入 → 识别记录当前槽位颜色 → 转下一槽位
+			 * 按当前模式区分物料/奖杯, 加 done 标志防重入(否则收集完K翻转后,
+			 * Mode还没切换的空档会重入错误分支, 物料读色会和奖杯放置并发跑, 干扰转盘):
+			 *   只有 Event_LinFolL(物料)才启用颜色识别读色; Event_LinFolR(奖杯)不碰颜色模块。 */
+			if (K==0 && !g_color_collect_done && g_last_cmd.Mode==Event_LinFolL) {
+				/* 只有收集物料才需要颜色识别: 初始化 + 开补光 LED */
+				Color_SetLedLevel(5);
+				Color_Init();
+				osDelay(50);
 				// BlockBasic_TurntableTo(1);   /* 收集前转盘回槽1: 槽1对准入料口, 传感器正对槽5 */
 				// osDelay(200);
 
@@ -815,7 +851,9 @@ void BsRt_task(void *argument)
 				g_color_collect_done = 1;
 				test_done = 1;
 			}
-			else {
+			else if (!g_trophy_done && g_last_cmd.Mode==Event_LinFolR) {
+				/* 奖杯收集不需要颜色识别: 关掉 GY-33 补光 LED, 避免干扰红外对射计数/转盘 */
+				Color_SetLedLevel(0);
 				for (uint8_t slot = 1; slot <= 3; slot++) {
 					/* 等红外对射检测到物体进入 */
 					while (!IR_ObjectEntered()) {
