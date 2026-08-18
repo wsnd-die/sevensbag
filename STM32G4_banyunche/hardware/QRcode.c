@@ -39,8 +39,10 @@ HAL_StatusTypeDef QRcode_Send(const uint8_t *data, uint16_t len, uint32_t timeou
 
 uint8_t Qr_Get(void) {
 
+    QR_Flag=0;
     while (Read_QrFlag()==0) {
         osDelay(50);
+
     }
     return QR_deel();
 }
@@ -62,7 +64,7 @@ uint8_t  QR_deel(void)
     }
     if (k==1)
     {
-        Jang_Num=result;
+        Jang_Num=result-1;
     }
     else
     {
@@ -75,6 +77,12 @@ uint8_t  QR_deel(void)
     result = 0;
     return ret;
 }
+
+void QR_FlagSet0()
+{
+    QR_Flag=0;
+}
+
 uint8_t Read_QrFlag()
 {
     uint8_t i;

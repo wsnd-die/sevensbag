@@ -36,7 +36,7 @@ typedef struct {
     uint8_t Jang[3];
 
 }Qr_Jantitl;
-
+void QR_FlagSet0(void);
 void QRcode_Start(void);
 void QRcode_Clear(void);
 void QRcode_UART_ErrorCallback(UART_HandleTypeDef *huart);   /* USART1 错误后重挂接收(供 HAL_UART_ErrorCallback 调用) */

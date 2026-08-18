@@ -23,7 +23,8 @@ extern "C" {
 extern uint8_t rx3;
 
 /* ---- K230 模式常量 ---- */
-#define K230_MODE_LINE      'f'   /* 循迹模式 */
+#define K230_MODE_LINEL      'l'   /* 循迹模式 */
+#define K230_MODE_LINER      'r'
 #define K230_MODE_CIRCLE    'c'   /* 绕圈模式 */
 #define K230_MODE_STOP      'x'   /* 停止（匹配 K230 Python） */
 
@@ -37,6 +38,7 @@ void K230_SetMode(uint8_t mode);
 bool K230_GetLineAngle(float *angle);
 bool K230_GetCircleDir(char *dir);
 bool K230_GetPosition(float *x, float *y);
+bool K230_GetCirclepos(float *cx,float *cy);
 void K230_GetDiag(uint32_t *rx_bytes, uint32_t *rx_ok,
                   uint32_t *rx_err, uint32_t *rx_unk);
 

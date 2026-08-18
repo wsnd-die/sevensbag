@@ -41,13 +41,13 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
     {   -0.1f,    -0.15f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
 
     {    0.405f,     1.03f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
-    {    0.06f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
-    {    0.06f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
+    {    0.06f,    0.24f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
+    {    0.06f,    0.24f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
 
-    {-0.513f,-0.0,0},//回家点
+    {-0.483f,-0.0,0},//回家点
     {0,-0.244f,0},
-    {-1.064f,0,0},
+    {-0.988f,-0.2,0},
 
 };
 
@@ -67,16 +67,16 @@ uint8_t  g_waypoint_count = 13;
  * ============================================================ */
 
 /* ---- 目标点设计坐标 (世界系, m) ---- */
-#define CALIB_A_X        (-0.904f)     /* a点设计值 */
+#define CALIB_A_X        (-0.864f)     /* a点设计值 */
 #define CALIB_A_Y        (-0.466f)
-#define CALIB_YAJUN_X    ( 0.405f)     /* 亚军点设计值 */
-#define CALIB_YAJUN_Y    ( 0.98f)
+#define CALIB_YAJUN_X    ( 0.38f)     /* 亚军点设计值 */
+#define CALIB_YAJUN_Y    ( 1.115f)
 
 /* ---- 循迹终点设计坐标 (世界系, m) ---- */
 #define TRACE_END_A_X    ( 2.436f/2)       /* 物料循迹(LinFolL)终点设计值 */
 #define TRACE_END_A_Y    ( 0.447f/2)
-#define TRACE_END_YAJUN_X (0.989f/2)      /* 奖杯循迹(LinFolR)终点设计值 */
-#define TRACE_END_YAJUN_Y (0.146f/2)
+#define TRACE_END_YAJUN_X (1.126f/2)      /* 奖杯循迹(LinFolR)终点设计值 */
+#define TRACE_END_YAJUN_Y (0.457f/2)
 
 /* ---- 固定偏移 = 目标点设计值 - 循迹终点设计值 ---- */
 #define CALIB_A_OFF_X    (CALIB_A_X - TRACE_END_A_X)
@@ -223,7 +223,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
         while (drift >  180.0f) drift -= 360.0f;
         while (drift < -180.0f) drift += 360.0f;
 
-        if (fabsf(drift) > 2.0f) {            /* 真实漂移超阈值才修, 避免空转 */
+        if (fabsf(drift) > 3.5f) {            /* 真实漂移超阈值才修, 避免空转 */
             float err;
 
             g_angle_target_yaw = target_deg;
@@ -233,7 +233,7 @@ bool Nav_MoveBody(float forward_m, float left_m, float rotate_rad)
                 err = target_deg - siyuan_yaw * RAD_TO_DEG;
                 while (err >  180.0f) err -= 360.0f;
                 while (err < -180.0f) err += 360.0f;
-                if (fabsf(err) <= 2.0f) break;   /* 与第一段一致; FC_TASK 容差已收紧到1°, 实际能修到更小 */
+                if (fabsf(err) <= 3.0f) break;   /* 与第一段一致; FC_TASK 容差已收紧到1°, 实际能修到更小 */
                 osDelay(10);
             }
 
@@ -357,13 +357,13 @@ bool Nav_TrackPose(float tx, float ty, float tyaw)
 bool Nav_FeDuanPoint() {
     static uint8_t PontIntex=0;
 
-    if (g_nav_speed_mode) {
-        g_nav_speed_mode = 0;   /* 用掉即清: 循迹后速度模式纠正到点 */
-        Nav_TrackPose(g_waypoints[PontIntex].x,
-                      g_waypoints[PontIntex].y,
-                      g_waypoints[PontIntex].yaw);
-        PontIntex++;
-    } else {
+
+
+    /* 临界区 */
+
+
+    /* 纯位置模式: 固定用 Mecanum_MoveWithEncoder, 不再走速度模式(Nav_TrackPose) */
+    {
         uint8_t idx = PontIntex++;   /* 先取再推进, 避免同一表达式内多次读写(UB) */
         if (!Nav_MoveBody(g_waypoints[idx].x,
                           g_waypoints[idx].y,
@@ -383,6 +383,7 @@ bool Nav_FeDuanPoint() {
                           g_waypoints[PontIntex].yaw);
         PontIntex++;
     }
+
     return true;
 }
 

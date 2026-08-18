@@ -240,12 +240,16 @@ void NLF_TASK(void *argument)
 	uint8_t P_Nava=0;
 	uint8_t rank[3]={second_place,champion,third_place};
 
-	K230_RequestMode(K230_MODE_LINE);
+	K230_RequestMode(K230_MODE_LINEL);
 	K230_ApplyMode();
 	task_send(Event_Navigation);
 	// BlockBasic_LiftTo(UP,44);
 	// Nav_MoveForward(0.5);
 	BlockBasic_TurntableTo(1);
+	// Emm_V5_Vel_Control(1, 0, 100, 250, 0);
+	// Emm_V5_Vel_Control(2, 0, 100, 250, 0);
+	// Emm_V5_Vel_Control(3, 0, 100, 250, 0);
+	// Emm_V5_Vel_Control(4, 0, 100, 250, 0);
 	osDelay(500);
   /* Infinite loop */
   for(;;)
@@ -292,7 +296,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 	}
 #else
 	Trace_SetSide(0);          /* 左循迹: 角度环用 ANGLE_KP/KI/KD */
-	K230_RequestMode(K230_MODE_LINE);
+	K230_RequestMode(K230_MODE_LINEL);
 	K230_ApplyMode();
   		Trace_LineFollow();
 #endif
@@ -316,7 +320,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   	{
   		g_angle_ctrl_enable = 0;   /* 循迹不用角度闭环, 关闭 */
   		Trace_SetSide(1);          /* 右循迹: 角度环用 ANGLE_KP_R/KI_R/KD_R */
-  		K230_RequestMode(K230_MODE_LINE);
+  		K230_RequestMode(K230_MODE_LINER);
   		K230_ApplyMode();
   		Trace_LineFollow();
         if (g_trophy_done==1)
@@ -341,11 +345,17 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 		K230_ApplyMode();
 				g_circle_speed = 1.0f;  /* 左侧快 */
 
+		if (g_circle_dir!='O')
+		{
 			Circle_Follow();
+		}
 			if (g_circle_dir=='O')
 			{
 				TT_RotateByQR();
-				Place('O',0);
+				float x = 0.0f, y = 0.0f;
+				K230_GetCirclepos(&x, &y);   /* 圆 xy → 放置补量 */
+				Place('O', x, y, 0);
+				g_circle_dir=' ';
 				printf("[TASK] FindCircle placed");
 				flag_finish = false;
 				if (TT_IsDone()) {
@@ -372,13 +382,19 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						// osDelay(500);
   						flag_finish=true;
   					}
-  					Circle_Follow();
+  					if (g_circle_dir!='O')
+  					{
+  						Circle_Follow();
+  					}
   					if (g_circle_dir=='O')
   					{
-  						Place('O',31);
+  						float cx = 0.0f, cy = 0.0f;
+						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+						Place('O', cx, cy, 33);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
+  						g_circle_dir=' ';
   						task_send(Event_Navigation);
   						break;
   					}
@@ -394,15 +410,21 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						// osDelay(500);
   						flag_finish=true;
   					}
-  					Circle_Follow();
+  					if (g_circle_dir!='O')
+  					{
+  						Circle_Follow();
+  					}
   					if (g_circle_dir=='O')
   					{
-  						Place('O',28);
+  						float cx = 0.0f, cy = 0.0f;
+						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+						Place('O', cx, cy, 28);
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
   						BlockBasic_LiftTo(UP,48);
   						task_send(Event_Navigation);
+  						g_circle_dir=' ';
   						osDelay(800);
   						break;
   					}
@@ -413,21 +435,25 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   				{
   					if (flag_finish==false)
   					{
-  						BlockBasic_LiftTo(DOWN,16);
+  						BlockBasic_LiftTo(DOWN,14);
   						BlockBasic_TurntableTo(Slop_dirjang(third_place));
   						//加入奖杯转盘放置逻辑（已加）
   						flag_finish=true;
   					}
-  					Circle_Follow();
+  					if (g_circle_dir!='O')
+  					{
+  						Circle_Follow();
+  					}
   					if (g_circle_dir=='O')
   					{
   						printf("[TASK] PlaceDown third done\r\n");
-  						Place('O',21);
+  						float cx = 0.0f, cy = 0.0f;
+						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+						Place('O', cx, cy, 21);
   						i++;
   						flag_finish=false;
+  						g_circle_dir=' ';
   						task_send(Event_Navigation);
-  						K230_RequestMode(K230_MODE_LINE);
-  						K230_ApplyMode();
   						break;
   					}
   				}break;
@@ -827,15 +853,15 @@ void QR_TASK(void *argument)
   		/* 每次都 SetQR: 否则 cnt 保持 0, 找圆时 TT_RotateByQR 直接 return false */
   		QR_result=Qr_Get();
   		printf("[QR] got %d\r\n", QR_result);   /* 调试: 确认扫码是否真的收到 */
-  		SetQR(QR_result);
+  		SetQR(QR_result-1);
   		task_send(Event_Navigation);
   	}
-  		printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
-  			   Color_ToString(ColorAtSlot(0)),
-  			   Color_ToString(ColorAtSlot(1)),
-  			   Color_ToString(ColorAtSlot(2)),
-  			   Color_ToString(ColorAtSlot(3)),
-  			   Color_ToString(ColorAtSlot(4)));
+  		// printf("[COLLECT] slot1=%s slot2=%s slot3=%s slot4=%s slot5=%s\r\n",
+  		// 	   Color_ToString(ColorAtSlot(0)),
+  		// 	   Color_ToString(ColorAtSlot(1)),
+  		// 	   Color_ToString(ColorAtSlot(2)),
+  		// 	   Color_ToString(ColorAtSlot(3)),
+  		// 	   Color_ToString(ColorAtSlot(4)));
 	  // {
   	// 	uint32_t now = HAL_GetTick();
   	// 	if (now - s_last_print >= 100U) {

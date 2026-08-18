@@ -33,9 +33,11 @@ static struct {
     float    angle;            /* 循迹角度 (°) */
     char     dir;              /* 找圆方向 */
     float    pos_x, pos_y;     /* 位置偏移 (像素) */
+    float    circle_x, circle_y;
     uint8_t  angle_fresh;
     uint8_t  dir_fresh;
     uint8_t  pos_fresh;
+    uint8_t circle_flesh;
 
     /* 诊断 */
     uint32_t rx_bytes;
@@ -69,7 +71,7 @@ void K230_RxProcessByte(void)
         break;
 
     case K230_RX_WAIT_BX:
-        if (b == 0xB3 || b == 0xB4) {
+        if (b == 0xB3 || b == 0xB4 || b==0xB5) {
             k230_ctx.rx_pkt_type = b;
             k230_ctx.rx_buf[k230_ctx.rx_idx++] = b;
             k230_ctx.rx_state = K230_RX_COLLECT;
@@ -105,7 +107,18 @@ void K230_RxProcessByte(void)
                 k230_ctx.dir = (char)k230_ctx.rx_buf[2];
                 k230_ctx.dir_fresh = 1;
                 k230_ctx.rx_ok++;
-            } else {
+            }
+            else if (k230_ctx.rx_pkt_type == 0xB5 && k230_ctx.rx_idx >= 7)
+            {
+                int16_t raw=(int16_t)((k230_ctx.rx_buf[2] << 8) | k230_ctx.rx_buf[3]);
+                int16_t rx = (int16_t)((k230_ctx.rx_buf[4] << 8) | k230_ctx.rx_buf[5]);
+                k230_ctx.circle_x=raw;
+                k230_ctx.circle_y=rx;
+                k230_ctx.circle_flesh=1;
+                k230_ctx.rx_ok++;
+            }
+
+            else {
                 k230_ctx.rx_err++;
             }
             k230_ctx.rx_state = K230_RX_WAIT_A3;
@@ -186,6 +199,14 @@ bool K230_GetPosition(float *x, float *y)
     if (x) *x = k230_ctx.pos_x;
     if (y) *y = k230_ctx.pos_y;
     k230_ctx.pos_fresh = 0;
+    return true;
+}
+bool K230_GetCirclepos(float *cx,float *cy)
+{
+    /* 返回最近一次收到的圆 xy, 不强求新鲜帧:
+     * K230 只在 'O' 时偶尔发 0xB5, 若卡新鲜度会因时序丢失补量 → "有的点偏移有的不偏移" */
+    if (cx) *cx = k230_ctx.circle_x;
+    if (cy) *cy = k230_ctx.circle_y;
     return true;
 }
 
