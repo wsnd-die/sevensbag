@@ -120,7 +120,7 @@ void BlockBasic_TurntableRotate(float delta_deg);
  *         应先调用本函数同步软件状态。
  */
     void Servo_Angle(float angle_deg);
-void Place(char dir, uint16_t height);   /* 双机械臂: height=预设位置号(1~3), 放物用 2(最低点) */
+void Place(char dir, float x, float y, uint16_t height);   /* 双机械臂: height=预设位置号(1~3), 放物用 2(最低点); x/y=K230圆心补量 */
     /*
      *
      *

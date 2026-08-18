@@ -101,6 +101,9 @@ bool Nav_MoveLeft(float distance_m);
 /** @brief 原地旋转 (rad)，正=CCW */
 bool Nav_Rotate(float angle_rad);
 
+/** @brief 用陀螺仪(HWT101)原地旋转到目标世界航向 (deg), 阻塞到到位 */
+void Nav_TurnToDeg(float target_deg);
+
 
 #ifdef __cplusplus
 }

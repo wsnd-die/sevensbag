@@ -277,25 +277,34 @@ void Servo_SetAngle(float Angle)
  * @note   该函数会执行前进、升降、后退动作，并在每个动作后延时等待完成。
  *         与丝杆型不同，该函数第二个参数为正表示后退，负表示前进。
  */
-void Place(char dir,uint16_t height)
+/* K230 圆心像素 → 车体位移 (m/像素)。比例/方向需实测调, 反了取负 */
+#define PLACE_CIRCLE_SCALE_M  0.001f
+
+void Place(char dir,float x,float y,uint16_t height)
 {
     MecanumMove_t move;
     if (dir == 'O')
     {
-
-        /* 前进 0.05 m（车体坐标：+X 为前进） */
-        if (Mecanum_CalculateMove(&Place_config, 0.0f, -0.072f, 0.0f, &move))
+        /* 圆心 xy → 放置补量。
+         * 车体(双机械臂型): Mecanum_CalculateMove(dx, dy, w), dy=前后轴(负=前进), dx=左右轴。
+         * K230 x = 圆相对图像中心(右为正); 圆偏右 → 车右靠 → dx 取 x*scale。
+         * K230 y = 圆相对图像中心(下为正); 圆偏下 → 少前进 → dy 加 y*scale。
+         * 比例/方向需实测调, 反了取负。 */
+        float lateral = -x * PLACE_CIRCLE_SCALE_M*3/4;
+        float fwd_dy  = (-0.072f + y * PLACE_CIRCLE_SCALE_M)/2;
+        printf("[PLACE] cx=%.0f cy=%.0f lateral=%.3f fwd_dy=%.3f\r\n",
+            (double)x, (double)y, (double)lateral, (double)fwd_dy);
+        if (Mecanum_CalculateMove(&Place_config, fwd_dy, lateral, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
             osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
         }
         osDelay(100);
-        //BlockBasic_LiftTo(DOWN,height);
         /* HEIGHT_CHANGE: Place() applies the requested arm preset height. */
         BlockBasic_DualArmSetPos(height);
         osDelay(800);
 
-        /* 后退 0.05 m（车体坐标：-X 为后退） */
+        /* 后退 0.2 m */
         if (Mecanum_CalculateMove(&Place_config, 0.0f, 0.2f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);

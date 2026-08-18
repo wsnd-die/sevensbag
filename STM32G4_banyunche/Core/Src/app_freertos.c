@@ -482,7 +482,9 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 					{
 						TT_RotateByQR();
 						osDelay(100);
-						Place('O', 8);
+						float cx = 0.0f, cy = 0.0f;
+						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+						Place('O', cx, cy, 8);
 						printf("[TASK] FindCircle placed");
 						flag_finish = false;
 						if (TT_IsDone()) {//全部转完
@@ -508,6 +510,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 					{
 						/* HEIGHT_CHANGE: podium champion pre-place arm height. */
 						BlockBasic_DualArmSetPos(4);
+						Nav_TurnToDeg(0.0f);   /* 走到点位后、找圆前: 陀螺仪矫正车头到初始方向(0°) */
+						Self_Dir.yaw = 0.0f;
 
   						// osDelay(500);
   						flag_finish=true;
@@ -522,7 +526,9 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						}
   						osDelay(500);   /* 等舵机转到位 */
   						/* HEIGHT_CHANGE: podium champion place arm height via Place(height=3). */
-  						Place('O', 5);
+  						float cx = 0.0f, cy = 0.0f;
+  						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+  						Place('O', cx, cy, 5);
   						osDelay(150);
   						BlockBasic_DualArmSetPos(4);
   						printf("[TASK] PlaceDown champion done\r\n");
@@ -544,6 +550,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 					{
 						/* HEIGHT_CHANGE: podium second-place pre-place arm height. */
 						BlockBasic_DualArmSetPos(7);
+						Nav_TurnToDeg(0.0f);   /* 走到点位后、找圆前: 陀螺仪矫正车头到初始方向(0°) */
+						Self_Dir.yaw = 0.0f;
   						// osDelay(500);
   						flag_finish=true;
   					}
@@ -558,7 +566,9 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						}
   						osDelay(500);   /* 等舵机转到位 */
   						/* HEIGHT_CHANGE: podium second-place place arm height via Place(height=5). */
-  						Place('O', 3);
+  						float cx = 0.0f, cy = 0.0f;
+  						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+  						Place('O', cx, cy, 3);
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
@@ -579,6 +589,8 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					{
 						/* HEIGHT_CHANGE: podium third-place pre-place arm height. */
 						BlockBasic_DualArmSetPos(6);
+						Nav_TurnToDeg(0.0f);   /* 走到点位后、找圆前: 陀螺仪矫正车头到初始方向(0°) */
+						Self_Dir.yaw = 0.0f;
   						//加入奖杯转盘放置逻辑（已加）
   						flag_finish=true;
   					}
@@ -592,7 +604,9 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   						}
   						osDelay(500);   /* 等舵机转到位 */
   						/* HEIGHT_CHANGE: podium third-place place arm height via Place(height=2). */
-  						Place('O', 2);
+  						float cx = 0.0f, cy = 0.0f;
+  						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
+  						Place('O', cx, cy, 2);
   						printf("[TASK] PlaceDown third done\r\n");
   						i++;
   						flag_finish=false;

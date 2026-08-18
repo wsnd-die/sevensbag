@@ -130,7 +130,7 @@ bool Nav_GoToWorld(float target_x, float target_y, float target_yaw)
  *        Angle_UpdateTarget + AngleLoop_Update/Angle_Update + Mecanum_Calc(0,cmd_w)
  * @param target_deg 目标世界航向 (deg)
  */
-static void Nav_TurnToDeg(float target_deg)
+void Nav_TurnToDeg(float target_deg)
 {
     AngleCtrl ac;
     Angle_Init(&ac);
