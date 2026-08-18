@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-
+#include "banyuntask.h"
 /* ======================== 控制器选择 ======================== */
 #define TRACE_USE_STANLEY   0   /* 0=PID, 1=Stanley */
 
@@ -47,7 +47,7 @@ extern "C" {
 
 #define SOFT_START_MS   1000U
 /* ======================== 函数声明 ======================== */
-void Trace_LineFollow(void);          /* 按 TRACE_USE_STANLEY 选择调用哪个 */
+void Trace_LineFollow(SystemMode_t Event);          /* 按 TRACE_USE_STANLEY 选择调用哪个 */
 void Trace_LineFollow_PID(void);      /* PID 控制器 */
 void Trace_LineFollow_Stanley(void);  /* Stanley 控制器 */
 void Trace_SetSide(uint8_t side);     /* 设置循迹方向 0=左, 1=右 (重配角度环 PID) */

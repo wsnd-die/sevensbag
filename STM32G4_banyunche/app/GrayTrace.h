@@ -45,7 +45,7 @@ typedef struct {
 void GrayTrace_Init(GrayTrace_t *gt);            /* 初始化 GPIO */
 void GrayTrace_Update(GrayTrace_t *gt);          /* 读灰度 → 查表 → 比例 → 麦轮输出 */
 float GrayTrace_Calc_Error(GrayTrace_t *gt);     /* 只算 Track_Err 偏差 (供调试) */
-
+uint8_t Grayscale_Serial_Read(void);
 /* ======================== 串口调参 (USART1, '$' 前缀, 与 trace_tune 的 '#' 不冲突) ======================== */
 #define GRAY_TUNE_CMD_MAX 24U
 bool GrayTrace_Tune_OnByte(uint8_t b);   /* USART1 RX 回调分流: $egain / $ffgain / $get */

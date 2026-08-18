@@ -298,7 +298,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 	Trace_SetSide(0);          /* 左循迹: 角度环用 ANGLE_KP/KI/KD */
 	K230_RequestMode(K230_MODE_LINEL);
 	K230_ApplyMode();
-  		Trace_LineFollow();
+  		Trace_LineFollow(Event_LinFolL);
 #endif
   		if (g_color_collect_done==1)
   		{
@@ -322,7 +322,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
   		Trace_SetSide(1);          /* 右循迹: 角度环用 ANGLE_KP_R/KI_R/KD_R */
   		K230_RequestMode(K230_MODE_LINER);
   		K230_ApplyMode();
-  		Trace_LineFollow();
+  		Trace_LineFollow(K230_MODE_LINER);
         if (g_trophy_done==1)
         {
 	        task_send(Event_Navigation);

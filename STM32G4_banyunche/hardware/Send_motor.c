@@ -14,10 +14,6 @@ extern MecanumResult motor_data;
 
 void Send_commandmotor(MecanumResult *data)
 {
-
-	/* 临界区 */
-
-
 	Emm_V5_Vel_Control(1, !data->fr_dir, data->fr_speed, 250, 0);  /* 1号=前右 */
 	osDelay(1);
 	Emm_V5_Vel_Control(2, data->rl_dir, data->rl_speed, 250, 0);   /* 2号=后左 */

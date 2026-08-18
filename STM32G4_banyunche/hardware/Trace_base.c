@@ -197,12 +197,76 @@ void Trace_LineFollow_Stanley(void)
 /* ================================================================
  * 入口 — 按 TRACE_USE_STANLEY 选择控制器
  * ================================================================ */
-void Trace_LineFollow(void)
+
+#define IS_LineFind_USED    1
+
+#define Slow_Findw     0.2
+#define Slow_Findv     0.2f
+
+uint8_t  IS_offLine() {
+   uint8_t i;
+    i=Grayscale_Serial_Read();
+    return i==0x00;
+}
+
+void Slow_LineFind(SystemMode_t Event) {
+
+    MecanumResult motor;
+
+    switch (Event) {
+        case Event_LinFolL:
+            /* ---- 3. 全向移动解算 (vx, vy, w=0) ---- */
+            motor = Mecanum_Calc_Full(Slow_Findv,0 , Slow_Findw);
+            /* ---- 4. 发送电机指令 ---- */
+            Send_commandmotor(&motor);
+            break;
+        case Event_LinFolR:
+            /* ---- 3. 全向移动解算 (vx, vy, w=0) ---- */
+            motor = Mecanum_Calc_Full(Slow_Findv, 0, -Slow_Findw);
+            /* ---- 4. 发送电机指令 ---- */
+            Send_commandmotor(&motor);
+            break;
+         default:
+            break;
+
+
+    }
+
+}
+
+
+
+void Trace_LineFollow(SystemMode_t Event)
 {
-    Trace_Tune_Service();   /* 每循迹周期: 同步调参增益 + 处理串口命令 */
+       /* 每循迹周期: 同步调参增益 + 处理串口命令 */
+#if IS_LineFind_USED
+    if (IS_offLine()) {
+        Slow_LineFind(Event);
+    }
+    else {
+        Trace_Tune_Service();
+
+#if TRACE_USE_STANLEY
+        Trace_LineFollow_Stanley();
+#else
+        Trace_LineFollow_PID();
+#endif
+
+    }
+
+
+#else
+
+    Trace_Tune_Service();
+
 #if TRACE_USE_STANLEY
     Trace_LineFollow_Stanley();
 #else
     Trace_LineFollow_PID();
 #endif
+
+
+#endif
+
+
 }

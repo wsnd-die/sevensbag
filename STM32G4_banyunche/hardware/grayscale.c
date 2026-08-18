@@ -54,7 +54,7 @@ void Grayscale_Init(Grayscale_Sensor_t *sensor)
  * @brief 串行读一次, 返回 8 位原始数据。
  * @note  i=0 是通道0 (最左), 存入 Bit7 (与 3519 项目 bit 顺序一致)。
  */
-static uint8_t Grayscale_Serial_Read(void)
+uint8_t Grayscale_Serial_Read(void)
 {
     uint8_t data = 0U;
     uint8_t i;
