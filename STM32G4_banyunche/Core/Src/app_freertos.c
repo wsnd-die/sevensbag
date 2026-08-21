@@ -550,12 +550,14 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (flag_finish==false)
   					{
 						/* HEIGHT_CHANGE: podium third-place pre-place arm height. */
-						BlockBasic_DualArmSetPos(6);
+						BlockBasic_DualArmSetPos(8);
 						Nav_TurnToDeg(0.0f);   /* 走到点位后、找圆前: 陀螺仪矫正车头到初始方向(0°) */
 						Self_Dir.yaw = 0.0f;
   						//加入奖杯转盘放置逻辑（已加）
   						flag_finish=true;
   					}
+  					//BlockBasic_DualArmSetPos(8);
+  					osDelay(100);
   					Circle_Follow();
   					if (g_circle_dir=='O')
   					{

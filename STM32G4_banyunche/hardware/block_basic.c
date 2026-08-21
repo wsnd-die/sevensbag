@@ -30,8 +30,8 @@ static const BlockDualArmPos block_dual_arm_pos_table[] = {
     {80.5f,  88.5f},   /* pos 6:季军 high */
     {90.0f,  95.0f},   /* pos 7: 亚军 high */
     {70.5f,  73.5f},   /* pos 8: 找圆 */
-{120.0f,  43.0f},   /* pos 9: 分段放 */
-{90.0f,  55.0f},   /* pos 10: 找圆 */
+{120.0f,  43.0f},   /* pos 9: 分段放1 */
+{90.0f,  55.0f},   /* pos 10: 分段放2 */
 
 
 };
