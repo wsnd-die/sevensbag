@@ -472,10 +472,10 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
 					{
 						/* HEIGHT_CHANGE: podium champion pre-place arm height. */
 						BlockBasic_DualArmSetPos(4);
-						Nav_TurnToDeg(0.0f);   /* 走到点位后、找圆前: 陀螺仪矫正车头到初始方向(0°) */
 						Self_Dir.yaw = 0.0f;
+						Nav_TurnToDeg(0.0f);   /* 走到点位后、找圆前: 陀螺仪矫正车头到初始方向(0°) */
 
-  						// osDelay(500);
+  						 osDelay(250);
   						flag_finish=true;
   					}
   					Circle_Follow();
@@ -729,7 +729,7 @@ void BsRt_task(void *argument)
 #endif
 	BlockBasic_TurntableTo(1);
 	osDelay(250);
-	BlockBasic_DualArmSetPosSmooth(8, 2.0f, 20);  /* 柔和降臂: 先中间(CH3)后前面(CH1), 每步2°隔20ms, 需实车整定 */
+	BlockBasic_DualArmSetPosSmooth(8, 2.0f, 20);  /* 柔和降臂: 先中间(CH3)后前面(CH1), 每步1°隔20ms, 需实车整定 */
 	osDelay(100);
 
 	// BlockBasic_TurntableTo(1);

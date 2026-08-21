@@ -359,7 +359,8 @@ void Place(char dir,float x,float y,uint16_t height)
         }
         osDelay(100);
         /* HEIGHT_CHANGE: Place() applies the requested arm preset height. */
-        BlockBasic_DualArmSetPos(height);
+        //BlockBasic_DualArmSetPos(height);
+        BlockBasic_DualArmSetPosSmooth(height, 1.0f, 20);
         osDelay(800);
 
         /* 后退 0.2 m */
