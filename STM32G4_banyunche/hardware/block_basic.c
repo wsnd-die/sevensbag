@@ -24,12 +24,16 @@ typedef struct {
 static const BlockDualArmPos block_dual_arm_pos_table[] = {
     {150.0f, 18.0f},   /* pos 1: init 靠手动掰，不需要使用 */
     {65.5f,  83.5f},   /* pos 2: lower */
-    {84.0f,  98.0f},   /* pos 3: 亚军 low*/
+    {84.0f,  96.0f},   /* pos 3: 亚军 low*/
     {98.0f,  102.0f},   /* pos 4: 冠军 high */
     {91.5f,  104.5f},   /* pos 5: 冠军 low  */
-    {65.5f,  83.5f},   /* pos 6:季军 high */
+    {80.5f,  88.5f},   /* pos 6:季军 high */
     {90.0f,  95.0f},   /* pos 7: 亚军 high */
-    {70.5f,  75.5f},   /* pos 8: 找圆 */
+    {70.5f,  73.5f},   /* pos 8: 找圆 */
+{120.0f,  43.0f},   /* pos 9: 分段放 */
+{90.0f,  55.0f},   /* pos 10: 找圆 */
+
+
 };
 
 #define BLOCK_DUAL_ARM_POS_COUNT \
@@ -195,6 +199,60 @@ void BlockBasic_DualArmSetPos(uint8_t pos)
     /* 舵机2 后级 → CH3 */
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3,
                           (uint32_t)(target->rear_angle_deg / 180.0f * 2000.0f + 500.0f + 0.5f));
+}
+
+/**
+ * @brief   双机械臂预设位置柔和控制：先中间舵机(CH3)再前面舵机(CH1)，
+ *          按 step_deg 步进缓动到位，避免上电一次性硬跳。
+ * @param   pos       位置编号，同 BlockBasic_DualArmSetPos。
+ * @param   step_deg  单步角度增量(°)，须 >0；步进方向按目标-当前自动判断。
+ * @param   delay_ms  每步之间延时(ms)。
+ * @note    起点取 TIM3 当前比较值反推角度，非法(0/负)时回退 pos1 init 角度。
+ *          step_deg/delay_ms 为新增参数，需实车整定到速度手感合适。
+ */
+void BlockBasic_DualArmSetPosSmooth(uint8_t pos, float step_deg, uint32_t delay_ms)
+{
+    const BlockDualArmPos *target;
+    float cur_front, cur_mid;
+    float start_front, start_mid;
+    float step;
+
+    if (pos < 1u || pos > BLOCK_DUAL_ARM_POS_COUNT || step_deg <= 0.0f) {
+        return;
+    }
+    target = &block_dual_arm_pos_table[pos - 1u];
+
+    /* 由 TIM3 当前比较值反推舵机当前角度；非法(0/负)时回退 pos1 init 角度 */
+    cur_front = ((float)__HAL_TIM_GET_COMPARE(&htim3, TIM_CHANNEL_1) - 500.0f) / 2000.0f * 180.0f;
+    cur_mid   = ((float)__HAL_TIM_GET_COMPARE(&htim3, TIM_CHANNEL_3) - 500.0f) / 2000.0f * 180.0f;
+    start_front = (cur_front > 0.0f && cur_front <= 180.0f) ? cur_front
+                                                            : block_dual_arm_pos_table[0].front_angle_deg;
+    start_mid   = (cur_mid   > 0.0f && cur_mid   <= 180.0f) ? cur_mid
+                                                            : block_dual_arm_pos_table[0].rear_angle_deg;
+
+    /* 1) 中间舵机(CH3)先缓动到位 */
+    step = (target->rear_angle_deg >= start_mid) ? step_deg : -step_deg;
+    while ((step > 0.0f) ? (start_mid < target->rear_angle_deg)
+                         : (start_mid > target->rear_angle_deg)) {
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3,
+                              (uint32_t)(start_mid / 180.0f * 2000.0f + 500.0f + 0.5f));
+        osDelay(delay_ms);
+        start_mid += step;
+    }
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3,
+                          (uint32_t)(target->rear_angle_deg / 180.0f * 2000.0f + 500.0f + 0.5f));
+
+    /* 2) 前面舵机(CH1)再缓动到位 */
+    step = (target->front_angle_deg >= start_front) ? step_deg : -step_deg;
+    while ((step > 0.0f) ? (start_front < target->front_angle_deg)
+                         : (start_front > target->front_angle_deg)) {
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,
+                              (uint32_t)(start_front / 180.0f * 2000.0f + 500.0f + 0.5f));
+        osDelay(delay_ms);
+        start_front += step;
+    }
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,
+                          (uint32_t)(target->front_angle_deg / 180.0f * 2000.0f + 500.0f + 0.5f));
 }
 #endif
 

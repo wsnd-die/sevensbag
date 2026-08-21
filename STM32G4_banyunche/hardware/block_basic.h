@@ -94,6 +94,14 @@ BlockArmResult BlockBasic_ArmCalc(float height_mm);
  * @param  pos  1=初始(81°,89.5°)  2=最低(72°,79°)  3=第二位置(94°,101°)
  */
 void BlockBasic_DualArmSetPos(uint8_t pos);
+
+/**
+ * @brief  双机械臂预设位置柔和控制（先中间舵机 CH3 再前面舵机 CH1 步进缓动）。
+ * @param  pos       位置编号，同 BlockBasic_DualArmSetPos。
+ * @param  step_deg  单步角度增量(°)，>0。
+ * @param  delay_ms  每步之间延时(ms)。
+ */
+void BlockBasic_DualArmSetPosSmooth(uint8_t pos, float step_deg, uint32_t delay_ms);
 #endif
 
 /**
