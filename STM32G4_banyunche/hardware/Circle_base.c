@@ -19,7 +19,7 @@ float g_circle_speed = 1.0f;  /* 速度系数: 1.0=快(左侧), 0.4=慢(右侧) 
 #define CIRCLE_XY_V_SLOW    0.03f   /* 近距离速度 (m/s) */
 
 /* 找圆稳定: 连续 'O' 确认次数, 达到才认为已居中, 防止方向抖动误判/一直动 */
-#define CIRCLE_O_STABLE_CNT  4U
+#define CIRCLE_O_STABLE_CNT  9U
 static uint8_t s_o_cnt = 0U;
 static float s_sum_x = 0.0f;   /* 确认期间圆心偏差累加 */
 static float s_sum_y = 0.0f;

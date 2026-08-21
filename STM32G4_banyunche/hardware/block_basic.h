@@ -45,12 +45,14 @@ extern "C" {
 /* 转盘位置编号从 1 开始，合法范围为 1~5。 */
 #define BLOCK_TURNTABLE_FIRST_POS        1u
 #define BLOCK_TURNTABLE_POS_COUNT        5u
-#define BLOCK_TURNTABLE_HOME_DEG         1.0f
-#define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_DEG / BLOCK_TURNTABLE_POS_COUNT-0.05)
+#define BLOCK_TURNTABLE_HOME_DEG         0.1f
+#define BLOCK_TURNTABLE_STEP_DEG         (BLOCK_SERVO_DEG / BLOCK_TURNTABLE_POS_COUNT-0.01)
 /* 单次最大角度步长。分段移动用于降低 360 度位置舵机自动走最短路径的风险。 */
-#define BLOCK_TURNTABLE_STEP_LIMIT_DEG   60.0f
+#define BLOCK_TURNTABLE_STEP_LIMIT_DEG   72.0f
 #define BLOCK_TURNTABLE_STEP_DELAY_MS    80u
 
+#define x_limit 0.003f
+#define y_limit 0.003f
     typedef  enum
     {
         UP = 0,
@@ -113,8 +115,8 @@ BlockStatus BlockBasic_TurntableTo(uint8_t block_pos);
  * @note   上电后如果转盘实际位置不在 BLOCK_TURNTABLE_HOME_DEG，
  *         应先调用本函数同步软件状态。
  */
-    void Servo_Angle(float angle_deg);
-void Place(char dir,uint16_t height);
+void Servo_Angle(float angle_deg);
+void Place(char dir,float x,float y,uint16_t height);
     /*
      *
      *

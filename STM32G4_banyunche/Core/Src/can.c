@@ -253,13 +253,10 @@ void HAL_FDCAN_ErrorCallback(FDCAN_HandleTypeDef *hfdcan)
 
     if (err & FDCAN_PSR_BO)      /* 总线脱开 (bus-off) */
     {
-        /* 重新初始化: DeInit → MX_FDCAN1_Init(时钟/GPIO/外设) → Start → 恢复通知 */
+        /* 重新初始化: DeInit → MX_FDCAN1_Init(时钟/GPIO/外设) → FDCAN1_UserInit(滤波+Start+通知) */
         HAL_FDCAN_DeInit(hfdcan);
         MX_FDCAN1_Init();
-        HAL_FDCAN_Start(hfdcan);
-        HAL_FDCAN_ActivateNotification(hfdcan,
-                                       FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_BUS_OFF,
-                                       0);
+        FDCAN1_UserInit();
     }
 }
 

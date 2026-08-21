@@ -242,7 +242,7 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINEL);
 	K230_ApplyMode();
-	task_send(Event_FindCircle);
+	task_send(Event_Navigation);
 	// BlockBasic_LiftTo(UP,44);
 	// Nav_MoveForward(0.5);
 	// osDelay(2000);
@@ -354,7 +354,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 			if (g_circle_dir=='O')
 			{
 				TT_RotateByQR();
-				Place('O', 0);
+				Place('O', g_circle_avg_x, g_circle_avg_y, 0);
 				g_circle_dir=' ';
 				printf("[TASK] FindCircle placed");
 				flag_finish = false;
@@ -363,7 +363,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 					// Servo_SetAngle(125);
 				}
 				World_Reset();                    /* 放置完物块: 清零里程计, 奖杯段从0重新记 */
-				task_send(Event_FindCircle);
+				task_send(Event_Navigation);
 			}
 			}
 else if (g_last_cmd.Mode==Event_PlaceDown)
@@ -388,7 +388,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					}
   					if (g_circle_dir=='O')
   					{
-						Place('O', 33);
+						Place('O', g_circle_avg_x, g_circle_avg_y, 33);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
@@ -414,7 +414,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					}
   					if (g_circle_dir=='O')
   					{
-						Place('O', 28);
+						Place('O', g_circle_avg_x, g_circle_avg_y, 28);
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
@@ -443,7 +443,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (g_circle_dir=='O')
   					{
   						printf("[TASK] PlaceDown third done\r\n");
-  						Place('O', 21);
+  						Place('O', g_circle_avg_x, g_circle_avg_y, 21);
   						i++;
   						flag_finish=false;
   						g_circle_dir=' ';
@@ -728,8 +728,8 @@ void OLED_TASK(void *argument)
 
   for(;;)
   {
-  	if (can_error_count) printf("CAN err cnt=%lu code=0x%lX\r\n",
-	(unsigned long)can_error_count, (unsigned long)can_error_code);
+ //  	if (can_error_count) printf("CAN err cnt=%lu code=0x%lX\r\n",
+	// (unsigned long)can_error_count, (unsigned long)can_error_code);
   	uint8_t raw_dumped = 0;
   	position=World_position_get();
   	// printf("xyyawixiy:%2f,%2f,%2f,%.2f,%.2f\r\n",position.x,position.y,position.yaw,g_ins.x,g_ins.y);

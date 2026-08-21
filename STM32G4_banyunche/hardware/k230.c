@@ -203,8 +203,7 @@ bool K230_GetPosition(float *x, float *y)
 }
 bool K230_GetCirclepos(float *cx,float *cy)
 {
-    /* 返回最近一次收到的圆 xy, 不强求新鲜帧:
-     * K230 只在 'O' 时偶尔发 0xB5, 若卡新鲜度会因时序丢失补量 → "有的点偏移有的不偏移" */
+
     if (cx) *cx = k230_ctx.circle_x;
     if (cy) *cy = k230_ctx.circle_y;
     return true;
