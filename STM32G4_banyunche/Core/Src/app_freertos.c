@@ -729,7 +729,7 @@ void BsRt_task(void *argument)
 #endif
 	BlockBasic_TurntableTo(1);
 	osDelay(250);
-	BlockBasic_DualArmSetPosSmooth(8, 2.0f, 20);  /* 柔和降臂: 先中间(CH3)后前面(CH1), 每步1°隔20ms, 需实车整定 */
+	BlockBasic_DualArmSetPosSmooth(2, 2.0f, 20);  /* 柔和降臂: 先中间(CH3)后前面(CH1), 每步1°隔20ms, 需实车整定 */
 	osDelay(100);
 
 	// BlockBasic_TurntableTo(1);
@@ -871,7 +871,7 @@ void BsRt_task(void *argument)
 					// int db = abs((int)d.blue  - g_color_ambient.b);
 					// if (dr < 30 && dg < 30 && db < 30) { slot--; osDelay(50); continue; }
 					if (slot < 4) {
-						osDelay(260);
+						osDelay(320);
 						BlockBasic_TurntableTo(slot+1);
 					}
 				}

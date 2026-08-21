@@ -25,7 +25,7 @@ World_Dir g_waypoints[NAV_WAYPOINT_MAX] = {
 
 
     {-0.32f,    0.75f,  0.0f  * MECANUM_DEG_TO_RAD },//奖杯二维码点
-    {0.23f,      -0.45f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
+    {0.30f,      -0.55f,      90.0f * MECANUM_DEG_TO_RAD },//奖杯循线点
     {     0.0f,     0.0f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：再向左平移 */
 	  {    -0.58f,  -1.02f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点：先0度前进 */
     {    -0.15f,    -0.24f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
