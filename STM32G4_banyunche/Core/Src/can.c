@@ -231,10 +231,35 @@ void FDCAN1_UserInit(void)
 
     /* ���� FIFO0 ����Ϣ�ж� */
     if (HAL_FDCAN_ActivateNotification(&hfdcan1,
-                                       FDCAN_IT_RX_FIFO0_NEW_MESSAGE,
+                                       FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_BUS_OFF,
                                        0) != HAL_OK)
     {
         Error_Handler();
+    }
+}
+
+/* ============================================================
+ * FDCAN 错误回调 — bus-off 检测与恢复
+ * 底盘/丝杆命令走 CAN, 一旦 bus-off 所有命令静默失败(电机不动),
+ * 而舵机是 TIM PWM 不受影响 → 表现为"舵机动、电机不动、卡死"。
+ * 这里检测 bus-off 并重新初始化 FDCAN 恢复通信。
+ * ============================================================ */
+void HAL_FDCAN_ErrorCallback(FDCAN_HandleTypeDef *hfdcan)
+{
+    uint32_t err = HAL_FDCAN_GetError(hfdcan);
+
+    can_error_code  = err;
+    can_error_count++;
+
+    if (err & FDCAN_PSR_BO)      /* 总线脱开 (bus-off) */
+    {
+        /* 重新初始化: DeInit → MX_FDCAN1_Init(时钟/GPIO/外设) → Start → 恢复通知 */
+        HAL_FDCAN_DeInit(hfdcan);
+        MX_FDCAN1_Init();
+        HAL_FDCAN_Start(hfdcan);
+        HAL_FDCAN_ActivateNotification(hfdcan,
+                                       FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_BUS_OFF,
+                                       0);
     }
 }
 

@@ -242,15 +242,17 @@ void NLF_TASK(void *argument)
 
 	K230_RequestMode(K230_MODE_LINEL);
 	K230_ApplyMode();
-	task_send(Event_Navigation);
+	task_send(Event_FindCircle);
 	// BlockBasic_LiftTo(UP,44);
 	// Nav_MoveForward(0.5);
+	// osDelay(2000);
+	// Nav_MoveForward(-0.5);
 	BlockBasic_TurntableTo(1);
 	// Emm_V5_Vel_Control(1, 0, 100, 250, 0);
 	// Emm_V5_Vel_Control(2, 0, 100, 250, 0);
 	// Emm_V5_Vel_Control(3, 0, 100, 250, 0);
 	// Emm_V5_Vel_Control(4, 0, 100, 250, 0);
-	osDelay(500);
+	osDelay(100);
   /* Infinite loop */
   for(;;)
   {
@@ -352,9 +354,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 			if (g_circle_dir=='O')
 			{
 				TT_RotateByQR();
-				float x = 0.0f, y = 0.0f;
-				K230_GetCirclepos(&x, &y);   /* 圆 xy → 放置补量 */
-				Place('O', x, y, 0);
+				Place('O', 0);
 				g_circle_dir=' ';
 				printf("[TASK] FindCircle placed");
 				flag_finish = false;
@@ -363,7 +363,7 @@ else if (g_last_cmd.Mode==Event_LinFolL)
 					// Servo_SetAngle(125);
 				}
 				World_Reset();                    /* 放置完物块: 清零里程计, 奖杯段从0重新记 */
-				task_send(Event_Navigation);
+				task_send(Event_FindCircle);
 			}
 			}
 else if (g_last_cmd.Mode==Event_PlaceDown)
@@ -388,9 +388,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					}
   					if (g_circle_dir=='O')
   					{
-  						float cx = 0.0f, cy = 0.0f;
-						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
-						Place('O', cx, cy, 33);
+						Place('O', 33);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
@@ -416,9 +414,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					}
   					if (g_circle_dir=='O')
   					{
-  						float cx = 0.0f, cy = 0.0f;
-						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
-						Place('O', cx, cy, 28);
+						Place('O', 28);
   						printf("[TASK] PlaceDown second done\r\n");
   						i++;
   						flag_finish=false;
@@ -447,9 +443,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (g_circle_dir=='O')
   					{
   						printf("[TASK] PlaceDown third done\r\n");
-  						float cx = 0.0f, cy = 0.0f;
-						K230_GetCirclepos(&cx, &cy);   /* 圆 xy → 放置补量 */
-						Place('O', cx, cy, 21);
+  						Place('O', 21);
   						i++;
   						flag_finish=false;
   						g_circle_dir=' ';
@@ -594,7 +588,6 @@ void BsRt_task(void *argument)
 	BlockBasic_TurntableTo(1);
 	IR_Init();
 	GrayTrace_Init(&g_gray_trace);   /* 灰度循迹控制器初始化 (PA4 CLK / PA5 DAT) */
-	osDelay(1000);
 	// BlockBasic_TurntableTo(1);
 	// BlockBasic_LiftTo(UP,20);
 	// HAL_Delay(1000);
@@ -610,10 +603,6 @@ void BsRt_task(void *argument)
 			/* 收集: 红外对射检测物体进入 → 读颜色 → 旋转转盘 */
 			if (K==0) {
 				g_color_collect_done = 0;
-				/* 物理: 转盘初始位置1, 传感器对准槽2
-				 * 物块进入落当前槽 → 先转一格让该槽到传感器下 → 再读色
-				 * 读槽1~4, 槽5(转到位置1行程不够)读不到 → 排除法补槽5
-				 * 读色交给 Color_task: 置 g_color_req 请求 → 等应答 */
 				for (uint8_t i = 0; i < COLOR_COUNT; i++) s_seen[i] = 0;   /* 清已读颜色标记 */
 				Color_TypeDef c;
 				uint8_t slot;
@@ -625,9 +614,6 @@ void BsRt_task(void *argument)
 
 				for (slot = 1; slot <= 4; slot++) {
 					while (!IR_ObjectEntered()) osDelay(5);   /* 等物块完全进入 (IR 脉冲0→1) */
-
-					/* 请求 Color_task 读当前槽颜色 (槽slot → 索引slot-1),
-					 * 必须等读完再转盘, 否则读色时槽位已移动 */
 					g_color_req_slot = slot - 1;
 					g_color_req = 1;
 					// while (g_color_req) osDelay(3);   /* 等 Color_task 读色完成 */
@@ -637,11 +623,8 @@ void BsRt_task(void *argument)
 					}
 				}
 
-				/* 必触发锁死: 物块5已完全进入槽5, 锁死转盘; 槽5颜色由排除法补 */
 				osDelay(200);
 				Servo_Angle(333.0f);
-
-				/* 槽5(索引4)颜色 = 全集 - 已读4种 */
 				for (c = COLOR_RED; c < COLOR_COUNT; c++) {
 					if (!s_seen[c]) { TT_SetColor(4, c); break; }
 				}
@@ -660,7 +643,6 @@ void BsRt_task(void *argument)
 					}
 				}
 				K=0;
-				// osDelay(170);
 				Servo_Angle(180.0f);
 				BlockBasic_LiftTo(UP, 48);
 				g_trophy_done = 1;
@@ -746,6 +728,8 @@ void OLED_TASK(void *argument)
 
   for(;;)
   {
+  	if (can_error_count) printf("CAN err cnt=%lu code=0x%lX\r\n",
+	(unsigned long)can_error_count, (unsigned long)can_error_code);
   	uint8_t raw_dumped = 0;
   	position=World_position_get();
   	// printf("xyyawixiy:%2f,%2f,%2f,%.2f,%.2f\r\n",position.x,position.y,position.yaw,g_ins.x,g_ins.y);

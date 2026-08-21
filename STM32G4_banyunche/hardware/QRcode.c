@@ -64,7 +64,7 @@ uint8_t  QR_deel(void)
     }
     if (k==1)
     {
-        Jang_Num=result-1;
+        Jang_Num=result;
     }
     else
     {
@@ -96,7 +96,7 @@ uint8_t Slop_dirjang(Jang_type jang)
     uint8_t i;
     for (i=0;i<3;i++)
     {
-        if (T2[Jang_Num][i]==jang)
+        if (T2[Jang_Num-1][i]==jang)
         {
             return 3-i;
         }

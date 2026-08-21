@@ -51,11 +51,11 @@ World_Dir_t World_position_get(void)
 
 
 
-    /* 麦轮正解 */
-    d_fwd  = (float)(enc.fl - prev.fl + enc.fr - prev.fr +
-                     enc.rl - prev.rl + enc.rr - prev.rr) / 4.0f;
-    d_side = (float)(-enc.fl + prev.fl + enc.fr - prev.fr +
-                     enc.rl - prev.rl - enc.rr + prev.rr) / 4.0f;
+    /* 麦轮正解 (右轮与左轮编码器反号, 取反统一: 后退全负/前进全正) */
+    d_fwd  = (float)(enc.fl - prev.fl - (enc.fr - prev.fr) +
+                     enc.rl - prev.rl - (enc.rr - prev.rr)) / 4.0f;
+    d_side = (float)(-(enc.fl - prev.fl) - (enc.fr - prev.fr) +
+                     enc.rl - prev.rl + (enc.rr - prev.rr)) / 4.0f;
     prev = enc;
 
     /* 脉冲→mm */
@@ -63,6 +63,7 @@ World_Dir_t World_position_get(void)
     World_position.x += (fwd_mm * cosf(yaw) - side_mm * sinf(yaw)) / 2000.0f;
     World_position.y += (fwd_mm * sinf(yaw) + side_mm * cosf(yaw)) / 2000.0f;
     World_position.yaw = yaw;
+    // printf("2431:%.2f,%.2f,%.2f,%.2f\r\n",(float)enc.rl,(float)enc.rr,(float)enc.fl,(float)enc.fr);
 
     return World_position;
 }

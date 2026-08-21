@@ -175,9 +175,8 @@ int main(void)
  //    Color_Init();
 //	IMU660RC_Init();
 //	IMU660RC_AttitudeInit();
-    HAL_Delay(200);
+    HAL_Delay(100);
 	  Hal_starte();
-    HAL_Delay(2000);
 
     IMU660RA_AttitudeInit();
     uint8_t len=sprintf((char *)Data,"init ok");

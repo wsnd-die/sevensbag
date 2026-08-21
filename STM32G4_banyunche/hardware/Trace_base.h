@@ -45,7 +45,7 @@ extern "C" {
 #define TRACE_W_MAX        0.95f  /* 最大角速度 (rad/s) */
 #define W_RATE_MAX 0.1;
 
-#define SOFT_START_MS   1000U
+#define SOFT_START_MS   500U
 /* ======================== 函数声明 ======================== */
 void Trace_LineFollow(SystemMode_t Event);          /* 按 TRACE_USE_STANLEY 选择调用哪个 */
 void Trace_LineFollow_PID(void);      /* PID 控制器 */

@@ -22,7 +22,7 @@
     .forward_dir[MECANUM_ADDR_RR] = 1U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
-    .acceleration = 230U
+    .acceleration = 210U
 };
 
 /* ---- 内部工具函数 ---- */
@@ -540,11 +540,6 @@ bool Mecanum_ExecuteMove(
         osDelay(2);
 
     }
-    // taskEXIT_CRITICAL();
-    /*
-     * 地址0触发四轮同步开始。
-     * 位置模式必须触发同步: 否则 4 个电机收到位置命令后不启动, 放置/导航都不动。
-     */
     Emm_V5_Synchronous_motion(0);
 
     return true;
@@ -652,7 +647,7 @@ bool Mecanum_MoveWithEncoder(const MecanumConfig_t *config,
     }
 
     /* ---- 4. 等理论耗时（期间不查 CAN，电机正在跑）---- */
-    move_ms = (uint32_t)(move.duration_s * 1000.0f);
+    move_ms = (uint32_t)(move.duration_s * 1500.0f);
     osDelay(move_ms);
 
     /* ---- 5. 轮询领队轮到位标志（位置模式已自动停, 此处只是确认, 少轮询几次即可）---- */

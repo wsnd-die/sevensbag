@@ -47,7 +47,7 @@ bool IR_ObjectEntered(void)
 
     /* 防抖 */
     if (fully_in) {
-        osDelay(160);
+        osDelay(100);
         now = IR_ObjectPresent();          /* 重新采样当前电平 */
         if (now) {                         /* 恢复后又变遮挡 → 是抖动, 不算完全进入 */
             ir_last = now;

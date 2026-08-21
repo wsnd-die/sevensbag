@@ -63,7 +63,7 @@
 #include "imu660.h"
 #include "../algorithm/ahrs_mahony.h"
 #include "../algorithm/siyuan_imu.h"
-// #include "spi_imu660rc.h"  // 已切换为 IMU660RA 版本，旧版不再使用
+// #include "spi_imu660rc.h"
 #include "../algorithm/mecanum.h"
 #include "uart2_tbop10.h"
 #include "angle_ctrl.h"

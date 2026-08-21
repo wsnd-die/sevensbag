@@ -21,9 +21,9 @@ extern "C" {
 #include <stdint.h>
 
 /* ======================== 找圆控制参数 ======================== */
-#define CIRCLE_SPEED_V     0.25f    /* 寻圆线速度 (m/s) */
-#define CIRCLE_SPEED_VY    0.25f    /* 寻圆横移速度 (m/s) */
-#define CIRCLE_STOP_TIME   500U    /* 圆心对准后停车时间 (ms) */
+#define CIRCLE_SPEED_V     0.05f    /* 寻圆线速度 (m/s) */
+#define CIRCLE_SPEED_VY    0.05f    /* 寻圆横移速度 (m/s) */
+#define CIRCLE_STOP_TIME   10U    /* 圆心对准后停车时间 (ms) */
 
 /* ======================== 函数声明 ======================== */
 
@@ -34,6 +34,8 @@ extern float g_circle_speed;  /* 找圆速度系数 */
 extern float g_circle_vx;
 extern float g_circle_vy;
 extern char  g_circle_dir;
+extern float g_circle_avg_x;   /* 稳定确认后的平均圆心偏差 (供放置) */
+extern float g_circle_avg_y;
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,7 @@
  */
 #include "Common_used.h"
 
+
 #define CLAMP_FLOAT(v, lo, hi)  ((v) < (lo) ? (lo) : ((v) > (hi) ? (hi) : (v)))
 #define DEG2RAD(d)              ((d) * 0.01745329252f)
 #define RAD2DEG(r)              ((r) * 57.2957795131f)
@@ -68,7 +69,7 @@ static float normalize_servo(float angle_deg)
  * @brief   物块位置编号转换为转盘角度。
  * @param   block_pos   物块位置编号，合法范围为 1~5。
  * @return  float       转盘角度，单位 deg。
- * @note    1 -> HOME, 2 -> HOME + 72 deg, ..., 5 -> HOME + 288 deg 
+ * @note    1 -> HOME, 2 -> HOME + 72 deg, ..., 5 -> HOME + 288 deg
  */
 static float turntable_target_angle(uint8_t block_pos)
 {
@@ -217,7 +218,7 @@ MecanumConfig_t Place_config = {
     .half_width_m = 0.0782f,
     .gear_ratio = 1.0f,
     .pulse_per_rev =3200 ,
-    .max_motor_rpm = 140,
+    .max_motor_rpm = 100,
     .min_move_time_s = 0.1f,
 
     /* 驱动器逻辑方向: 0=正向(与 Send_motor 速度环 !dir 后一致)
@@ -228,7 +229,7 @@ MecanumConfig_t Place_config = {
     .forward_dir[MECANUM_ADDR_RR] = 1U,
 
     /* 驱动器加速度: 脉冲/秒^2 */
-    .acceleration = 100U
+    .acceleration = 40U
 };
 /**
  * @brief  重置软件记录的转盘当前角度，并立即输出该角度 PWM。
@@ -247,34 +248,29 @@ void Servo_SetAngle(float Angle)
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, Angle / 180 * 2000 + 500);
 
 }
-/* K230 圆心像素 → 车体横向位移 (m/像素)。比例/方向需实测调, 反了取负 */
-#define PLACE_CIRCLE_SCALE_M  0.001f
 
-void Place(char dir,float x,float y,uint16_t height)
+
+void Place(char dir,uint16_t height)
 {
     MecanumMove_t move;
+    float fwd  = 0.064f;
+    float left = 0.0f;
     if (dir == 'O')
     {
-        /* 圆心 xy → 放置补量。
-         * K230 的 x = 圆相对图像中心 (右为正); 车体 left = 左移为正。
-         * 圆在图像右边 → 车要往右靠 → left 必须取 -x, 否则修正方向反了。 */
-        float fwd  = 0.068f - y * PLACE_CIRCLE_SCALE_M;
-        float left = x * PLACE_CIRCLE_SCALE_M;
-        printf("[PLACE] cx=%.0f cy=%.0f fwd=%.3f left=%.3f\r\n",
-               (double)x, (double)y, (double)fwd, (double)left);
+
         if (Mecanum_CalculateMove(&Place_config, fwd, left, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
-            osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
+            osDelay((uint32_t)(move.duration_s * 2500.0f) + 50U);
         }
         BlockBasic_LiftTo(DOWN,height);
-        osDelay(950);
+        osDelay(1000);
 
         /* 后退 0.05 m（车体坐标：-X 为后退） */
-        if (Mecanum_CalculateMove(&Place_config, -0.145f, 0.0f, 0.0f, &move))
+        if (Mecanum_CalculateMove(&Place_config, -0.155f, 0.0f, 0.0f, &move))
         {
             Mecanum_ExecuteMove(&Place_config, &move);
-            osDelay((uint32_t)(move.duration_s * 2000.0f) + 50U);
+            osDelay((uint32_t)(move.duration_s * 2500.0f) + 50U);
         }
     }
 }
