@@ -41,12 +41,12 @@ World_Dir_t g_waypoints[NAV_WAYPOINT_MAX] = {
     {   -0.1f,    -0.24f, 90.0f * MECANUM_DEG_TO_RAD },  /* 奖杯寻线点 */
 
     {    0.405f,     1.03f,  0.0f * MECANUM_DEG_TO_RAD },  /* 亚军点*/
-    {    0.06f,    0.24f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
-    {    0.06f,    0.24f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
+    {    0.06f,    0.27f,  0.0f * MECANUM_DEG_TO_RAD },  /* 冠军点 */
+    {    0.06f,    0.27f,   0.0f * MECANUM_DEG_TO_RAD },  /* 季军点 */
 
     {-0.483f,-0.0,0},//回家点
     {0,-0.244f,0},
-    {-1.078f,-0.1,0},
+    {-1.078f,-0.18,0},
 
 };
 
@@ -68,8 +68,8 @@ uint8_t  g_waypoint_count = 13;
 /* ---- 目标点设计坐标 (世界系, m) ---- */
 #define CALIB_A_X        (-0.844f)     /* a点设计值 */
 #define CALIB_A_Y        (-0.466f)
-#define CALIB_YAJUN_X    ( 0.49f)     /* 亚军点设计值 */
-#define CALIB_YAJUN_Y    ( 1.035f)
+#define CALIB_YAJUN_X    ( 0.48f)     /* 亚军点设计值 */
+#define CALIB_YAJUN_Y    ( 1.065f)
 
 /* ---- 循迹终点设计坐标 (世界系, m) ---- */
 #define TRACE_END_A_X    ( 2.186f/2)       /* 物料循迹(LinFolL)终点设计值 */

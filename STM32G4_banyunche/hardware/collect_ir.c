@@ -36,11 +36,10 @@ bool IR_ObjectEntered(void)
 {
     bool now = IR_ObjectPresent();
 
-    /* 防抖: 检测到遮挡(电平0)后 5ms 再确认, 滤掉沿抖动 */
     if (now && !ir_last) {
         osDelay(50);
         now = IR_ObjectPresent();
-        if (!now) return false;   /* 抖动, 未真正遮挡 */
+        if (!now) return false;
     }
 
     bool fully_in = (ir_last && !now);
@@ -48,12 +47,12 @@ bool IR_ObjectEntered(void)
     /* 防抖 */
     if (fully_in) {
         osDelay(100);
-        now = IR_ObjectPresent();          /* 重新采样当前电平 */
-        if (now) {                         /* 恢复后又变遮挡 → 是抖动, 不算完全进入 */
+        now = IR_ObjectPresent();
+        if (now) {
             ir_last = now;
             return false;
         }
-        fully_in = true;                   /* 恢复电平稳定 → 确认完全进入 */
+        fully_in = true;
     }
 
     ir_last = now;
@@ -62,16 +61,15 @@ bool IR_ObjectEntered(void)
 
 bool Collect_WaitEnter(void)
 {
-    while (!IR_ObjectEntered()) { osDelay(10); }   /* 等物体进入(带防抖) */
+    while (!IR_ObjectEntered()) { osDelay(10); }
     return true;
 }
 
 Color_TypeDef Collect_ReadColor(void)
 {
-    /* 多帧采样取平均, 提高颜色识别准确度 (不追求快) */
     uint32_t rs = 0, gs = 0, bs = 0;
     int n = 0;
-    for (int i = 0; i < 40 && n < 3; i++) {   /* 最多 ~160ms, 采满 3 帧即停 */
+    for (int i = 0; i < 40 && n < 3; i++) {
         if (g_uart2_gy33_ready) {
             g_uart2_gy33_ready = 0;
             rs += g_uart2_gy33_r;
@@ -93,7 +91,7 @@ Color_TypeDef Collect_ReadColor(void)
 
 Color_TypeDef Collect_ReadColor_NB(void)
 {
-    /* 非阻塞: 有当前帧立即判色, 无帧立即返回 UNKNOWN, 不等待 */
+
     if (!g_uart2_gy33_ready) return COLOR_UNKNOWN;
 
     g_uart2_gy33_ready = 0;

@@ -388,7 +388,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					}
   					if (g_circle_dir=='O')
   					{
-						Place('O', g_circle_avg_x, g_circle_avg_y, 33);
+						Place('O', g_circle_avg_x, g_circle_avg_y, 37);
   						printf("[TASK] PlaceDown champion done\r\n");
   						i++;
   						flag_finish=false;
@@ -443,7 +443,7 @@ else if (g_last_cmd.Mode==Event_PlaceDown)
   					if (g_circle_dir=='O')
   					{
   						printf("[TASK] PlaceDown third done\r\n");
-  						Place('O', g_circle_avg_x, g_circle_avg_y, 21);
+  						Place('O', g_circle_avg_x, g_circle_avg_y, 17);
   						i++;
   						flag_finish=false;
   						g_circle_dir=' ';
